@@ -48,6 +48,7 @@ Work items are cards in Linear. Use the `mise linear:*` tasks, which call the Li
 
 Columns, in order: `backlog`, `planned`, `ready`, `working`, `review`, `approved`, `completed`, `canceled`.
 
+- Create a card: `mise linear:create "<title>" "<markdown body>" [--column backlog]`
 - Read a card, its links, and its comments: `mise linear:show MOTO-1`
 - Move a card: `mise linear:move MOTO-1 review`
 - Comment: `mise linear:comment MOTO-1 "<markdown>"`

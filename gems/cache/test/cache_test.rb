@@ -161,8 +161,9 @@ class CacheTest < Minitest::Test
     assert executed
     group_file = Dir.glob(File.join(@cache.dir, "*.json")).first
     content = JSON.parse(File.read(group_file))
+    expected = Digest::SHA256.hexdigest(File.binread(test_file))
 
-    assert(content.values.any? { |v| v.include?("initial content") })
+    assert_includes content.values, expected
   end
 
   def test_if_files_changed_skips_block_when_unchanged
@@ -203,6 +204,24 @@ class CacheTest < Minitest::Test
     assert_equal 2, execution_count
   end
 
+  def test_if_files_changed_with_non_ascii_file_under_us_ascii
+    @cache = Cache.new(dir: unique_cache_dir)
+    test_file = create_temp_file("pnpm-lock — café")
+    original_external = Encoding.default_external
+    Encoding.default_external = Encoding::US_ASCII
+    begin
+      executed = false
+
+      @cache.if_files_changed(test_file) do
+        executed = true
+      end
+
+      assert executed
+    ensure
+      Encoding.default_external = original_external
+    end
+  end
+
   def test_if_files_changed_handles_multiple_files
     @cache = Cache.new(dir: unique_cache_dir)
     file1 = create_temp_file("content1")
@@ -216,9 +235,9 @@ class CacheTest < Minitest::Test
     assert executed
     group_file = Dir.glob(File.join(@cache.dir, "*.json")).first
     content = JSON.parse(File.read(group_file))
-    combined_value = content.values.find { |v| v.include?("content1") && v.include?("content2") }
+    expected = Digest::SHA256.hexdigest([ File.binread(file1), File.binread(file2) ].join("|"))
 
-    assert combined_value && !combined_value.empty?
+    assert_includes content.values, expected
   end
 
   def test_initialize_loads_existing_cache_files

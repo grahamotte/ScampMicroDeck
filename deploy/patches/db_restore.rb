@@ -8,10 +8,18 @@ class DbRestorePatch < BasePatch
 
       aws_cmd("s3 cp s3://#{Constants.backup_bucket}/#{key} #{path}")
 
-      Cmd.ssh("psql #{Constants.db_name} < #{path}")
-      Instance.start_service(:postgresql)
+      Instance.stop_service("job")
+      Instance.stop_service("api")
 
-      Cmd.ssh("rm -f #{path}")
+      begin
+        Cmd.ssh("psql -v ON_ERROR_STOP=1 #{Constants.db_name} < #{path}")
+        Instance.start_service(:postgresql)
+
+        Cmd.ssh("rm -f #{path}")
+      ensure
+        Instance.start_service("job")
+        Instance.start_service("api")
+      end
     end
 
     private

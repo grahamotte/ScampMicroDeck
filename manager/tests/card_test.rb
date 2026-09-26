@@ -1,6 +1,71 @@
 require_relative "test_helper"
 
 class CardTest < Minitest::Test
+  def test_creates_card_in_backlog
+    calls = stub_card(
+      created: { id: "item-2", identifier: "MOTO-2", url: "https://linear.app/gotte/issue/MOTO-2" },
+    )
+
+    output, = capture_io { Card.call("create", "New card", "Do the thing") }
+
+    assert_equal "MOTO-2 https://linear.app/gotte/issue/MOTO-2\n", output
+    assert_equal(
+      [
+        {
+          input: {
+            teamId: "team-1",
+            title: "New card",
+            description: "Do the thing",
+            stateId: "s-backlog",
+          },
+        },
+      ],
+      variables(calls, "mutation IssueCreate"),
+    )
+    assert_empty variables(calls, "query Issue(")
+  end
+
+  def test_creates_card_in_column
+    calls = stub_card(
+      created: { id: "item-2", identifier: "MOTO-2", url: "https://linear.app/gotte/issue/MOTO-2" },
+    )
+
+    output, = capture_io { Card.call("create", "New card", "Do the thing", "Ready") }
+
+    assert_equal "MOTO-2 https://linear.app/gotte/issue/MOTO-2\n", output
+    assert_equal(
+      [
+        {
+          input: {
+            teamId: "team-1",
+            title: "New card",
+            description: "Do the thing",
+            stateId: "s-ready",
+          },
+        },
+      ],
+      variables(calls, "mutation IssueCreate"),
+    )
+  end
+
+  def test_rejects_unknown_create_column
+    calls = stub_card
+
+    error = assert_raises(RuntimeError) { Card.call("create", "New card", "Do the thing", "done") }
+
+    assert_includes error.message, 'Unknown column "done"'
+    assert_empty variables(calls, "mutation IssueCreate")
+  end
+
+  def test_rejects_blank_create_title
+    calls = stub_card
+
+    error = assert_raises(RuntimeError) { Card.call("create", "", "Do the thing") }
+
+    assert_equal "Title is blank", error.message
+    assert_empty variables(calls, "mutation IssueCreate")
+  end
+
   def test_shows_card_with_links_and_comments_in_order
     stub_card(
       issue: {
@@ -139,7 +204,7 @@ class CardTest < Minitest::Test
 
     error = assert_raises(RuntimeError) { Card.call("delete", "MOTO-1") }
 
-    assert_equal "Unknown command \"delete\", expected one of show, move, comment, link, tag, untag", error.message
+    assert_equal "Unknown command \"delete\", expected one of create, show, move, comment, link, tag, untag", error.message
     assert_empty calls
   end
 
@@ -153,7 +218,7 @@ class CardTest < Minitest::Test
     calls.select { |call| graphql?(call, fragment) }.map { |call| call.dig(:payload, :variables) }
   end
 
-  def stub_card(issue: { id: "item-1", identifier: "MOTO-1", team: { key: "MOTO" } })
+  def stub_card(issue: { id: "item-1", identifier: "MOTO-1", team: { key: "MOTO" } }, created: nil)
     calls = []
     responses = {
       "query Workspace" => { organization: { urlKey: "gotte" }, teams: { nodes: [ { id: "team-1", key: "MOTO" } ] } },
@@ -166,6 +231,12 @@ class CardTest < Minitest::Test
         },
       },
       "query Tags" => { team: { labels: { nodes: [ { id: "l-interactive", name: "interactive" } ] } } },
+      "mutation IssueCreate" => {
+        issueCreate: {
+          success: true,
+          issue: created || { id: "item-2", identifier: "MOTO-2", url: "https://linear.app/gotte/issue/MOTO-2" },
+        },
+      },
       "mutation IssueUpdate" => { issueUpdate: { success: true } },
       "mutation CommentCreate" => { commentCreate: { success: true } },
       "mutation AttachmentLinkURL" => { attachmentLinkURL: { success: true } },

@@ -120,7 +120,7 @@ Create a Linear team for the app. Put its key in `LINEAR_TEAM`. Agents use the `
 
 Columns, in order: `backlog`, `planned`, `ready`, `working`, `review`, `approved`, `completed`, `canceled`.
 
-Run `mise manager:sync` to sync those workflow names and colors, and to create the default tags (`working`, `interactive`, `variant: …`, `model: …`). Run it only against the team this repo should own. On a new team it renames Linear's default `Todo`, `In Progress`, `In Review`, and `Done` states.
+Run `mise manager:sync` to sync those workflow names and colors, create the default tags (`working`, `interactive`, `variant: …`, `model: …`), and clear git automations. Run it only against the team this repo should own. On a new team it renames Linear's default `Todo`, `In Progress`, `In Review`, and `Done` states. Sync also deletes Linear's GitHub git automations (branch/draft PR, PR opened, PR merged); the manager moves cards itself.
 
 ### Kanban cards
 
@@ -139,7 +139,7 @@ Copy the card title, user value, problem description, notes, and prompts into th
 With `LINEAR_*` set, this creates `planned` issues from `1 - Problems to Solve` using the manager's Linear client. Check the team has no matching issues first.
 
 ```sh
-cd manager && LANG=en_US.UTF-8 mise exec -- bundle exec ruby -e '
+cd manager && mise exec -- bundle exec ruby -e '
 require_relative "lib/require"
 team = Linear.send(:team_id)
 state = Linear.send(:state_id, "planned")
