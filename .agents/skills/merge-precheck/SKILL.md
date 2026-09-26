@@ -11,4 +11,5 @@ Check and report every item. Do not stop after the first failure. Fail the prech
 - The current branch is `master`.
 - It has no uncommitted changes.
 - It has no Git operation in progress.
+- After `git fetch origin`, `master` has no commits missing from `origin/master`.
 - `mise test` passes.

@@ -2,20 +2,24 @@ require_relative "test_helper"
 
 class SyncTest < Minitest::Test
   def test_syncs_statuses_and_tags_without_triggering
-    calls = stub_sync(states: unsynced_states, tags: [])
+    calls = stub_sync(states: unsynced_states, tags: [], git_automations: default_git_automations)
 
     output, = capture_io { Sync.call }
 
     assert calls.any? { |call| graphql?(call, "query Workspace") }
     assert calls.any? { |call| graphql?(call, "query States") }
     assert calls.any? { |call| graphql?(call, "query Tags") }
+    assert calls.any? { |call| graphql?(call, "query GitAutomationStates") }
     assert calls.any? { |call| graphql?(call, "mutation WorkflowState") }
     assert calls.any? { |call| graphql?(call, "mutation IssueLabelCreate") }
+    deletes = calls.select { |call| graphql?(call, "mutation GitAutomationStateDelete") }
+    assert_equal [ "ga-start", "ga-review", "ga-merge" ], deletes.map { |call| call.dig(:payload, :variables, :id) }
     assert_empty calls.select { |call| graphql?(call, "query Issues") }
     assert_empty calls.select { |call| graphql?(call, "mutation IssueUpdate") }
     assert_empty calls.select { |call| call[:url].to_s.end_with?("/api/openchamber/sessions") }
     assert_includes output, "created Working"
     assert_includes output, "created working tag"
+    assert_includes output, "removed git automation start (In Progress)"
     refute_includes output, "started working"
   end
 
@@ -28,6 +32,7 @@ class SyncTest < Minitest::Test
     assert_empty calls.select { |call| graphql?(call, "mutation WorkflowState") }
     assert_empty calls.select { |call| graphql?(call, "mutation IssueLabelCreate") }
     assert_empty calls.select { |call| graphql?(call, "mutation IssueLabelUpdate") }
+    assert_empty calls.select { |call| graphql?(call, "mutation GitAutomationStateDelete") }
     assert_empty calls.select { |call| graphql?(call, "query Issues") }
     assert_empty calls.select { |call| graphql?(call, "mutation IssueUpdate") }
   end
@@ -69,7 +74,15 @@ class SyncTest < Minitest::Test
     ]
   end
 
-  def stub_sync(states: nil, tags: nil)
+  def default_git_automations
+    [
+      { id: "ga-start", event: "start", state: { name: "In Progress" } },
+      { id: "ga-review", event: "review", state: { name: "In Review" } },
+      { id: "ga-merge", event: "merge", state: { name: "Done" } },
+    ]
+  end
+
+  def stub_sync(states: nil, tags: nil, git_automations: nil)
     calls = []
     Req.stubs(:call).with do |*args, **kwargs|
       opts = req_opts(args, kwargs)
@@ -154,6 +167,30 @@ class SyncTest < Minitest::Test
       calls << opts
       true
     end.returns({ data: { issueLabelUpdate: { success: true } } })
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "query GitAutomationStates")
+
+      calls << opts
+      true
+    end.returns(
+      {
+        data: {
+          team: {
+            gitAutomationStates: {
+              nodes: git_automations || [],
+            },
+          },
+        },
+      },
+    )
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "mutation GitAutomationStateDelete")
+
+      calls << opts
+      true
+    end.returns({ data: { gitAutomationStateDelete: { success: true } } })
     calls
   end
 end

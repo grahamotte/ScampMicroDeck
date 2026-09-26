@@ -1,10 +1,25 @@
 class Card
-  COMMANDS = %w[show move comment link tag untag].freeze
+  COMMANDS = %w[create show move comment link tag untag].freeze
 
   class << self
-    def call(command, identifier, *args)
+    def call(command, *args)
       raise "Unknown command #{command.inspect}, expected one of #{COMMANDS.join(", ")}" unless COMMANDS.include?(command)
 
+      if command == "create"
+        title, body, column = args
+        raise "Title is blank" if title.blank?
+
+        column = (column.present? ? column : "backlog").to_s.downcase
+        unless Linear::STATUSES.any? { |status| status[:name].downcase == column }
+          raise "Unknown column #{column.inspect}, expected one of #{Linear::STATUSES.map { |status| status[:name].downcase }.join(", ")}"
+        end
+
+        item = Linear.create(title, body, column)
+        puts "#{Linear.identifier(item)} #{Linear.url(item)}"
+        return
+      end
+
+      identifier, *args = args
       item = Linear.issue(identifier)
       case command
       when "show"

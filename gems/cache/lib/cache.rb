@@ -84,7 +84,7 @@ class Cache
 
   def if_files_changed(*paths)
     comb_path = [ paths ].flatten.compact.join("|")
-    comb_content = [ paths ].flatten.compact.map { |path| File.read(path) }.join("|")
+    comb_content = Digest::SHA256.hexdigest([ paths ].flatten.compact.map { |path| File.binread(path) }.join("|"))
     if changed?(comb_path, comb_content)
       yield
       set(comb_path, comb_content)

@@ -7,6 +7,7 @@ deno = "2.9.5"
 
 [env]
 _.file = '.env.development'
+LANG = "{{ get_env(name='LANG', default='en_US.UTF-8') }}"
 GH_REPO = "{{ env.GITHUB_REPO | trim_start_matches(pat='git@github.com:') | trim_end_matches(pat='.git') }}"
 
 #
@@ -349,7 +350,6 @@ run = 'cd deploy && ruby set_version.rb "$usage_version"'
 [tasks.merge]
 run = [
   "if [ -n \"$(git status --porcelain)\" ]; then echo 'Error: You have uncommitted changes. Please commit or stash them before merging.'; exit 1; fi",
-  "git checkout master",
   "echo \"Merge recovery point: $(git rev-parse HEAD)\"",
   "if git remote get-url upstream >/dev/null 2>&1; then git remote set-url upstream git@github.com:grahamotte/codemoto.org.git; else git remote add upstream git@github.com:grahamotte/codemoto.org.git; fi",
   "git config remote.upstream.tagOpt --no-tags",
@@ -403,6 +403,15 @@ run = "cd manager && bundle exec ruby goto_main_all.rb"
 #
 # Linear
 #
+
+[tasks."linear:create"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<title>" help="Card title"
+arg "<body>" help="Markdown description"
+flag "--column <column>" help="Column name" default="backlog" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
+"""
+run = 'cd manager && bundle exec ruby card.rb create "$usage_title" "$usage_body" "$usage_column"'
 
 [tasks."linear:show"]
 depends = ["dependencies:manager"]
