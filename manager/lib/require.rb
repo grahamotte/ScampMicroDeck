@@ -1,6 +1,7 @@
 require "bundler/setup"
 Bundler.require(:default)
 
+require "digest"
 require "json"
 
 require_relative "core_extensions"

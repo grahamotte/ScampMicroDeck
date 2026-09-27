@@ -194,16 +194,18 @@ class Path
       JSON.parse(File.read(x), symbolize_names: true)
     end
 
-    def mv(a, b)
+    def mv(a, b, overwrite: false)
       return if a == b
 
+      prepare_destination!(b, overwrite:)
       mkdir(dirname(b))
       FileUtils.mv(a, b)
     end
 
-    def cp(a, b)
+    def cp(a, b, overwrite: false)
       return if a == b
 
+      prepare_destination!(b, overwrite:)
       mkdir(dirname(b))
       FileUtils.cp(a, b)
     end
@@ -329,6 +331,11 @@ class Path
     end
 
     private
+
+    def prepare_destination!(b, overwrite:)
+      return unless exists?(b)
+      raise "#{b} already exists" if dir?(b) || !overwrite
+    end
 
     def url?(x)
       x_str = x.to_s
