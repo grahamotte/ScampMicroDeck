@@ -25,13 +25,14 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "This may be a new card or a kickback with corrections in later comments."
     assert_includes prompt, "There may already be a worktree, commits, and a PR."
     assert_includes prompt, "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
-    assert_includes prompt, "Rebase onto the current origin main. Do not hard-reset; keep existing commits."
+    assert_includes prompt, "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt, "You may edit existing commits or add new ones."
     assert_includes prompt, "Open a GitHub PR with `gh pr create` using `GITHUB_TOKEN`"
     assert_includes prompt, "Comment on the card describing what you did"
     assert_includes prompt, "Remove the working tag"
     assert_includes prompt, "Move the card to review"
     assert_includes prompt, "Move the card to planned"
+    assert_includes prompt, "If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag."
     refute_includes prompt, "Hard set to the current origin main."
     refute_includes prompt, "Open a worktree."
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-2") }
@@ -86,7 +87,8 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Merge the PR with `gh pr merge` using `GITHUB_TOKEN`."
     assert_includes prompt, "Remove the working tag."
     assert_includes prompt, "Move the card to completed."
-    assert_includes prompt, "If this session is in the main checkout rather than a worktree, run `mise manager:gotomain`."
+    assert_includes prompt, "If this session is in the main checkout rather than a worktree, run `git checkout master` and `git pull --ff-only origin master`."
+    refute_includes prompt, "gotomain"
     refute_includes prompt, "Remove any worktrees created for this card."
     assert_equal Worktree.root, directory_for(calls, "MOTO-3")
   end
@@ -279,7 +281,7 @@ class TriggerTest < Minitest::Test
     assert_equal "started working on MOTO-1\nmerging MOTO-3\n", output
     assert_equal 3, calls.count { |call| graphql?(call, "mutation IssueUpdate") }
     assert_includes prompt_for(calls, "MOTO-1"), "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
-    assert_includes prompt_for(calls, "MOTO-1"), "Rebase onto the current origin main. Do not hard-reset; keep existing commits."
+    assert_includes prompt_for(calls, "MOTO-1"), "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt_for(calls, "MOTO-3"), "Rebase the GitHub PR on the card."
     assert_equal Worktree.path_for({ identifier: "MOTO-1" }), directory_for(calls, "MOTO-1")
     assert_equal Worktree.root, directory_for(calls, "MOTO-3")

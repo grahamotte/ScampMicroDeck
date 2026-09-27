@@ -13,4 +13,3 @@ SecretsPatch.call
 PostgresPatch.call
 NginxPatch.call
 AppPatch.call
-GitRepoPatch.call

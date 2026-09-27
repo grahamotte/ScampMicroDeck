@@ -109,10 +109,13 @@ class Spawner
 
     @output.puts "Cloning #{source_repo} to #{target_dir}..."
     @shell.run("git", "clone", source_repo, target_dir)
-    @shell.run("git", "remote", "remove", "origin", chdir: target_dir)
     create_environment_files(target_dir)
+    repo = transformed_repo(environment_values(File.read(File.join(target_dir, ".env.default"))).fetch("GITHUB_REPO"))
+    @shell.run("git", "remote", "set-url", "origin", repo, chdir: target_dir)
+    @shell.run("git", "config", "remote.origin.gh-resolved", "base", chdir: target_dir)
 
     @output.puts "New app created at #{target_dir}"
+    @output.puts "Create #{repo} on GitHub, then run 'git push -u origin master' there."
     @output.puts "Run 'mise merge' there to merge updates from Code Moto."
     target_dir
   end

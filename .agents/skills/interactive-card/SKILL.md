@@ -19,6 +19,8 @@ The card branch is the lowercased card identifier, for example `moto-1` for `MOT
    - In the main checkout, run `git fetch origin`. Check out the card branch if it exists; otherwise create it from `origin/master`. Never commit to `master`.
 5. Work through the card with the user. Lint, type-check, and run `mise test`.
 
+If the card names a skill that finishes the card itself, such as `deploy`, `merge`, or `publish`, follow that skill instead of Review and Approve.
+
 ## Review
 
 When the work is done or the user asks for review:
@@ -40,5 +42,5 @@ If the user tells you the card is approved:
 
 1. Rebase the PR onto `origin/master`. Resolve merge conflicts and push with `--force-with-lease`.
 2. Merge the PR with `gh pr merge` using `GITHUB_TOKEN`.
-3. If you are in the main checkout rather than a worktree, run `mise manager:gotomain`.
+3. If you are in the main checkout rather than a worktree, run `git checkout master` and `git pull --ff-only origin master`.
 4. Move the card to `completed`.

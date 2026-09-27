@@ -17,6 +17,8 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 5. Use root `mise` tasks instead of invoking underlying tools directly when an applicable task exists.
 6. Do not create a canvas or visualization unless the user specifically requests one.
 7. When opening a git worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout into the worktree before running tests or mise tasks.
+8. Every change needs a Linear card and a GitHub PR, including operations such as deploys, merges, and publishes. If there is no card, create one first. Never commit to or push `master`, and never make changes outside that flow.
+9. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
 
 ## Ruby
 
@@ -63,9 +65,11 @@ Tags:
 
 When the user hands you a Linear card, use the `interactive-card` skill, unless the prompt says the manager runs the card.
 
+Operations are skills, and their cards name the skill to run: `deploy`, `merge`, and `publish`. Each skill finishes its own card and merges its own PRs; `mise deploy`, `mise merge`, and `mise deploy:publish` all work from `origin/master`.
+
 ## GitHub
 
-Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `GITHUB_REPO`, never `upstream`: `mise merge` and `mise push` set `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
+Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `GITHUB_REPO`, never `upstream`: `mise merge` sets `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
 
 - Push the branch, then `gh pr create`.
 - Merge with `gh pr merge`.

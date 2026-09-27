@@ -104,7 +104,7 @@ class SpawnerTest < Minitest::Test
     FileUtils.remove_entry(@directory)
   end
 
-  def test_spawns_repo_without_origin_and_creates_distinct_environment_files
+  def test_spawns_repo_with_app_origin_and_creates_distinct_environment_files
     target_dir = Spawner.new(
       "new-app.net",
       shell: @shell,
@@ -129,7 +129,9 @@ class SpawnerTest < Minitest::Test
     assert_equal "private-key-1\nsecond-line", development.fetch("DEPLOY_SSH_KEY")
     assert_equal "sfo3", production.fetch("INSTANCE_REGION")
     refute_equal development.fetch("JWT_SECRET"), production.fetch("JWT_SECRET")
-    assert_includes @shell.commands, [ %w[git remote remove origin], target_dir ]
+    assert_includes @shell.commands, [ %w[git remote set-url origin git@github.com:grahamotte/new-app.net.git], target_dir ]
+    assert_includes @shell.commands, [ %w[git config remote.origin.gh-resolved base], target_dir ]
+    assert_includes @output.string, "Create git@github.com:grahamotte/new-app.net.git on GitHub, then run 'git push -u origin master' there."
     assert_includes @output.string, "Run 'mise merge' there to merge updates from Code Moto."
     assert_equal 0600, File.stat(File.join(target_dir, ".env.production")).mode & 0777
   end
