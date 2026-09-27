@@ -5,13 +5,16 @@ class GitDeploymentPatchTest < Minitest::Test
     Req.expects(:call).returns(droplets: [ active_instance ])
     local = []
     remote = []
-    Cmd.stubs(:local).with { |command, *| local << command; true }
+    Cmd.stubs(:local).with { |command, *| local << command; true }.returns("abc123\n")
     Cmd.stubs(:ssh).with { |command, *| remote << command; true }.returns("")
 
     GitDeploymentPatch.always
 
     assert local.any? { |command| command.include?("git remote add deployment deploy@1.2.3.4:") }
-    assert local.any? { |command| command.include?("git push deployment master") }
+    assert_includes local, "git fetch origin master"
+    assert_includes local, "git rev-parse origin/master"
+    assert local.any? { |command| command.end_with?("git push --force deployment abc123:refs/heads/master") }
+    refute local.any? { |command| command.include?("git push deployment master") }
     assert_includes remote, "sudo mkdir -p /var/www/example.com"
     assert_includes remote, "sudo chown -R deploy:deploy /var/www/example.com"
     assert_includes remote, "cd /var/www/example.com && git fetch"
@@ -24,7 +27,7 @@ class GitDeploymentPatchTest < Minitest::Test
     Req.expects(:call).returns(droplets: [ active_instance ])
     local = []
     remote = []
-    Cmd.stubs(:local).with { |command, *| local << command; true }
+    Cmd.stubs(:local).with { |command, *| local << command; true }.returns("abc123\n")
     Cmd.stubs(:ssh).with do |command, *|
       remote << command
       !command.start_with?("[ -d")

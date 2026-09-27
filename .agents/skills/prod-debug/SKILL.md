@@ -29,4 +29,4 @@ Do not read `.env`, `.env.production`, or any `.env.*` file — the `mise` tasks
 - **`mise deploy:cmd "<command>"`**: run an arbitrary command on the deployment host. It can mutate the host and production data.
 - **`mise console:production`**: interactive Rails console against production. **Do not use — for humans.**
 
-No other `deploy:*` tasks should be used. Tasks like `deploy:ssh`, `deploy:pry`, `deploy:reboot`, `deploy:backup`, `deploy:restore`, `deploy:destroy`, `deploy:htop`, `deploy:deploy`, `deploy:quick`, and `deploy:push` are deployment management tools, not debugging tools.
+No other `deploy:*` tasks should be used. Tasks like `deploy:ssh`, `deploy:pry`, `deploy:reboot`, `deploy:backup`, `deploy:restore`, `deploy:destroy`, `deploy:htop`, `deploy:deploy`, and `deploy:quick` are deployment management tools, not debugging tools.

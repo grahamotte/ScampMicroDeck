@@ -3,6 +3,7 @@ module Apps
     class << self
       def apply
         Cmd.local("xcodebuild -version")
+        validate_checkout
         validate_environment
         validate_release
         validate_targets
@@ -10,6 +11,14 @@ module Apps
       end
 
       private
+
+      def validate_checkout
+        Cmd.local("git fetch origin master")
+        raise "Uncommitted changes; publish from a clean checkout of origin/master" if Cmd.local("git status --porcelain").present?
+        return if Cmd.local("git rev-parse HEAD").strip == Cmd.local("git rev-parse origin/master").strip
+
+        raise "HEAD is not origin/master; publish from a clean checkout of origin/master"
+      end
 
       def validate_environment
         required = %w[

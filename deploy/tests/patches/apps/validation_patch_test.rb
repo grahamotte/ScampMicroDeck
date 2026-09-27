@@ -1,6 +1,13 @@
 require_relative "../../test_helper"
 
 class AppsValidationPatchTest < Minitest::Test
+  def setup
+    Cmd.stubs(:local).with("git fetch origin master").returns("")
+    Cmd.stubs(:local).with("git status --porcelain").returns("")
+    Cmd.stubs(:local).with("git rev-parse HEAD").returns("abc123\n")
+    Cmd.stubs(:local).with("git rev-parse origin/master").returns("abc123\n")
+  end
+
   def test_validates_configuration
     Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
 
@@ -100,5 +107,23 @@ class AppsValidationPatchTest < Minitest::Test
     error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
 
     assert_equal "Missing macOS target for repository release", error.message
+  end
+
+  def test_rejects_uncommitted_changes
+    Cmd.stubs(:local).with("git status --porcelain").returns(" M apps/config.json\n")
+    Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
+
+    error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+    assert_equal "Uncommitted changes; publish from a clean checkout of origin/master", error.message
+  end
+
+  def test_rejects_a_checkout_behind_origin_master
+    Cmd.stubs(:local).with("git rev-parse origin/master").returns("def456\n")
+    Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
+
+    error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+    assert_equal "HEAD is not origin/master; publish from a clean checkout of origin/master", error.message
   end
 end
