@@ -449,6 +449,55 @@ class PathTest < Minitest::Test
     assert_path_exists file
   end
 
+  def test_mv_raises_if_destination_file_exists
+    source = create_temp_file("new")
+    dest = File.join(@temp_dir, "existing.txt")
+    File.write(dest, "old")
+
+    error = assert_raises(RuntimeError) { Path.mv(source, dest) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_path_exists source
+    assert_equal "old", File.read(dest)
+  end
+
+  def test_mv_raises_if_destination_dir_exists
+    source = create_temp_file("content")
+    dest = File.join(@temp_dir, "existing_dir")
+    FileUtils.mkdir_p(dest)
+
+    error = assert_raises(RuntimeError) { Path.mv(source, dest) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_path_exists source
+    assert Dir.exist?(dest)
+    refute_path_exists File.join(dest, File.basename(source))
+  end
+
+  def test_mv_overwrites_destination_file_when_overwrite_true
+    source = create_temp_file("new")
+    dest = File.join(@temp_dir, "existing.txt")
+    File.write(dest, "old")
+    Path.mv(source, dest, overwrite: true)
+
+    assert_path_exists dest
+    refute_path_exists source
+    assert_equal "new", File.read(dest)
+  end
+
+  def test_mv_raises_if_destination_dir_exists_even_when_overwrite_true
+    source = create_temp_file("content")
+    dest = File.join(@temp_dir, "existing_dir")
+    FileUtils.mkdir_p(dest)
+
+    error = assert_raises(RuntimeError) { Path.mv(source, dest, overwrite: true) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_path_exists source
+    assert Dir.exist?(dest)
+    refute_path_exists File.join(dest, File.basename(source))
+  end
+
   def test_cp_copies_file
     source = create_temp_file("content")
     dest = File.join(@temp_dir, "copied.txt")
@@ -472,6 +521,56 @@ class PathTest < Minitest::Test
     Path.cp(file, file)
 
     assert_path_exists file
+  end
+
+  def test_cp_raises_if_destination_file_exists
+    source = create_temp_file("new")
+    dest = File.join(@temp_dir, "existing.txt")
+    File.write(dest, "old")
+
+    error = assert_raises(RuntimeError) { Path.cp(source, dest) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_equal "new", File.read(source)
+    assert_equal "old", File.read(dest)
+  end
+
+  def test_cp_raises_if_destination_dir_exists
+    source = create_temp_file("content")
+    dest = File.join(@temp_dir, "existing_dir")
+    FileUtils.mkdir_p(dest)
+
+    error = assert_raises(RuntimeError) { Path.cp(source, dest) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_path_exists source
+    assert Dir.exist?(dest)
+    refute_path_exists File.join(dest, File.basename(source))
+  end
+
+  def test_cp_overwrites_destination_file_when_overwrite_true
+    source = create_temp_file("new")
+    dest = File.join(@temp_dir, "existing.txt")
+    File.write(dest, "old")
+    Path.cp(source, dest, overwrite: true)
+
+    assert_path_exists dest
+    assert_path_exists source
+    assert_equal "new", File.read(dest)
+    assert_equal "new", File.read(source)
+  end
+
+  def test_cp_raises_if_destination_dir_exists_even_when_overwrite_true
+    source = create_temp_file("content")
+    dest = File.join(@temp_dir, "existing_dir")
+    FileUtils.mkdir_p(dest)
+
+    error = assert_raises(RuntimeError) { Path.cp(source, dest, overwrite: true) }
+
+    assert_equal "#{dest} already exists", error.message
+    assert_path_exists source
+    assert Dir.exist?(dest)
+    refute_path_exists File.join(dest, File.basename(source))
   end
 
   def test_rm_removes_file

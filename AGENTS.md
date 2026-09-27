@@ -50,13 +50,27 @@ Work items are cards in Linear. Use the `mise linear:*` tasks, which call the Li
 
 Columns, in order: `backlog`, `planned`, `ready`, `working`, `review`, `approved`, `completed`, `canceled`.
 
-- Create a card: `mise linear:create "<title>" "<markdown body>" [--column backlog]`
-- Read a card, its links, and its comments: `mise linear:show MOTO-1`
+- Create a card: `mise linear:create "<title>" "<markdown body>" [--column backlog] [--parent MOTO-1]`
+- Read a card, its links, comments, children, and relations: `mise linear:show MOTO-1`
+- Print only the description markdown: `mise linear:show MOTO-1 --raw`
+- List cards: `mise linear:list [--column ready] [--tag working] [--search query]`
 - Move a card: `mise linear:move MOTO-1 review`
-- Comment: `mise linear:comment MOTO-1 "<markdown>"`
-- Link a PR: `mise linear:link MOTO-1 <url> "<title>"`
+- Edit title, description, or fields: `mise linear:edit MOTO-1 [--title "<t>"] [--body "<markdown>"|--body-file <path>] [--expect-file <path>|--expect-hash <sha256>] [--priority high] [--estimate 3] [--assignee me] [--due 2026-10-01] [--project "<name>"] [--parent MOTO-1]`
+- Clear fields: `mise linear:edit MOTO-1 --clear-priority --clear-estimate --clear-assignee --clear-due --clear-project --clear-parent`
+- Comment: `mise linear:comment MOTO-1 "<markdown>"` or `mise linear:comment MOTO-1 --body-file <path> [--reply <comment-id>]`
+- Edit your comment: `mise linear:comment-edit <comment-id> "<markdown>"`
+- Delete your comment: `mise linear:comment-delete <comment-id>`
+- Link a PR: `mise linear:link MOTO-1 <url> "<title>"` (succeeds if the URL is already attached)
+- Remove a link: `mise linear:unlink MOTO-1 <url>`
 - Tag a card: `mise linear:tag MOTO-1 <tag>`
 - Untag a card: `mise linear:untag MOTO-1 <tag>`
+- Relations: `mise linear:relate MOTO-1 blocks MOTO-2` (`blocks`, `blocked-by`, `related`, `duplicate`)
+- Remove a relation: `mise linear:unrelate MOTO-1 MOTO-2`
+- Other team in this workspace: pass `--team ME` instead of changing `LINEAR_TEAM`. Without it, cards outside `LINEAR_TEAM` are refused.
+
+When updating a description, pass `--expect-file` (the previous `linear:show --raw` output) or `--expect-hash` (the `Description hash` from `linear:show`). The edit is refused if the card description changed since that read.
+
+Linear normalizes markdown on write: `* [ ]` becomes `- [ ]`, bare domains are autolinked, and `~~` around code spans can be mangled. After `linear:edit`, check the stored description rather than assuming byte equality with what you sent. Long markdown should go through `--body-file` so the shell does not mangle it.
 
 Tags:
 

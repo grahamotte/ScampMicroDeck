@@ -27,6 +27,14 @@ Check and report every item. Do not stop after the first failure. Abort the merg
 7. Merge the PR with `gh pr merge --merge --delete-branch`. Never squash or rebase it, never rebase the branch, and never force push; the merge commit must keep Code Moto's history.
 8. Report the completed merge, PR, conflict resolutions, merge commit, and test results.
 
+## Downstream notes
+
+- `Path.mv` and `Path.cp` raise if the destination already exists unless the caller passes `overwrite: true`. They never nest a source inside an existing destination directory. Downstream callers that intentionally overwrite must pass `overwrite: true`.
+
+## Piped mise tasks
+
+Code Moto sets `[task_config] shell = "bash -o errexit -o pipefail -c"` so inline mise tasks use bash with `errexit` and `pipefail`. After merging, piped tasks in the downstream repo fail if any command in the pipeline fails. That is intended; for example good.gratis `sync:mirror` and `sync:cookies` should fail when the Ruby script raises instead of when `tee` exits. Add `|| true` only when a pipeline is supposed to ignore a non-zero producer, such as `grep` with no matches or `head` closing early.
+
 ## Linear card
 
 When running for a Linear card, finish the card here instead of sending it to `review`:

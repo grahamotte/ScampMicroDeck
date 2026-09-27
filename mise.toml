@@ -8,7 +8,10 @@ deno = "2.9.5"
 [env]
 _.file = '.env.development'
 LANG = "{{ get_env(name='LANG', default='en_US.UTF-8') }}"
-GH_REPO = "{{ env.GITHUB_REPO | trim_start_matches(pat='git@github.com:') | trim_end_matches(pat='.git') }}"
+GH_REPO = "{{ env.GITHUB_REPO | default(value='') | trim_start_matches(pat='git@github.com:') | trim_end_matches(pat='.git') }}"
+
+[task_config]
+shell = "bash -o errexit -o pipefail -c"
 
 #
 # Dependencies
@@ -258,12 +261,12 @@ run = 'cd deploy && ruby spawn.rb "$usage_domain"'
 
 [tasks."deploy"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_deploy.log"
+run = "set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_deploy.log"
 
 [tasks."deploy:quick"]
 alias = ["quick"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby quick.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_quick.log"
+run = "set -a && source .env.production && cd deploy && ruby quick.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_quick.log"
 
 [tasks."deploy:publish"]
 alias = ["publish"]
@@ -273,7 +276,6 @@ flag "--stop-before-submission" help="Prepare App Store versions for review with
 flag "--stop-before-prepare" help="Upload App Store builds for TestFlight without preparing or submitting versions"
 '''
 run = """
-set -o pipefail
 set -a
 source .env.production
 export PUBLISH_STOP_BEFORE_SUBMISSION="${usage_stop_before_submission:-false}"
@@ -289,11 +291,11 @@ run = "set -a && source .env.production && cd deploy && ruby approved_version.rb
 [tasks."deploy:patch"]
 depends = ["dependencies:deploy"]
 usage = 'arg "<name>" help="Patch to apply (e.g., nginx)"'
-run = 'set -o pipefail && set -a && source .env.production && cd deploy && ruby patch.rb "$usage_name" 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_patch.log'
+run = 'set -a && source .env.production && cd deploy && ruby patch.rb "$usage_name" 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_patch.log'
 
 [tasks."deploy:destroy"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby destroy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_destroy.log"
+run = "set -a && source .env.production && cd deploy && ruby destroy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_destroy.log"
 
 [tasks."deploy:log"]
 depends = ["dependencies:deploy"]
@@ -314,11 +316,11 @@ run = "set -a && source .env.production && cd deploy && ruby htop.rb"
 
 [tasks."deploy:backup"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby backup.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_backup.log"
+run = "set -a && source .env.production && cd deploy && ruby backup.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_backup.log"
 
 [tasks."deploy:restore"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby restore.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_restore.log"
+run = "set -a && source .env.production && cd deploy && ruby restore.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_restore.log"
 
 [tasks."deploy:pry"]
 depends = ["dependencies:deploy"]
@@ -326,7 +328,7 @@ run = "set -a && source .env.production && cd deploy && ruby pry.rb"
 
 [tasks."deploy:reboot"]
 depends = ["dependencies:deploy"]
-run = "set -o pipefail && set -a && source .env.production && cd deploy && ruby reboot.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_reboot.log"
+run = "set -a && source .env.production && cd deploy && ruby reboot.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_reboot.log"
 
 [tasks."deploy:status"]
 alias = ["status"]
@@ -354,7 +356,7 @@ if git remote get-url upstream >/dev/null 2>&1; then git remote set-url upstream
 git config remote.upstream.tagOpt --no-tags
 git config remote.origin.gh-resolved base
 git fetch --no-tags upstream master
-git ls-remote --tags upstream | grep -v "\^{}$" | while read -r sha ref; do tag="${ref#refs/tags/}"; if [ "$(git rev-parse -q --verify "refs/tags/$tag")" = "$sha" ]; then git tag -d "$tag"; fi; done
+git ls-remote --tags upstream | { grep -v "\^{}$" || true; } | while read -r sha ref; do tag="${ref#refs/tags/}"; if [ "$(git rev-parse -q --verify "refs/tags/$tag")" = "$sha" ]; then git tag -d "$tag"; fi; done
 if ! git merge-base HEAD upstream/master >/dev/null; then echo 'Error: This repository does not share history with Code Moto.'; exit 1; fi
 git merge --no-edit --no-ff upstream/master
 '''
@@ -401,29 +403,112 @@ usage = """
 arg "<title>" help="Card title"
 arg "<body>" help="Markdown description"
 flag "--column <column>" help="Column name" default="backlog" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
+flag "--parent <card>" help="Parent card identifier"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb create "$usage_title" "$usage_body" "$usage_column"'
+run = 'cd manager && bundle exec ruby card.rb create "$usage_title" "$usage_body" "$usage_column" ${usage_parent:+--parent "$usage_parent"} ${usage_team:+--team "$usage_team"}'
 
 [tasks."linear:show"]
 depends = ["dependencies:manager"]
-usage = 'arg "<card>" help="Card identifier, e.g. MOTO-1"'
-run = 'cd manager && bundle exec ruby card.rb show "$usage_card"'
+usage = """
+arg "<card>" help="Card identifier, e.g. MOTO-1"
+flag "--raw" help="Print only the description markdown"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb show "$usage_card" ${usage_raw:+--raw} ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:list"]
+depends = ["dependencies:manager"]
+usage = """
+flag "--column <column>" help="Column name" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
+flag "--tag <tag>" help="Tag name"
+flag "--search <query>" help="Search identifier or title"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb list ${usage_column:+--column "$usage_column"} ${usage_tag:+--tag "$usage_tag"} ${usage_search:+--search "$usage_search"} ${usage_team:+--team "$usage_team"}'
 
 [tasks."linear:move"]
 depends = ["dependencies:manager"]
 usage = """
 arg "<card>" help="Card identifier, e.g. MOTO-1"
 arg "<column>" help="Column name" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb move "$usage_card" "$usage_column"'
+run = 'cd manager && bundle exec ruby card.rb move "$usage_card" "$usage_column" ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:edit"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<card>" help="Card identifier, e.g. MOTO-1"
+flag "--title <title>" help="New title"
+flag "--body <body>" help="New description markdown"
+flag "--body-file <path>" help="File with new description markdown"
+flag "--expect-file <path>" help="Previous description markdown; refuse if the card differs"
+flag "--expect-hash <hash>" help="SHA256 of the previous description; refuse if the card differs"
+flag "--priority <priority>" help="none, urgent, high, medium, low, or 0-4"
+flag "--clear-priority" help="Clear priority"
+flag "--estimate <points>" help="Estimate points"
+flag "--clear-estimate" help="Clear estimate"
+flag "--assignee <name>" help="Assignee name, email, or me"
+flag "--clear-assignee" help="Unassign"
+flag "--due <date>" help="Due date YYYY-MM-DD"
+flag "--clear-due" help="Clear due date"
+flag "--project <name>" help="Project name"
+flag "--clear-project" help="Clear project"
+flag "--parent <card>" help="Parent card identifier"
+flag "--clear-parent" help="Clear parent"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = '''
+cd manager && bundle exec ruby card.rb edit "$usage_card" \
+  ${usage_title:+--title "$usage_title"} \
+  ${usage_body:+--body "$usage_body"} \
+  ${usage_body_file:+--body-file "$usage_body_file"} \
+  ${usage_expect_file:+--expect-file "$usage_expect_file"} \
+  ${usage_expect_hash:+--expect-hash "$usage_expect_hash"} \
+  ${usage_priority:+--priority "$usage_priority"} \
+  ${usage_clear_priority:+--clear-priority} \
+  ${usage_estimate:+--estimate "$usage_estimate"} \
+  ${usage_clear_estimate:+--clear-estimate} \
+  ${usage_assignee:+--assignee "$usage_assignee"} \
+  ${usage_clear_assignee:+--clear-assignee} \
+  ${usage_due:+--due "$usage_due"} \
+  ${usage_clear_due:+--clear-due} \
+  ${usage_project:+--project "$usage_project"} \
+  ${usage_clear_project:+--clear-project} \
+  ${usage_parent:+--parent "$usage_parent"} \
+  ${usage_clear_parent:+--clear-parent} \
+  ${usage_team:+--team "$usage_team"}
+'''
 
 [tasks."linear:comment"]
 depends = ["dependencies:manager"]
 usage = """
 arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<body>" help="Markdown comment body"
+arg "[body]" help="Markdown comment body"
+flag "--body-file <path>" help="File with markdown comment body"
+flag "--reply <comment>" help="Parent comment id"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb comment "$usage_card" "$usage_body"'
+run = 'cd manager && bundle exec ruby card.rb comment "$usage_card" ${usage_body:+--body "$usage_body"} ${usage_body_file:+--body-file "$usage_body_file"} ${usage_reply:+--reply "$usage_reply"} ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:comment-edit"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<comment>" help="Comment id"
+arg "[body]" help="Markdown comment body"
+flag "--body-file <path>" help="File with markdown comment body"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb comment-edit "$usage_comment" ${usage_body:+--body "$usage_body"} ${usage_body_file:+--body-file "$usage_body_file"} ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:comment-delete"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<comment>" help="Comment id"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb comment-delete "$usage_comment" ${usage_team:+--team "$usage_team"}'
 
 [tasks."linear:link"]
 depends = ["dependencies:manager"]
@@ -431,21 +516,52 @@ usage = """
 arg "<card>" help="Card identifier, e.g. MOTO-1"
 arg "<url>" help="URL to link"
 arg "[title]" help="Link title"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb link "$usage_card" "$usage_url" "${usage_title:-}"'
+run = 'cd manager && bundle exec ruby card.rb link "$usage_card" "$usage_url" "${usage_title:-}" ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:unlink"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<card>" help="Card identifier, e.g. MOTO-1"
+arg "<url>" help="URL to remove"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb unlink "$usage_card" "$usage_url" ${usage_team:+--team "$usage_team"}'
 
 [tasks."linear:tag"]
 depends = ["dependencies:manager"]
 usage = """
 arg "<card>" help="Card identifier, e.g. MOTO-1"
 arg "<tag>" help="Tag name"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb tag "$usage_card" "$usage_tag"'
+run = 'cd manager && bundle exec ruby card.rb tag "$usage_card" "$usage_tag" ${usage_team:+--team "$usage_team"}'
 
 [tasks."linear:untag"]
 depends = ["dependencies:manager"]
 usage = """
 arg "<card>" help="Card identifier, e.g. MOTO-1"
 arg "<tag>" help="Tag name"
+flag "--team <team>" help="Other team key in this workspace"
 """
-run = 'cd manager && bundle exec ruby card.rb untag "$usage_card" "$usage_tag"'
+run = 'cd manager && bundle exec ruby card.rb untag "$usage_card" "$usage_tag" ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:relate"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<card>" help="Card identifier, e.g. MOTO-1"
+arg "<type>" help="Relation type" choices "blocks" "blocked-by" "related" "duplicate"
+arg "<other>" help="Other card identifier"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb relate "$usage_card" "$usage_type" "$usage_other" ${usage_team:+--team "$usage_team"}'
+
+[tasks."linear:unrelate"]
+depends = ["dependencies:manager"]
+usage = """
+arg "<card>" help="Card identifier, e.g. MOTO-1"
+arg "<other>" help="Other card identifier"
+flag "--team <team>" help="Other team key in this workspace"
+"""
+run = 'cd manager && bundle exec ruby card.rb unrelate "$usage_card" "$usage_other" ${usage_team:+--team "$usage_team"}'
