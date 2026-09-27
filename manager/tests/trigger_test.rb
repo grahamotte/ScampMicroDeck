@@ -32,7 +32,9 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Remove the working tag"
     assert_includes prompt, "Move the card to review"
     assert_includes prompt, "Move the card to planned"
-    assert_includes prompt, "If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag."
+    assert_includes prompt, "If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag. Step 7 still applies."
+    assert_includes prompt, "If you spent significant time unnecessarily or the instructions misdirected you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog for a matching card first."
+    assert_includes prompt, "If one exists, comment with a brief summary of your experience. Otherwise create a MOTO backlog card. Do not file app-specific issues."
     refute_includes prompt, "Hard set to the current origin main."
     refute_includes prompt, "Open a worktree."
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-2") }

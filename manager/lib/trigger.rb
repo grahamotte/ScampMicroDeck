@@ -73,7 +73,7 @@ class Trigger
 
         1. This session is already in the card worktree. Env files and schema.rb were copied from the main checkout.
         2. Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits.
-        3. Read the card and all comments. If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag.
+        3. Read the card and all comments. If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag. Step 7 still applies.
         4. Implement the work. You may edit existing commits or add new ones.
         5. If you finish:
            - Commit
@@ -86,6 +86,7 @@ class Trigger
            - Comment on the card explaining why
            - Remove the working tag
            - Move the card to planned
+        7. If you spent significant time unnecessarily or the instructions misdirected you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog for a matching card first. If one exists, comment with a brief summary of your experience. Otherwise create a MOTO backlog card. Do not file app-specific issues.
       PROMPT
     end
 
