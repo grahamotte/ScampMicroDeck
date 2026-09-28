@@ -113,7 +113,7 @@ class LinearTest < Minitest::Test
     assert_equal Linear::TAGS.map { |tag| { teamId: "team-1", **tag } }, creates
     assert_includes output, "created working tag"
     assert_includes output, "created variant: high tag"
-    assert_includes output, "created model: xai/grok-4.6 tag"
+    assert_includes output, "created model: xai/grok-4.7 tag"
   end
 
   def test_sync_tags_is_noop_when_already_synced
@@ -147,8 +147,8 @@ class LinearTest < Minitest::Test
 
   def test_model_from_label
     assert_equal(
-      "xai/grok-4.6",
-      Linear.model({ labels: { nodes: [ { id: "l-model", name: "model: xai/grok-4.6" } ] } }),
+      "xai/grok-4.7",
+      Linear.model({ labels: { nodes: [ { id: "l-model", name: "model: xai/grok-4.7" } ] } }),
     )
   end
 

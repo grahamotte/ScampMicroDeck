@@ -17,7 +17,7 @@ class Linear
     { name: "variant: medium", color: "#4cb782" },
     { name: "variant: high", color: "#4cb782" },
     { name: "variant: xhigh", color: "#4cb782" },
-    { name: "model: xai/grok-4.6", color: "#26b5ce" },
+    { name: "model: xai/grok-4.7", color: "#26b5ce" },
   ].freeze
 
   class << self

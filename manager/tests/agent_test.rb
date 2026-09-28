@@ -15,7 +15,7 @@ class AgentTest < Minitest::Test
     assert_equal :post, payload.fetch(:method)
     assert_equal Agent::ROOT, payload.dig(:payload, :directory)
     assert_equal "do the work", payload.dig(:payload, :prompt)
-    assert_equal "xai/grok-4.6", payload.dig(:payload, :model)
+    assert_equal "xai/grok-4.7", payload.dig(:payload, :model)
     assert_equal "high", payload.dig(:payload, :variant)
   end
 
@@ -53,7 +53,7 @@ class AgentTest < Minitest::Test
 
     Agent.start("do the work", model: "", variant: "  ")
 
-    assert_equal "xai/grok-4.6", payload.dig(:payload, :model)
+    assert_equal "xai/grok-4.7", payload.dig(:payload, :model)
     assert_equal "high", payload.dig(:payload, :variant)
   end
 

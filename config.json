@@ -52,7 +52,7 @@
   },
   "agent": {
     "runner": "openchamber",
-    "model": "xai/grok-4.6",
+    "model": "xai/grok-4.7",
     "variant": "medium"
   },
   "apps": {
