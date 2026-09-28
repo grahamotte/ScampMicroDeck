@@ -22,7 +22,7 @@ Tools:
 
 - `mise test` - run the full test suite
 - `mise simulate macos` - build and launch the macOS app
-- `mise deploy:set-version 1.5.0` - update release and Xcode versions
+- `mise publish:set_version 1.5.0` - update release and Xcode versions
 - `mise publish` - archive, upload, submit, notarize, and publish a release
 
 `mise publish` uses the App Store Connect, signing certificate, Codeberg, and GitHub credentials in the ignored `.env.production` file.
