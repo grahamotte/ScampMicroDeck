@@ -25,7 +25,7 @@ Check and report every item. Do not stop after the first failure. Abort the merg
 5. Run `mise test` after the merge succeeds. Fix merge-related failures, commit the fixes, and rerun the whole suite until it passes.
 6. Push with `git push -u origin HEAD:<branch>` and open a GitHub PR with `gh pr create --head <branch>`.
 7. Merge the PR with `gh pr merge --merge --delete-branch`. Never squash or rebase it, never rebase the branch, and never force push; the merge commit must keep Code Moto's history.
-8. In the main checkout (the repo directory, not the card worktree), run `git fetch origin && git checkout master && git pull --ff-only origin master` so local `master` matches `origin/master`.
+8. If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there so it matches origin. Do not switch branches.
 9. Report the completed merge, PR, conflict resolutions, merge commit, and test results.
 
 ## Downstream notes
@@ -46,5 +46,5 @@ When running for a Linear card, finish the card here instead of sending it to `r
 
 - Comment with the recovery point as soon as `mise merge` prints it.
 - Link the PR to the card.
-- On success, comment with the PR, merge commit, conflict resolutions, and test results, fast-forward the main checkout `master` as in workflow step 8, then move the card to `completed`.
+- On success, comment with the PR, merge commit, conflict resolutions, and test results, pull the main checkout as in workflow step 8, then move the card to `completed`.
 - When blocked, comment with the blocker and the recovery point, then move the card to `planned`.

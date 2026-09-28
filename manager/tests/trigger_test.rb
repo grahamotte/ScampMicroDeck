@@ -89,7 +89,7 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Merge the PR with `gh pr merge` using `GITHUB_TOKEN`."
     assert_includes prompt, "Remove the working tag."
     assert_includes prompt, "Move the card to completed."
-    assert_includes prompt, "If this session is in the main checkout rather than a worktree, run `git checkout master` and `git pull --ff-only origin master`."
+    assert_includes prompt, "If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there. Do not switch branches."
     refute_includes prompt, "gotomain"
     refute_includes prompt, "Remove any worktrees created for this card."
     assert_equal Worktree.root, directory_for(calls, "MOTO-3")
@@ -195,6 +195,7 @@ class TriggerTest < Minitest::Test
     assert_empty issue_update_inputs(calls)
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-4") }
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-5") }
+    refute git_commands.any? { |command| command[1] == "pull" }
   end
 
   def test_removes_worktrees_for_completed_and_canceled_cards
@@ -212,7 +213,7 @@ class TriggerTest < Minitest::Test
 
     output, = capture_io { Trigger.call }
 
-    assert_equal "removed worktree for MOTO-4\nremoved worktree for MOTO-5\n", output
+    assert_equal "removed worktree for MOTO-4\nupdated master\nremoved worktree for MOTO-5\n", output
     refute Dir.exist?(completed_path)
     refute Dir.exist?(canceled_path)
     assert_empty issue_update_inputs(calls)
@@ -238,8 +239,92 @@ class TriggerTest < Minitest::Test
 
     output, = capture_io { Trigger.call }
 
-    assert_equal "removed worktree for MOTO-4\n", output
+    assert_equal "removed worktree for MOTO-4\nupdated master\n", output
     refute Dir.exist?(path)
+  end
+
+  def test_does_not_pull_master_for_canceled_cards
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-5" }))
+    calls = stub_manager(
+      items: [
+        { id: "item-5", identifier: "MOTO-5", url: "https://linear.app/gotte/issue/MOTO-5", state: { id: "s-canceled", name: "Canceled" } },
+      ],
+    )
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "removed worktree for MOTO-5\n", output
+    assert_empty issue_update_inputs(calls)
+    refute git_commands.any? { |command| command[1] == "pull" }
+  end
+
+  def test_pulls_master_once_when_removing_completed_worktrees
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-4" }))
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-10" }))
+    stub_manager(
+      items: [
+        { id: "item-4", identifier: "MOTO-4", url: "https://linear.app/gotte/issue/MOTO-4", state: { id: "s-completed", name: "Completed" } },
+        { id: "item-4b", identifier: "MOTO-10", url: "https://linear.app/gotte/issue/MOTO-10", state: { id: "s-completed", name: "Completed" } },
+      ],
+    )
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "removed worktree for MOTO-4\nremoved worktree for MOTO-10\nupdated master\n", output
+    assert_equal 1, git_commands.count { |command| command == [ "git", "pull", "--ff-only", "origin", "master" ] }
+    refute git_commands.any? { |command| command[1] == "checkout" }
+  end
+
+  def test_skips_master_pull_when_not_on_master_or_main
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-4" }))
+    stub_manager(
+      items: [
+        { id: "item-4", identifier: "MOTO-4", url: "https://linear.app/gotte/issue/MOTO-4", state: { id: "s-completed", name: "Completed" } },
+      ],
+    )
+    ok = Object.new
+    ok.define_singleton_method(:success?) { true }
+    Open3.stubs(:capture3).with("git", "branch", "--show-current", chdir: Worktree.root).returns([ "moto-56\n", "", ok ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "removed worktree for MOTO-4\n", output
+    refute git_commands.any? { |command| command[1] == "pull" }
+  end
+
+  def test_skips_master_pull_when_dirty
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-4" }))
+    stub_manager(
+      items: [
+        { id: "item-4", identifier: "MOTO-4", url: "https://linear.app/gotte/issue/MOTO-4", state: { id: "s-completed", name: "Completed" } },
+      ],
+    )
+    ok = Object.new
+    ok.define_singleton_method(:success?) { true }
+    Open3.stubs(:capture3).with("git", "status", "--porcelain", chdir: Worktree.root).returns([ " M file.rb\n", "", ok ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "removed worktree for MOTO-4\n", output
+    refute git_commands.any? { |command| command[1] == "pull" }
+  end
+
+  def test_continues_when_master_pull_fails
+    FileUtils.mkdir_p(Worktree.path_for({ identifier: "MOTO-4" }))
+    stub_manager(
+      items: [
+        { id: "item-4", identifier: "MOTO-4", url: "https://linear.app/gotte/issue/MOTO-4", state: { id: "s-completed", name: "Completed" } },
+      ],
+    )
+    failed = Object.new
+    failed.define_singleton_method(:success?) { false }
+    Open3.stubs(:capture3).with("git", "pull", "--ff-only", "origin", "master", chdir: Worktree.root).returns(
+      [ "", "network error", failed ],
+    )
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "removed worktree for MOTO-4\nfailed to update master: git pull --ff-only origin master failed: network error\n", output
   end
 
   def test_starts_one_agent_per_step
@@ -408,9 +493,14 @@ class TriggerTest < Minitest::Test
 
   def stub_manager(items:)
     calls = []
+    @git_commands = []
     ok = Object.new
     ok.define_singleton_method(:success?) { true }
     Open3.stubs(:capture3).with do |*args, **_kwargs|
+      next false if args == [ "git", "branch", "--show-current" ]
+      next false if args == [ "git", "status", "--porcelain" ]
+
+      @git_commands << args
       if args[1] == "worktree" && args[2] == "add"
         path = args[3] == "-b" ? args[5] : args[3]
         FileUtils.mkdir_p(path)
@@ -419,6 +509,8 @@ class TriggerTest < Minitest::Test
       end
       true
     end.returns([ "", "", ok ])
+    Open3.stubs(:capture3).with("git", "branch", "--show-current", chdir: Worktree.root).returns([ "master\n", "", ok ])
+    Open3.stubs(:capture3).with("git", "status", "--porcelain", chdir: Worktree.root).returns([ "", "", ok ])
     Req.stubs(:call).with do |*args, **kwargs|
       opts = req_opts(args, kwargs)
       next false unless opts[:url].to_s.end_with?("/api/openchamber/sessions")
@@ -529,5 +621,9 @@ class TriggerTest < Minitest::Test
 
   def session_for(calls, identifier)
     calls.find { |call| call[:prompt].to_s.include?(identifier) }
+  end
+
+  def git_commands
+    @git_commands || []
   end
 end

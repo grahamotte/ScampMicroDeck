@@ -11,7 +11,8 @@ class Trigger
       Linear.issues.group_by { |item| Linear.column(item) }.each do |column, items|
         case column
         when COMPLETED, CANCELED
-          items.each { |item| cleanup_worktree(item) }
+          cleaned = items.select { |item| cleanup_worktree(item) }
+          pull_master if column == COMPLETED && cleaned.present?
           next
         end
 
@@ -43,9 +44,17 @@ class Trigger
     private
 
     def cleanup_worktree(item)
-      return unless Worktree.remove(item)
+      return false unless Worktree.remove(item)
 
       puts "removed worktree for #{Linear.identifier(item)}"
+      true
+    end
+
+    def pull_master
+      branch = Worktree.pull_master
+      puts "updated #{branch}" if branch.present?
+    rescue StandardError => error
+      puts "failed to update master: #{error.message}"
     end
 
     def start_agent(item, prompt, directory:)
@@ -98,7 +107,7 @@ class Trigger
 
         1. Rebase the GitHub PR on the card. Resolve merge conflicts.
         2. Merge the PR with `gh pr merge` using `GITHUB_TOKEN`.
-        3. If this session is in the main checkout rather than a worktree, run `git checkout master` and `git pull --ff-only origin master`.
+        3. If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there. Do not switch branches.
         4. Move the card to completed.
         5. Remove the working tag.
       PROMPT
