@@ -39,7 +39,7 @@ class TriggerTest < Minitest::Test
     refute_includes prompt, "Open a worktree."
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-2") }
     assert_equal Worktree.path_for({ identifier: "MOTO-1" }), directory_for(calls, "MOTO-1")
-    assert_equal "xai/grok-4.6", session_for(calls, "MOTO-1").fetch(:model)
+    assert_equal "xai/grok-4.7", session_for(calls, "MOTO-1").fetch(:model)
     assert_equal "high", session_for(calls, "MOTO-1").fetch(:variant)
   end
 
