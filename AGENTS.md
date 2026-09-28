@@ -73,7 +73,7 @@ Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environmen
 - `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values.
-- `.env.service` - Gitignored 1Password service account token (`SERVICE_ACCOUNT_TOKEN`), read from the repository root or, if absent, `~/.config/projects/.env.service`. `mise manager:secrets` uses it to pull each env file from the `op://` secure note reference in `secrets` in `config.json`.
+- `.env.service` - Gitignored 1Password service account token (`SERVICE_ACCOUNT_TOKEN`), read from the repository root or, if absent, `~/.config/projects/.env.service`. `mise manager:secrets` uses it to pull every `secrets` key in `config.json` as `.env.<key>` from the `op://` secure note reference.
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
