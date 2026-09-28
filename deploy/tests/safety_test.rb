@@ -16,32 +16,37 @@ class SafetyTest < Minitest::Test
     assert_raises(UnsafeTestOperation) { TCPSocket.new("example.com", 80) }
   end
 
-  def test_patches_have_one_unit_test_file
-    source_root = File.expand_path("../patches", __dir__)
-    test_root = File.join(__dir__, "patches")
-    sources = Dir[File.join(source_root, "**/*.rb")]
-      .map { |path| path.delete_prefix("#{source_root}/").delete_suffix(".rb") }
-      .sort
-    tests = Dir[File.join(test_root, "**/*_test.rb")]
-      .map { |path| path.delete_prefix("#{test_root}/").delete_suffix("_test.rb") }
-      .sort
+  def test_ruby_packages_have_one_unit_test_file
+    expected = { "deploy" => "", "manager" => "lib/", "publish" => "" }.flat_map do |package, flattened|
+      Dir[File.join(repo_root, package, "{lib,patches}/**/*.rb")]
+        .map { |path| path.delete_prefix("#{repo_root}/#{package}/").delete_suffix(".rb") }
+        .reject { |path| path == "lib/require" }
+        .map { |path| File.join(package, "tests", path.delete_prefix(flattened)) }
+    end
+    actual = Dir[File.join(repo_root, "{deploy,manager,publish}/tests/**/*_test.rb")]
+      .map { |path| path.delete_prefix("#{repo_root}/").delete_suffix("_test.rb") }
+      .reject { |path| path.end_with?("/tests/safety") }
 
-    assert_equal sources, tests
+    refute_empty expected
+    assert_empty expected - actual
+    assert_empty actual - expected
   end
 
   def test_frontend_and_gems_have_one_unit_test_file
-    frontend_sources = Dir[File.join($root_dir, "frontend/{components,utils}/*.{ts,tsx}")]
+    frontend_sources = Dir[File.join(repo_root, "frontend/{components,utils}/*.{ts,tsx}")]
       .map { |path| File.basename(path).sub(/\.tsx?\z/, "") }
       .sort
-    frontend_tests = Dir[File.join($root_dir, "frontend/tests/{components,utils}/*.test.{ts,tsx}")]
+    frontend_tests = Dir[File.join(repo_root, "frontend/tests/{components,utils}/*.test.{ts,tsx}")]
       .map { |path| File.basename(path).sub(/\.test\.tsx?\z/, "") }
       .sort
-    gem_sources = Dir[File.join($root_dir, "gems/*/lib/*.rb")]
+    gem_sources = Dir[File.join(repo_root, "gems/*/lib/*.rb")]
     missing_gem_tests = gem_sources.reject do |path|
       gem_root = File.dirname(File.dirname(path))
       File.file?(File.join(gem_root, "test", "#{File.basename(path, ".rb")}_test.rb"))
     end
 
+    refute_empty frontend_sources
+    refute_empty gem_sources
     assert_equal frontend_sources, frontend_tests
     assert_equal [], missing_gem_tests
   end
@@ -54,4 +59,8 @@ class SafetyTest < Minitest::Test
 
     refute_match(/\b(?!Cmd|Req)\w+\.(?:stubs|expects)\(/, tests)
   end
+
+  private
+
+  def repo_root = File.expand_path("../..", __dir__)
 end

@@ -175,7 +175,7 @@ class DbBackupJob < ApplicationJob
     }
   end
 
-  def db_name = ENV.fetch("DB_NAME")
+  def db_name = ActiveRecord::Base.connection_db_config.database
   def deploy_user = ENV.fetch("DEPLOY_USER")
   def endpoint = ENV.fetch("BACKUP_ENDPOINT")
   def bucket = ENV.fetch("BACKUP_BUCKET")

@@ -2,6 +2,7 @@ require_relative "boot"
 
 require "rails/all"
 Bundler.require(*Rails.groups)
+require_relative "settings"
 
 module Backend
   class Application < Rails::Application

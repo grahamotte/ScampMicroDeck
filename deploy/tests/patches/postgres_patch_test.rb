@@ -2,7 +2,7 @@ require_relative "../test_helper"
 
 class PostgresPatchTest < Minitest::Test
   USER_CHECK = "sudo -u postgres psql -c \"SELECT 'asstits' FROM pg_roles WHERE rolname = 'deploy'\""
-  DB_CHECK = "sudo -u postgres psql -l | grep app"
+  DB_CHECK = "sudo -u postgres psql -l | grep app_production"
 
   def test_needed
     Cmd.expects(:ssh).with("which psql").returns("")
@@ -10,7 +10,7 @@ class PostgresPatchTest < Minitest::Test
 
     Cmd.expects(:ssh).with("which psql").returns("/usr/bin/psql")
     Cmd.expects(:ssh).with(USER_CHECK).returns("asstits")
-    Cmd.expects(:ssh).with(DB_CHECK).returns("app")
+    Cmd.expects(:ssh).with(DB_CHECK).returns("app_production")
     refute PostgresPatch.needed?
   end
 
@@ -22,7 +22,7 @@ class PostgresPatchTest < Minitest::Test
     end.returns("")
     Cmd.expects(:ssh).with("which psql").returns("/usr/bin/psql")
     Cmd.expects(:ssh).with(USER_CHECK).returns("asstits")
-    Cmd.expects(:ssh).with(DB_CHECK).returns("app")
+    Cmd.expects(:ssh).with(DB_CHECK).returns("app_production")
     Cmd.expects(:ssh).with(regexp_matches(/\Asystemctl show/))
       .returns("LoadState=loaded\nActiveState=active\nFreezerState=running\n")
     Cmd.expects(:ssh_write)
@@ -53,7 +53,7 @@ class PostgresPatchTest < Minitest::Test
 
     assert commands.any? { |command| command.include?("install postgresql-18 libpq-dev") }
     assert_includes commands, "sudo -u postgres createuser -s deploy"
-    assert_includes commands, "sudo -u postgres createdb app"
+    assert_includes commands, "sudo -u postgres createdb app_production"
   end
 
   def test_existence_checks_handle_failures

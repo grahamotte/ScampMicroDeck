@@ -5,7 +5,7 @@ class XTest < ActiveSupport::TestCase
     refute X.prod?
     refute X.dev?
     assert X.test?
-    assert_equal "https://#{ENV.fetch("DOMAIN")}", X.host
+    assert_equal "https://#{Settings.all.fetch(:domain)}", X.host
   end
 
   def test_wait_and_timeout

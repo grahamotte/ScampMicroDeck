@@ -19,7 +19,7 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 7. When opening a git worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout into the worktree before running tests or mise tasks.
 8. Every change needs a Linear card and a GitHub PR, including operations such as deploys, merges, and publishes. If there is no card, create one first. Never commit to or push `master`, and never make changes outside that flow.
 9. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
-10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog (`mise linear:list --column backlog --search "<issue>" --team MOTO`). If a matching card exists, comment with a brief summary of your experience. Otherwise create a MOTO backlog card. Do not file app-specific issues that cannot be backported.
+10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog (`mise linear issues search "<issue>" --team MOTO --status Backlog`). If a matching card exists, comment with a brief summary of your experience. Otherwise create a MOTO backlog card. Do not file app-specific issues that cannot be backported.
 
 ## Ruby
 
@@ -47,44 +47,22 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 
 ## Linear
 
-Work items are cards in Linear. Use the `mise linear:*` tasks, which call the Linear API with `LINEAR_TOKEN`, `LINEAR_WORKSPACE`, and `LINEAR_TEAM` from the environment. Do not use Linear MCP tools. Refer to cards by identifier, for example `MOTO-1`; take it from the card URL if given one.
+Work items are cards in Linear. Use `mise linear <args>`, which runs the [Linearis](https://github.com/linearis-oss/linearis) CLI with `LINEAR_TOKEN`; see `mise linear usage` for commands. Do not use Linear MCP tools. Refer to cards by identifier, for example `MOTO-1`. The default team is `linear.team` in `config.json`; pass `--team <key>` where a command needs one.
 
-Columns, in order: `backlog`, `planned`, `ready`, `working`, `review`, `approved`, `completed`, `canceled`.
+Columns, in order: `Backlog`, `Planned`, `Ready`, `Working`, `Review`, `Approved`, `Completed`, `Canceled`.
 
-- Create a card: `mise linear:create "<title>" "<markdown body>" [--column backlog] [--parent MOTO-1]`
-- Read a card, its links, comments, children, and relations: `mise linear:show MOTO-1`
-- Print only the description markdown: `mise linear:show MOTO-1 --raw`
-- List cards: `mise linear:list [--column ready] [--tag working] [--search query]`
-- Move a card: `mise linear:move MOTO-1 review`
-- Edit title, description, or fields: `mise linear:edit MOTO-1 [--title "<t>"] [--body "<markdown>"|--body-file <path>] [--expect-file <path>|--expect-hash <sha256>] [--priority high] [--estimate 3] [--assignee me] [--due 2026-10-01] [--project "<name>"] [--parent MOTO-1]`
-- Clear fields: `mise linear:edit MOTO-1 --clear-priority --clear-estimate --clear-assignee --clear-due --clear-project --clear-parent`
-- Comment: `mise linear:comment MOTO-1 "<markdown>"` or `mise linear:comment MOTO-1 --body-file <path> [--reply <comment-id>]`
-- Edit your comment: `mise linear:comment-edit <comment-id> "<markdown>"`
-- Delete your comment: `mise linear:comment-delete <comment-id>`
-- Link a PR: `mise linear:link MOTO-1 <url> "<title>"` (succeeds if the URL is already attached)
-- Remove a link: `mise linear:unlink MOTO-1 <url>`
-- Tag a card: `mise linear:tag MOTO-1 <tag>`
-- Untag a card: `mise linear:untag MOTO-1 <tag>`
-- Relations: `mise linear:relate MOTO-1 blocks MOTO-2` (`blocks`, `blocked-by`, `related`, `duplicate`)
-- Remove a relation: `mise linear:unrelate MOTO-1 MOTO-2`
-- Other team in this workspace: pass `--team ME` instead of changing `LINEAR_TEAM`. Without it, cards outside `LINEAR_TEAM` are refused.
-
-When updating a description, pass `--expect-file` (the previous `linear:show --raw` output) or `--expect-hash` (the `Description hash` from `linear:show`). The edit is refused if the card description changed since that read.
-
-Linear normalizes markdown on write: `* [ ]` becomes `- [ ]`, bare domains are autolinked, and `~~` around code spans can be mangled. After `linear:edit`, check the stored description rather than assuming byte equality with what you sent. Long markdown should go through `--body-file` so the shell does not mangle it.
-
-Tags:
+Tags (pass them by id, not name, since Linearis does not resolve tag names per team):
 
 - `working`: the manager's agent is processing the card. Only add or remove it when a manager prompt tells you to.
 - `interactive`: the card is worked with the user instead of by the manager. The manager does not pick it up from `ready`, but still merges it from `approved`.
 
 When the user hands you a Linear card, use the `interactive-card` skill, unless the prompt says the manager runs the card.
 
-Operations are skills, and their cards name the skill to run: `deploy`, `merge`, and `publish`. Each skill finishes its own card and merges its own PRs; `mise deploy`, `mise merge`, and `mise deploy:publish` all work from `origin/master`.
+Operations are skills, and their cards name the skill to run: `deploy`, `merge`, and `publish`. Each skill finishes its own card and merges its own PRs; `mise deploy`, `mise merge`, and `mise publish` all work from `origin/master`.
 
 ## GitHub
 
-Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `GITHUB_REPO`, never `upstream`: `mise merge` sets `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
+Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `githubRepo` in `config.json`, never `upstream`: `mise merge` sets `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
 
 - Push the branch, then `gh pr create`.
 - Merge with `gh pr merge`.
@@ -93,18 +71,20 @@ Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environmen
 
 - `.agents/skills/` - Project-specific agent skills.
 - `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
-- `.env.*` - Environment configuration and secrets. Do not expose secret values.
+- `.env.default` - Template for the `.env.*` secret files.
+- `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values.
+- `.env.service` - Gitignored 1Password service account token (`SERVICE_ACCOUNT_TOKEN`), read from the repository root or, if absent, `~/.config/projects/.env.service`. `mise manager:secrets` uses it to pull each env file from the `op://` secure note reference in `secrets` in `config.json`.
 - `apps/` - Mobile apps for iOS and Android.
-- `apps/config.json` - Mobile app release configuration.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
-- `deploy/` - Backend, frontend, and mobile app deployment tooling.
+- `config.json` - Non-secret configuration, including mobile app release (`apps`) and website subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`.
+- `deploy/` - Backend and frontend deployment tooling.
 - `docs/` - Project documentation in Markdown.
 - `frontend/` - React website.
-- `frontend/subdomains.json` - Website subdomain configuration.
 - `gems/` - Shared Ruby gems.
-- `manager/` - Linear issue polling and agent triggers.
-- `scripts/` - General-purpose scripts.
+- `manager/` - Linear issue polling, agent triggers, secrets, and spawning new apps.
+- `publish/` - Mobile app versioning, simulators, and App Store publishing.
+- `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.
 
 ## Repo Specific
