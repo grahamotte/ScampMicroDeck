@@ -56,7 +56,7 @@
     "variant": "medium"
   },
   "apps": {
-    "build": "1.8.7",
+    "build": "1.8.8",
     "contactEmail": "graham.otte@gmail.com",
     "contactFirstName": "Graham",
     "contactLastName": "Otte",
@@ -105,7 +105,7 @@
       },
       "android": {}
     },
-    "version": "1.8.7",
-    "whatsNew": "Enjoy refined gold, silver, and black hardware finishes, plus a more detailed, tactile black vinyl record."
+    "version": "1.8.8",
+    "whatsNew": "Bug fixes."
   }
 }
