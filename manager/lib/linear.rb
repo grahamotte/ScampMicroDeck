@@ -22,35 +22,9 @@ class Linear
 
   class << self
     def reset
-      @team_override = nil
       @team_id = nil
       @states = nil
       @tags = nil
-      @users = nil
-      @projects = nil
-      @viewer = nil
-    end
-
-    def team_key
-      team
-    end
-
-    def with_team(key)
-      return yield if key.blank?
-
-      previous = [ @team_override, @team_id, @states, @tags, @users, @projects, @viewer ]
-      @team_override = key.to_s
-      @team_id = nil
-      @states = nil
-      @tags = nil
-      @users = nil
-      @projects = nil
-      @viewer = nil
-      yield
-    ensure
-      if key.present?
-        @team_override, @team_id, @states, @tags, @users, @projects, @viewer = previous
-      end
     end
 
     def issues
@@ -68,144 +42,6 @@ class Linear
         break if after.blank?
       end
       nodes
-    end
-
-    def issue(identifier, allowed_team: nil)
-      team_id
-      found = graphql(ISSUE_QUERY, { id: identifier }).fetch(:issue)
-      key = found.dig(:team, :key).to_s
-      allowed = allowed_team == :any || key.casecmp?(team)
-      unless allowed
-        raise "Linear issue #{identifier} is in team #{key.inspect}, expected #{team.inspect}"
-      end
-
-      found
-    end
-
-    def create(title, body, column, parent: nil)
-      graphql(
-        ISSUE_CREATE_MUTATION,
-        {
-          input: {
-            teamId: team_id,
-            title:,
-            description: body,
-            stateId: state_id(column),
-            parentId: parent,
-          }.compact,
-        },
-      ).fetch(:issueCreate).fetch(:issue)
-    end
-
-    def comment(item, body, parent: nil)
-      graphql(
-        COMMENT_CREATE_MUTATION,
-        { input: { issueId: item.fetch(:id), body:, parentId: parent }.compact },
-      )
-    end
-
-    def comment_record(id)
-      graphql(COMMENT_QUERY, { id: }).fetch(:comment)
-    end
-
-    def comment_update(id, body)
-      graphql(COMMENT_UPDATE_MUTATION, { id:, input: { body: } })
-    end
-
-    def comment_delete(id)
-      graphql(COMMENT_DELETE_MUTATION, { id: })
-    end
-
-    def link(item, url, title)
-      attachments = item.dig(:attachments, :nodes) || []
-      return false if attachments.any? { |attachment| attachment[:url] == url }
-
-      graphql(ATTACHMENT_LINK_MUTATION, { issueId: item.fetch(:id), url:, title: }.compact)
-      true
-    rescue StandardError => error
-      raise unless error.message.to_s.include?("Duplicate attachment")
-
-      false
-    end
-
-    def unlink(item, url)
-      attachments = item.dig(:attachments, :nodes) || []
-      found = attachments.find { |attachment| attachment[:url] == url }
-      raise "Link #{url.inspect} is not attached to #{identifier(item)}" if found.blank?
-
-      graphql(ATTACHMENT_DELETE_MUTATION, { id: found.fetch(:id) })
-    end
-
-    def update(item, input)
-      graphql(
-        ISSUE_UPDATE_MUTATION,
-        { id: item.fetch(:id), input: },
-      ).fetch(:issueUpdate)
-    end
-
-    def list(column: nil, tag: nil, search: nil)
-      issues.select do |item|
-        next false if column.present? && self.column(item) != column.to_s.downcase
-        next false if tag.present? && !tagged?(item, tag)
-        if search.present?
-          haystack = "#{identifier(item)} #{item[:title]}".downcase
-          next false unless haystack.include?(search.to_s.downcase)
-        end
-
-        true
-      end
-    end
-
-    def relate(item, type, other)
-      other_item = issue(other, allowed_team: :any)
-      from_id, to_id, relation_type = relation_input(item.fetch(:id), other_item.fetch(:id), type)
-      graphql(
-        ISSUE_RELATION_CREATE_MUTATION,
-        { input: { issueId: from_id, relatedIssueId: to_id, type: relation_type } },
-      )
-    end
-
-    def unrelate(item, other)
-      other_item = issue(other, allowed_team: :any)
-      found = find_relation(item, other_item.fetch(:id))
-      if found.blank?
-        raise "No relation between #{identifier(item)} and #{identifier(other_item)}"
-      end
-
-      graphql(ISSUE_RELATION_DELETE_MUTATION, { id: found.fetch(:id) })
-    end
-
-    def user_id(name)
-      return viewer.fetch(:id) if name.to_s.downcase == "me"
-
-      matches = user_nodes.select do |user|
-        [ user[:name], user[:displayName], user[:email] ].compact.any? do |value|
-          value.to_s.casecmp?(name.to_s)
-        end
-      end
-      raise "Linear user #{name.inspect} not found" if matches.blank?
-      raise "Linear user #{name.inspect} is ambiguous" if matches.size > 1
-
-      matches.first.fetch(:id)
-    end
-
-    def project_id(name)
-      found = project_nodes.find { |project| project[:name].to_s.casecmp?(name.to_s) }
-      raise "Linear project #{name.inspect} not found" if found.blank?
-
-      found.fetch(:id)
-    end
-
-    def viewer
-      @viewer ||= graphql(VIEWER_QUERY).fetch(:viewer)
-    end
-
-    def normalize_description(text)
-      text.to_s.gsub(/\[([^\]]+)\]\((?:https?:\/\/)?\1\/?\)/, '\1').gsub(/^( *)\* /, '\1- ')
-    end
-
-    def description_hash(text)
-      Digest::SHA256.hexdigest(text.to_s)
     end
 
     def move(item, column)
@@ -427,182 +263,6 @@ class Linear
       }
     GQL
 
-    ISSUE_QUERY = <<~GQL
-      query Issue($id: String!) {
-        issue(id: $id) {
-          id
-          identifier
-          title
-          url
-          description
-          priority
-          estimate
-          dueDate
-          team {
-            key
-          }
-          state {
-            id
-            name
-          }
-          assignee {
-            id
-            name
-            displayName
-          }
-          project {
-            id
-            name
-          }
-          parent {
-            identifier
-            title
-          }
-          labels {
-            nodes {
-              id
-              name
-            }
-          }
-          children {
-            nodes {
-              identifier
-              title
-              state {
-                name
-              }
-            }
-          }
-          attachments {
-            nodes {
-              id
-              title
-              url
-            }
-          }
-          comments {
-            nodes {
-              id
-              body
-              createdAt
-              parent {
-                id
-              }
-              user {
-                id
-                name
-              }
-            }
-          }
-          relations {
-            nodes {
-              id
-              type
-              relatedIssue {
-                id
-                identifier
-                title
-              }
-            }
-          }
-          inverseRelations {
-            nodes {
-              id
-              type
-              issue {
-                id
-                identifier
-                title
-              }
-            }
-          }
-        }
-      }
-    GQL
-
-    COMMENT_QUERY = <<~GQL
-      query Comment($id: String!) {
-        comment(id: $id) {
-          id
-          body
-          user {
-            id
-            name
-          }
-          issue {
-            identifier
-            team {
-              key
-            }
-          }
-        }
-      }
-    GQL
-
-    VIEWER_QUERY = <<~GQL
-      query Viewer {
-        viewer {
-          id
-          name
-        }
-      }
-    GQL
-
-    USERS_QUERY = <<~GQL
-      query Users {
-        users {
-          nodes {
-            id
-            name
-            displayName
-            email
-          }
-        }
-      }
-    GQL
-
-    PROJECTS_QUERY = <<~GQL
-      query Projects($teamId: String!) {
-        team(id: $teamId) {
-          projects {
-            nodes {
-              id
-              name
-            }
-          }
-        }
-      }
-    GQL
-
-    ISSUE_CREATE_MUTATION = <<~GQL
-      mutation IssueCreate($input: IssueCreateInput!) {
-        issueCreate(input: $input) {
-          success
-          issue {
-            id
-            identifier
-            url
-          }
-        }
-      }
-    GQL
-
-    COMMENT_CREATE_MUTATION = <<~GQL
-      mutation CommentCreate($input: CommentCreateInput!) {
-        commentCreate(input: $input) {
-          success
-        }
-      }
-    GQL
-
-    ATTACHMENT_LINK_MUTATION = <<~GQL
-      mutation AttachmentLinkURL($issueId: String!, $url: String!, $title: String) {
-        attachmentLinkURL(issueId: $issueId, url: $url, title: $title) {
-          success
-        }
-      }
-    GQL
-
     ISSUE_UPDATE_MUTATION = <<~GQL
       mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
         issueUpdate(id: $id, input: $input) {
@@ -613,46 +273,6 @@ class Linear
             title
             description
           }
-        }
-      }
-    GQL
-
-    COMMENT_UPDATE_MUTATION = <<~GQL
-      mutation CommentUpdate($id: String!, $input: CommentUpdateInput!) {
-        commentUpdate(id: $id, input: $input) {
-          success
-        }
-      }
-    GQL
-
-    COMMENT_DELETE_MUTATION = <<~GQL
-      mutation CommentDelete($id: String!) {
-        commentDelete(id: $id) {
-          success
-        }
-      }
-    GQL
-
-    ATTACHMENT_DELETE_MUTATION = <<~GQL
-      mutation AttachmentDelete($id: String!) {
-        attachmentDelete(id: $id) {
-          success
-        }
-      }
-    GQL
-
-    ISSUE_RELATION_CREATE_MUTATION = <<~GQL
-      mutation IssueRelationCreate($input: IssueRelationCreateInput!) {
-        issueRelationCreate(input: $input) {
-          success
-        }
-      }
-    GQL
-
-    ISSUE_RELATION_DELETE_MUTATION = <<~GQL
-      mutation IssueRelationDelete($id: String!) {
-        issueRelationDelete(id: $id) {
-          success
         }
       }
     GQL
@@ -736,11 +356,11 @@ class Linear
     GQL
 
     def workspace
-      ENV.fetch("LINEAR_WORKSPACE")
+      Settings.all.dig(:linear, :workspace)
     end
 
     def team
-      @team_override.present? ? @team_override : ENV.fetch("LINEAR_TEAM")
+      Settings.all.dig(:linear, :team)
     end
 
     def headers
@@ -811,34 +431,6 @@ class Linear
           graphql(STATE_UPDATE_MUTATION, { id: item[:id], input: { position: } })
         end
       end
-    end
-
-    def user_nodes
-      @users ||= graphql(USERS_QUERY).fetch(:users).fetch(:nodes)
-    end
-
-    def project_nodes
-      @projects ||= graphql(PROJECTS_QUERY, { teamId: team_id }).fetch(:team).fetch(:projects).fetch(:nodes)
-    end
-
-    def relation_input(from_id, to_id, type)
-      case type.to_s.downcase.tr("_", "-")
-      when "blocks"
-        [ from_id, to_id, "blocks" ]
-      when "blocked-by"
-        [ to_id, from_id, "blocks" ]
-      when "related"
-        [ from_id, to_id, "related" ]
-      when "duplicate"
-        [ from_id, to_id, "duplicate" ]
-      else
-        raise "Unknown relation #{type.inspect}, expected one of blocks, blocked-by, related, duplicate"
-      end
-    end
-
-    def find_relation(item, other_id)
-      (item.dig(:relations, :nodes) || []).find { |rel| rel.dig(:relatedIssue, :id) == other_id } ||
-        (item.dig(:inverseRelations, :nodes) || []).find { |rel| rel.dig(:issue, :id) == other_id }
     end
 
     def match_state(current, want, used_ids)

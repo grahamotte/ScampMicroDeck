@@ -38,7 +38,7 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
-  app_url = URI.parse(ENV.fetch("TUNNEL_URL", ENV.fetch("APP_URL")))
+  app_url = URI.parse(ENV.fetch("TUNNEL_URL", Settings.development_url))
   config.action_mailer.default_url_options = {
     host: app_url.host,
     port: app_url.port,

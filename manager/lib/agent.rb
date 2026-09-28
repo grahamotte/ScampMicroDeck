@@ -4,17 +4,17 @@ class Agent
 
   class << self
     def start(prompt, directory: ROOT, model: nil, variant: nil)
-      case ENV.fetch("AGENT_RUNNER")
+      case Settings.all.dig(:agent, :runner)
       when "openchamber"
         openchamber(prompt, directory, model:, variant:)
       else
-        raise "Unknown AGENT_RUNNER #{ENV.fetch("AGENT_RUNNER")}"
+        raise "Unknown agent runner #{Settings.all.dig(:agent, :runner)}"
       end
     end
 
     def openchamber(prompt, directory, model:, variant:)
-      model = ENV.fetch("AGENT_MODEL") if model.blank?
-      variant = ENV["AGENT_VARIANT"] if variant.blank?
+      model = Settings.all.dig(:agent, :model) if model.blank?
+      variant = Settings.all.dig(:agent, :variant) if variant.blank?
       payload = {
         directory:,
         prompt:,

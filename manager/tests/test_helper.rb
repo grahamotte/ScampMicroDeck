@@ -23,11 +23,6 @@ Req.define_singleton_method(:call) { |*, **| raise UnsafeTestOperation, "Req.cal
 
 {
   "LINEAR_TOKEN" => "linear-token",
-  "LINEAR_WORKSPACE" => "gotte",
-  "LINEAR_TEAM" => "MOTO",
-  "AGENT_RUNNER" => "openchamber",
-  "AGENT_MODEL" => "xai/grok-4.6",
-  "AGENT_VARIANT" => "high",
   "test" => "true",
 }.each { |key, value| ENV[key] = value }
 
@@ -38,11 +33,20 @@ module ManagerTestIsolation
     @worktree_test_dir = Dir.mktmpdir("manager-worktree")
     Worktree.root = File.join(@worktree_test_dir, "repo")
     FileUtils.mkdir_p(Worktree.root)
+    Settings.path = File.join(@worktree_test_dir, "config.json")
+    File.write(
+      Settings.path,
+      JSON.generate(
+        linear: { workspace: "gotte", team: "MOTO" },
+        agent: { runner: "openchamber", model: "xai/grok-4.6", variant: "high" },
+      ),
+    )
     super
   end
 
   def after_teardown
     Worktree.reset
+    Settings.reset
     FileUtils.remove_entry(@worktree_test_dir) if @worktree_test_dir
     super
   end

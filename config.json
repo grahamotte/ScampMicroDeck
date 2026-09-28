@@ -1,0 +1,111 @@
+{
+  "domain": "scampmicrodeck.com",
+  "githubRepo": "git@github.com:grahamotte/scampmicrodeck.com.git",
+  "database": "scampmicrodeck",
+  "site": {
+    "title": "Scamp Micro Deck",
+    "description": "A native macOS music player with the tedious charm of a real vinyl record player",
+    "themeColor": "oklch(0 0 0)"
+  },
+  "subdomains": [
+    {
+      "name": "www",
+      "subdomains": [
+        "",
+        "www"
+      ],
+      "directory": "frontend/subdomains/www"
+    },
+    {
+      "name": "hc",
+      "subdomains": [
+        "hc"
+      ],
+      "directory": "frontend/subdomains/hc"
+    },
+    {
+      "name": "jobs",
+      "subdomains": [
+        "jobs"
+      ],
+      "backend": true
+    },
+    {
+      "name": "errors",
+      "subdomains": [
+        "errors"
+      ],
+      "backend": true
+    }
+  ],
+  "instance": {
+    "region": "sfo3",
+    "size": "s-1vcpu-2gb"
+  },
+  "secrets": {
+    "development": "",
+    "production": ""
+  },
+  "linear": {
+    "workspace": "gotte",
+    "team": "SMD"
+  },
+  "agent": {
+    "runner": "openchamber",
+    "model": "xai/grok-4.6",
+    "variant": "medium"
+  },
+  "apps": {
+    "build": "1.8.7",
+    "contactEmail": "graham.otte@gmail.com",
+    "contactFirstName": "Graham",
+    "contactLastName": "Otte",
+    "contactPhone": "7142279963",
+    "copyright": "Graham Otte",
+    "demoAccountName": "",
+    "demoAccountPassword": "",
+    "demoAccountRequired": false,
+    "description": "Scamp is a native macOS music player meant to emulate all the tedious, crappy charm of a real vinyl record player.",
+    "keywords": "music, vinyl, record, mp3, flac, audio",
+    "marketingUrl": "https://codeberg.org/grahamotte/scampmicrodeck.com",
+    "name": "Scamp Micro Deck",
+    "notes": "Scamp is a local macOS music player. To use the app, you must load a folder that contains playable audio files such as MP3s. Scamp does not open individual song files one at a time.\n\nNo login, account, subscription, or external device is required.\n\nThe easiest way to review the app is to open it and choose Help > Load Demo Album. That will load a bundled sample album right away.\n\nYou can also test normal playback by either clicking the eject button and choosing a folder with audio files, or by dragging a folder into the app window.\n\nOn first launch, Scamp automatically shows a short help guide. That guide is also available later from Help > Scamp Micro Deck Help. You will need to dismiss the guide before you can play music through Scamp.\n\nThe attached \"demo album.zip\" will need to be unzipped before Scamp is able to play it. \n\nAlbum art used in screenshots: https://www.loc.gov/resource/ppmsca.51533/",
+    "primaryLocale": "en-US",
+    "promotionalText": "Rediscover your music library with the tedious, crappy charm of a real vinyl record player.",
+    "releaseType": "AFTER_APPROVAL",
+    "supportUrl": "https://codeberg.org/grahamotte/scampmicrodeck.com",
+    "targets": {
+      "apple": {
+        "macos": {
+          "archiveDestination": "generic/platform=macOS",
+          "bundleIdentifier": "com.grahamotte.scamp",
+          "platform": "MAC_OS",
+          "project": "apps/apple/App.xcodeproj",
+          "scheme": "App-macOS",
+          "screenshots": [
+            {
+              "displayType": "APP_DESKTOP",
+              "path": "apps/screenshots/macos-1.png"
+            },
+            {
+              "displayType": "APP_DESKTOP",
+              "path": "apps/screenshots/macos-2.png"
+            },
+            {
+              "displayType": "APP_DESKTOP",
+              "path": "apps/screenshots/macos-3.png"
+            }
+          ],
+          "simulatorDestination": "platform=macOS",
+          "simulatorProduct": "Debug/Scamp Micro Deck.app",
+          "simulators": {
+            "macos": "Mac"
+          }
+        }
+      },
+      "android": {}
+    },
+    "version": "1.8.7",
+    "whatsNew": "Enjoy refined gold, silver, and black hardware finishes, plus a more detailed, tactile black vinyl record."
+  }
+}

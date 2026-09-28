@@ -1,0 +1,15 @@
+source "https://rubygems.org"
+ruby "4.0.6"
+
+gem "faraday", "2.14.3"
+gem "shellwords", "0.2.2"
+gem "pry", "0.16.0"
+gem "cache", "0.0.0", path: "../gems/cache"
+
+group :test do
+  gem "minitest", "6.0.6"
+  gem "minitest-parallel_fork", "2.1.1"
+  gem "mocha", "3.1.0"
+  gem "test_safety", "0.0.0", path: "../gems/test_safety", require: false
+  gem "webmock", "3.26.2"
+end

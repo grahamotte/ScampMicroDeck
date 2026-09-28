@@ -15,7 +15,7 @@ class TriggerAllTest < Minitest::Test
   end
 
   def test_skips_repos_without_manager_trigger
-    add_repo("app.org", toml: "[tasks.\"manager:watch\"]\nrun = \"true\"\n")
+    add_repo("app.org", toml: "[tasks.\"manager:other\"]\nrun = \"true\"\n")
     commands = stub_mise
     capture_io { TriggerAll.call }
 

@@ -5,10 +5,10 @@ import { readFileSync } from "fs";
 import path from "path";
 import { defineConfig } from "vite";
 
-const subdomains = JSON.parse(
-  readFileSync(path.resolve(__dirname, "subdomains.json")),
+const config = JSON.parse(
+  readFileSync(path.resolve(__dirname, "..", "config.json")),
 );
-const subdomain = subdomains.find(
+const subdomain = config.subdomains.find(
   ({ name }) => name === (process.env.VITE_SUBDOMAIN || "www"),
 );
 
@@ -27,11 +27,14 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: process.env.API_URL,
+        target: "http://localhost:3000",
       },
     },
   },
   define: {
+    "import.meta.env.VITE_TITLE": JSON.stringify(config.site.title),
+    "import.meta.env.VITE_DESCRIPTION": JSON.stringify(config.site.description),
+    "import.meta.env.VITE_THEME_COLOR": JSON.stringify(config.site.themeColor),
     VITE_RELEASE: JSON.stringify(
       execSync("git rev-parse HEAD").toString().trim()
     ),

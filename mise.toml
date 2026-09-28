@@ -4,11 +4,12 @@ pnpm = "11.21.0"
 ruby = "4.0.6"
 python = "3.14.7"
 deno = "2.9.5"
+"npm:linearis" = "2026.8.0"
 
 [env]
 _.file = '.env.development'
 LANG = "{{ get_env(name='LANG', default='en_US.UTF-8') }}"
-GH_REPO = "{{ env.GITHUB_REPO | default(value='') | trim_start_matches(pat='git@github.com:') | trim_end_matches(pat='.git') }}"
+GH_REPO = "{{ read_file(path='config.json') | split(pat='\"githubRepo\": \"') | last | split(pat='\"') | first | trim_start_matches(pat='git@github.com:') | trim_end_matches(pat='.git') }}"
 
 [task_config]
 shell = "bash -o errexit -o pipefail -c"
@@ -29,13 +30,11 @@ run = "cd deploy && mkdir -p log && bundle install"
 [tasks."dependencies:manager"]
 run = "cd manager && mkdir -p log && bundle install"
 
+[tasks."dependencies:publish"]
+run = "cd publish && mkdir -p log && bundle install"
+
 [tasks."dependencies:gems"]
-run = '''
-printf "%s\0" gems/*/ | xargs -0 -n 1 -P 4 sh -c '
-  cd "$1"
-  bundle install
-' sh
-'''
+run = "scripts/mise/dependencies_gems.sh"
 
 [tasks."dependencies:python"]
 run = [
@@ -45,22 +44,6 @@ run = [
 
 [tasks.dependencies]
 depends = ["dependencies:*"]
-
-#
-# Update
-#
-
-[tasks."update:backend"]
-run = "cd backend && bundle update"
-
-[tasks."update:frontend"]
-run = "cd frontend && pnpm update --latest --config.minimum-release-age=10080"
-
-[tasks."update:gems"]
-run = "for dir in gems/*/; do (cd \"$dir\" && bundle update); done"
-
-[tasks.update]
-depends = ["update:*"]
 
 #
 # Reset
@@ -134,46 +117,11 @@ run = "pnpm exec portless proxy start --https"
 
 [tasks."start:subdomains"]
 depends = ["dependencies:frontend", "start:details"]
-run = '''
-node -e '
-  const fs = require("fs");
-  const base = process.env.LOCAL_DOMAIN || process.env.DOMAIN.split(".")[0];
-  for (const subdomain of JSON.parse(fs.readFileSync("frontend/subdomains.json")).filter(({ backend }) => backend)) {
-    const prefix = subdomain.subdomains.includes("") ? "" : `${subdomain.subdomains[0]}.`;
-    console.log(`${prefix}${base}`, 3000);
-  }
-' | xargs -n 2 sh -c 'pnpm --dir frontend exec portless alias "$1" "$2"' sh
-node -e '
-  const fs = require("fs");
-  const base = process.env.LOCAL_DOMAIN || process.env.DOMAIN.split(".")[0];
-  for (const subdomain of JSON.parse(fs.readFileSync("frontend/subdomains.json")).filter(({ directory }) => directory)) {
-    const prefix = subdomain.subdomains.includes("") ? "" : `${subdomain.subdomains[0]}.`;
-    console.log(subdomain.name, `${prefix}${base}`);
-  }
-' | xargs -n 2 -P 0 sh -c 'VITE_SUBDOMAIN="$1" pnpm --dir frontend exec portless "$2" pnpm exec vite' sh
-'''
+run = "scripts/mise/start_subdomains.sh"
 
 [tasks."start:details"]
 depends = ["start:portless"]
-run = '''
-node <<'NODE'
-const fs = require("fs");
-const subdomains = JSON.parse(fs.readFileSync("frontend/subdomains.json"));
-const base = process.env.LOCAL_DOMAIN || process.env.DOMAIN.split(".")[0];
-const rows = subdomains.map((subdomain) => {
-  const prefix = subdomain.subdomains.includes("") ? "" : `${subdomain.subdomains[0]}.`;
-  const label = subdomain.name.toUpperCase();
-  return [label, `https://${prefix}${base}.localhost`];
-});
-rows.push(["API", "http://localhost:3000"]);
-const labelWidth = Math.max(...rows.map(([label]) => label.length));
-const lines = [`${process.env.DOMAIN} · Development`, ...rows.map(([label, url]) => `${label.padEnd(labelWidth)}  ${url}`)];
-const width = Math.max(...lines.map((line) => line.length));
-console.log(`\n╔${"═".repeat(width + 2)}╗`);
-for (const line of lines) console.log(`║ ${line.padEnd(width)} ║`);
-console.log(`╚${"═".repeat(width + 2)}╝\n`);
-NODE
-'''
+run = "scripts/mise/start_details.js"
 
 [tasks.start]
 depends = [
@@ -227,8 +175,12 @@ run = 'cd deploy && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\"
 depends = ["dependencies:manager"]
 run = 'cd manager && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
 
+[tasks."test:publish"]
+depends = ["dependencies:publish"]
+run = 'cd publish && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
+
 [tasks."test:apps"]
-run = 'cd apps/apple && cp Tests/Package.swift Package.swift && trap "rm Package.swift" EXIT && swift test --quiet --scratch-path ../../deploy/tmp/apps/swift-tests'
+run = 'cd apps/apple && cp Tests/Package.swift Package.swift && trap "rm Package.swift" EXIT && swift test --quiet --scratch-path ../../publish/tmp/apps/swift-tests'
 
 [tasks.tsc]
 depends = ["dependencies:frontend"]
@@ -240,12 +192,7 @@ run = "cd frontend && pnpm test"
 
 [tasks."test:gems"]
 depends = ["dependencies:gems"]
-run = '''
-printf "%s\0" gems/*/ | xargs -0 -n 1 -P 4 sh -c '
-  cd "$1"
-  bundle exec ruby -Itest -e "Dir.glob(\"test/**/*_test.rb\").each { |f| require_relative f }"
-' sh
-'''
+run = "scripts/mise/test_gems.sh"
 
 [tasks."test"]
 depends = ["test:*"]
@@ -253,11 +200,6 @@ depends = ["test:*"]
 #
 # Deploy
 #
-
-[tasks."deploy:spawn"]
-alias = ["spawn"]
-usage = 'arg "<domain>" help="Website domain (e.g., example.com)"'
-run = 'cd deploy && ruby spawn.rb "$usage_domain"'
 
 [tasks."deploy"]
 depends = ["dependencies:deploy"]
@@ -267,26 +209,6 @@ run = "set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | te
 alias = ["quick"]
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby quick.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_quick.log"
-
-[tasks."deploy:publish"]
-alias = ["publish"]
-depends = ["dependencies:deploy"]
-usage = '''
-flag "--stop-before-submission" help="Prepare App Store versions for review without submitting"
-flag "--stop-before-prepare" help="Upload App Store builds for TestFlight without preparing or submitting versions"
-'''
-run = """
-set -a
-source .env.production
-export PUBLISH_STOP_BEFORE_SUBMISSION="${usage_stop_before_submission:-false}"
-export PUBLISH_STOP_BEFORE_PREPARE="${usage_stop_before_prepare:-false}"
-cd deploy
-ruby publish.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_publish.log
-"""
-
-[tasks."deploy:approved-version"]
-depends = ["dependencies:deploy"]
-run = "set -a && source .env.production && cd deploy && ruby approved_version.rb"
 
 [tasks."deploy:patch"]
 depends = ["dependencies:deploy"]
@@ -335,38 +257,38 @@ alias = ["status"]
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby status.rb"
 
-[tasks."deploy:set-version"]
-depends = ["dependencies:deploy"]
+#
+# Publish
+#
+
+[tasks.publish]
+depends = ["dependencies:publish"]
+usage = 'arg "[mode]" help="Where to stop publishing" choices "stop_before_prepare" "stop_before_submit"'
+run = 'set -a && source .env.production && cd publish && ruby publish.rb ${usage_mode:-} 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_publish.log'
+
+[tasks."publish:stop_before_prepare"]
+depends = ["publish stop_before_prepare"]
+
+[tasks."publish:stop_before_submit"]
+depends = ["publish stop_before_submit"]
+
+[tasks."publish:approved_version"]
+depends = ["dependencies:publish"]
+run = "set -a && source .env.production && cd publish && ruby approved_version.rb"
+
+[tasks."publish:set_version"]
+depends = ["dependencies:publish"]
 usage = 'arg "<version>" help="Semantic version (e.g., 1.1.1)"'
-run = 'cd deploy && ruby set_version.rb "$usage_version"'
+run = 'cd publish && ruby set_version.rb "$usage_version"'
 
-#
-# Other
-#
-
-[tasks.merge]
-usage = 'arg "[branch]" help="Branch to merge into, created from origin/master" default="codemoto-merge"'
-run = '''
-set -e
-if [ -n "$(git status --porcelain)" ]; then echo 'Error: You have uncommitted changes. Please commit or stash them before merging.'; exit 1; fi
-git fetch origin master
-if git show-ref --verify --quiet "refs/heads/$usage_branch"; then git checkout "$usage_branch"; else git checkout -b "$usage_branch" --no-track origin/master; fi
-echo "Merge recovery point: $(git rev-parse HEAD)"
-if git remote get-url upstream >/dev/null 2>&1; then git remote set-url upstream git@github.com:grahamotte/codemoto.org.git; else git remote add upstream git@github.com:grahamotte/codemoto.org.git; fi
-git config remote.upstream.tagOpt --no-tags
-git config remote.origin.gh-resolved base
-git fetch --no-tags upstream master
-git ls-remote --tags upstream | { grep -v "\^{}$" || true; } | while read -r sha ref; do tag="${ref#refs/tags/}"; if [ "$(git rev-parse -q --verify "refs/tags/$tag")" = "$sha" ]; then git tag -d "$tag"; fi; done
-if ! git merge-base HEAD upstream/master >/dev/null; then echo 'Error: This repository does not share history with Code Moto.'; exit 1; fi
-git merge --no-edit --no-ff upstream/master
-'''
-
-[tasks.simulate]
-depends = ["dependencies:deploy"]
+[tasks."publish:simulate"]
+alias = ["simulate"]
+depends = ["dependencies:publish"]
 usage = 'arg "<target>" help="Device to launch" choices "iphone" "phone" "ipad" "tablet" "mac" "macos" "osx" "tv" "tvos"'
-run = 'cd deploy && ruby simulate.rb "$usage_target"'
+run = 'cd publish && ruby simulate.rb "$usage_target"'
 
-[tasks.xcode]
+[tasks."publish:xcode"]
+alias = ["xcode"]
 run = "open apps/apple/App.xcodeproj"
 
 #
@@ -381,187 +303,31 @@ run = "cd manager && bundle exec ruby trigger.rb"
 depends = ["dependencies:manager"]
 run = "cd manager && bundle exec ruby trigger_all.rb"
 
-[tasks."manager:sync"]
+[tasks."manager:linear_sync"]
 depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby sync.rb"
+run = "cd manager && bundle exec ruby linear_sync.rb"
 
-[tasks."manager:syncall"]
+[tasks."manager:linear_syncall"]
 depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby sync_all.rb"
+run = "cd manager && bundle exec ruby linear_sync_all.rb"
 
-[tasks."manager:watch"]
+[tasks."manager:secrets"]
+run = "scripts/mise/manager_secrets.sh"
+
+[tasks."manager:spawn"]
+alias = ["spawn"]
 depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby watch.rb"
+usage = 'arg "<domain>" help="Website domain (e.g., example.com)"'
+run = 'cd manager && bundle exec ruby spawn.rb "$usage_domain"'
+
+[tasks."manager:merge"]
+alias = ["merge"]
+usage = 'arg "[branch]" help="Branch to merge into, created from origin/master" default="codemoto-merge"'
+run = "scripts/mise/manager_merge.sh"
 
 #
 # Linear
 #
 
-[tasks."linear:create"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<title>" help="Card title"
-arg "<body>" help="Markdown description"
-flag "--column <column>" help="Column name" default="backlog" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
-flag "--parent <card>" help="Parent card identifier"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb create "$usage_title" "$usage_body" "$usage_column" ${usage_parent:+--parent "$usage_parent"} ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:show"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-flag "--raw" help="Print only the description markdown"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb show "$usage_card" ${usage_raw:+--raw} ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:list"]
-depends = ["dependencies:manager"]
-usage = """
-flag "--column <column>" help="Column name" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
-flag "--tag <tag>" help="Tag name"
-flag "--search <query>" help="Search identifier or title"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb list ${usage_column:+--column "$usage_column"} ${usage_tag:+--tag "$usage_tag"} ${usage_search:+--search "$usage_search"} ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:move"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<column>" help="Column name" choices "backlog" "planned" "ready" "working" "review" "approved" "completed" "canceled"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb move "$usage_card" "$usage_column" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:edit"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-flag "--title <title>" help="New title"
-flag "--body <body>" help="New description markdown"
-flag "--body-file <path>" help="File with new description markdown"
-flag "--expect-file <path>" help="Previous description markdown; refuse if the card differs"
-flag "--expect-hash <hash>" help="SHA256 of the previous description; refuse if the card differs"
-flag "--priority <priority>" help="none, urgent, high, medium, low, or 0-4"
-flag "--clear-priority" help="Clear priority"
-flag "--estimate <points>" help="Estimate points"
-flag "--clear-estimate" help="Clear estimate"
-flag "--assignee <name>" help="Assignee name, email, or me"
-flag "--clear-assignee" help="Unassign"
-flag "--due <date>" help="Due date YYYY-MM-DD"
-flag "--clear-due" help="Clear due date"
-flag "--project <name>" help="Project name"
-flag "--clear-project" help="Clear project"
-flag "--parent <card>" help="Parent card identifier"
-flag "--clear-parent" help="Clear parent"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = '''
-cd manager && bundle exec ruby card.rb edit "$usage_card" \
-  ${usage_title:+--title "$usage_title"} \
-  ${usage_body:+--body "$usage_body"} \
-  ${usage_body_file:+--body-file "$usage_body_file"} \
-  ${usage_expect_file:+--expect-file "$usage_expect_file"} \
-  ${usage_expect_hash:+--expect-hash "$usage_expect_hash"} \
-  ${usage_priority:+--priority "$usage_priority"} \
-  ${usage_clear_priority:+--clear-priority} \
-  ${usage_estimate:+--estimate "$usage_estimate"} \
-  ${usage_clear_estimate:+--clear-estimate} \
-  ${usage_assignee:+--assignee "$usage_assignee"} \
-  ${usage_clear_assignee:+--clear-assignee} \
-  ${usage_due:+--due "$usage_due"} \
-  ${usage_clear_due:+--clear-due} \
-  ${usage_project:+--project "$usage_project"} \
-  ${usage_clear_project:+--clear-project} \
-  ${usage_parent:+--parent "$usage_parent"} \
-  ${usage_clear_parent:+--clear-parent} \
-  ${usage_team:+--team "$usage_team"}
-'''
-
-[tasks."linear:comment"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "[body]" help="Markdown comment body"
-flag "--body-file <path>" help="File with markdown comment body"
-flag "--reply <comment>" help="Parent comment id"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb comment "$usage_card" ${usage_body:+--body "$usage_body"} ${usage_body_file:+--body-file "$usage_body_file"} ${usage_reply:+--reply "$usage_reply"} ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:comment-edit"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<comment>" help="Comment id"
-arg "[body]" help="Markdown comment body"
-flag "--body-file <path>" help="File with markdown comment body"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb comment-edit "$usage_comment" ${usage_body:+--body "$usage_body"} ${usage_body_file:+--body-file "$usage_body_file"} ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:comment-delete"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<comment>" help="Comment id"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb comment-delete "$usage_comment" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:link"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<url>" help="URL to link"
-arg "[title]" help="Link title"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb link "$usage_card" "$usage_url" "${usage_title:-}" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:unlink"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<url>" help="URL to remove"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb unlink "$usage_card" "$usage_url" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:tag"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<tag>" help="Tag name"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb tag "$usage_card" "$usage_tag" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:untag"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<tag>" help="Tag name"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb untag "$usage_card" "$usage_tag" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:relate"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<type>" help="Relation type" choices "blocks" "blocked-by" "related" "duplicate"
-arg "<other>" help="Other card identifier"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb relate "$usage_card" "$usage_type" "$usage_other" ${usage_team:+--team "$usage_team"}'
-
-[tasks."linear:unrelate"]
-depends = ["dependencies:manager"]
-usage = """
-arg "<card>" help="Card identifier, e.g. MOTO-1"
-arg "<other>" help="Other card identifier"
-flag "--team <team>" help="Other team key in this workspace"
-"""
-run = 'cd manager && bundle exec ruby card.rb unrelate "$usage_card" "$usage_other" ${usage_team:+--team "$usage_team"}'
+[tasks.linear]
+run = 'LINEAR_API_TOKEN="$LINEAR_TOKEN" linearis'

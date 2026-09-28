@@ -1,9 +1,7 @@
-require "json"
-
 class Subdomains
   class << self
     def all
-      @all ||= JSON.parse(File.read(File.join(Constants.local_root, "frontend", "subdomains.json")), symbolize_names: true)
+      @all ||= Constants.config.fetch(:subdomains)
     end
 
     def domains(subdomain = nil)
