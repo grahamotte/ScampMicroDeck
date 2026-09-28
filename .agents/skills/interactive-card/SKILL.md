@@ -42,5 +42,5 @@ If the user tells you the card is approved:
 
 1. Rebase the PR onto `origin/master`. Resolve merge conflicts and push with `--force-with-lease`.
 2. Merge the PR with `gh pr merge` using `GITHUB_TOKEN`.
-3. If you are in the main checkout rather than a worktree, run `git checkout master` and `git pull --ff-only origin master`.
+3. If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there. Do not switch branches.
 4. Move the card to `completed`.

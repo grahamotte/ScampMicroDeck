@@ -35,6 +35,15 @@ class Worktree
       true
     end
 
+    def pull_master
+      branch = run("git", "branch", "--show-current").strip
+      return if branch != "master" && branch != "main"
+      return if run("git", "status", "--porcelain").present?
+
+      run("git", "pull", "--ff-only", "origin", branch)
+      branch
+    end
+
     def path_for(item)
       File.expand_path("../#{File.basename(root)}-#{branch_for(item)}", root)
     end

@@ -123,6 +123,49 @@ class WorktreeTest < Minitest::Test
     assert_equal [], git_commands
   end
 
+  def test_pulls_master_when_clean
+    stub_git
+
+    assert_equal "master", Worktree.pull_master
+
+    assert_equal [ [ "git", "pull", "--ff-only", "origin", "master" ] ], git_commands
+  end
+
+  def test_pulls_main_when_clean
+    stub_git(branch: "main")
+
+    assert_equal "main", Worktree.pull_master
+
+    assert_equal [ [ "git", "pull", "--ff-only", "origin", "main" ] ], git_commands
+  end
+
+  def test_skips_pull_when_not_on_master_or_main
+    stub_git(branch: "moto-56")
+
+    assert_nil Worktree.pull_master
+
+    assert_equal [], git_commands
+  end
+
+  def test_skips_pull_when_dirty
+    stub_git(porcelain: " M manager/lib/worktree.rb\n")
+
+    assert_nil Worktree.pull_master
+
+    assert_equal [], git_commands
+  end
+
+  def test_raises_when_pull_master_fails
+    stub_git
+    Open3.stubs(:capture3).with("git", "pull", "--ff-only", "origin", "master", chdir: Worktree.root).returns(
+      [ "", "network error", status(false) ],
+    )
+
+    error = assert_raises(RuntimeError) { Worktree.pull_master }
+
+    assert_equal "git pull --ff-only origin master failed: network error", error.message
+  end
+
   def test_raises_when_remove_fails
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
@@ -268,13 +311,15 @@ class WorktreeTest < Minitest::Test
     File.write(path, contents)
   end
 
-  def stub_git(show_ref: "", worktree_list: "", for_each_ref: "")
+  def stub_git(show_ref: "", worktree_list: "", for_each_ref: "", branch: "master", porcelain: "")
     @git_commands = []
     ok = status(true)
     Open3.stubs(:capture3).with do |*args, **_kwargs|
       next false if args == [ "git", "show-ref" ]
       next false if args == WORKTREE_LIST
       next false if args == FOR_EACH_REF
+      next false if args == [ "git", "branch", "--show-current" ]
+      next false if args == [ "git", "status", "--porcelain" ]
 
       @git_commands << args
       if args[1] == "worktree" && args[2] == "add"
@@ -288,6 +333,8 @@ class WorktreeTest < Minitest::Test
     Open3.stubs(:capture3).with("git", "show-ref", chdir: Worktree.root).returns([ show_ref, "", ok ])
     Open3.stubs(:capture3).with(*WORKTREE_LIST, chdir: Worktree.root).returns([ worktree_list, "", ok ])
     Open3.stubs(:capture3).with(*FOR_EACH_REF, chdir: Worktree.root).returns([ for_each_ref, "", ok ])
+    Open3.stubs(:capture3).with("git", "branch", "--show-current", chdir: Worktree.root).returns([ "#{branch}\n", "", ok ])
+    Open3.stubs(:capture3).with("git", "status", "--porcelain", chdir: Worktree.root).returns([ porcelain, "", ok ])
   end
 
   def status(success)
