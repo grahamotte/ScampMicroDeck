@@ -142,6 +142,24 @@ class SpawnerTest < Minitest::Test
     assert_equal 0600, File.stat(File.join(target_dir, ".env.production")).mode & 0777
   end
 
+  def test_blanks_every_secrets_value_including_extra_keys
+    config_path = File.join(@source_repo, "config.json")
+    config = JSON.parse(File.read(config_path))
+    config.fetch("secrets")["helios"] = "op://Projects/Helios/notesPlain"
+    File.write(config_path, "#{JSON.pretty_generate(config)}\n")
+
+    target_dir = Spawner.new(
+      "new-app.net",
+      shell: @shell,
+      credentials: @credentials,
+      output: @output,
+    ).call
+
+    spawned = JSON.parse(File.read(File.join(target_dir, "config.json")))
+    assert_equal({ "development" => "", "production" => "", "helios" => "" }, spawned.fetch("secrets"))
+    refute File.exist?(File.join(target_dir, ".env.helios"))
+  end
+
   def test_rejects_an_app_name_without_a_tld
     error = assert_raises(RuntimeError) { Spawner.new("new-app", shell: @shell, credentials: @credentials, output: @output).call }
 

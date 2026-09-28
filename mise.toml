@@ -330,4 +330,5 @@ run = "scripts/mise/manager_merge.sh"
 #
 
 [tasks.linear]
+raw_args = true
 run = 'LINEAR_API_TOKEN="$LINEAR_TOKEN" linearis'

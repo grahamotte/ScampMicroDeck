@@ -25,14 +25,15 @@ Check and report every item. Do not stop after the first failure. Abort the merg
 5. Run `mise test` after the merge succeeds. Fix merge-related failures, commit the fixes, and rerun the whole suite until it passes.
 6. Push with `git push -u origin HEAD:<branch>` and open a GitHub PR with `gh pr create --head <branch>`.
 7. Merge the PR with `gh pr merge --merge --delete-branch`. Never squash or rebase it, never rebase the branch, and never force push; the merge commit must keep Code Moto's history.
-8. Report the completed merge, PR, conflict resolutions, merge commit, and test results.
+8. In the main checkout (the repo directory, not the card worktree), run `git fetch origin && git checkout master && git pull --ff-only origin master` so local `master` matches `origin/master`.
+9. Report the completed merge, PR, conflict resolutions, merge commit, and test results.
 
 ## Downstream notes
 
 - `Path.mv` and `Path.cp` raise if the destination already exists unless the caller passes `overwrite: true`. They never nest a source inside an existing destination directory. Downstream callers that intentionally overwrite must pass `overwrite: true`.
 
 - Non-secret configuration moved from `.env.*` into the root `config.json`, which also absorbed `apps/config.json` (as `apps`) and `frontend/subdomains.json` (as `subdomains`). When merging this change, build the downstream `config.json` from the downstream's own `apps/config.json`, `subdomains.json`, and `.env.production` values instead of keeping Code Moto's, and set `database` to the downstream database name without its `_development`/`_production` suffix. `.env.*` files keep secrets plus the identifiers issued or rotated with them (Apple team/issuer/key IDs, deploy user and SSH public key/fingerprint, backup bucket/endpoint, dashboard username) and always set `RAILS_ENV`/`NODE_ENV`; `.env.default` is their template. Tell the user which settings keys they can remove from their local `.env.*` files.
-- `secrets` in `config.json` holds the 1Password `op://` references that `mise manager:secrets` pulls `.env.development` and `.env.production` from. Never keep Code Moto's references in a downstream repo: set them to the downstream's own secure notes, or blank them.
+- `secrets` in `config.json` holds the 1Password `op://` references that `mise manager:secrets` pulls as `.env.<key>` for every key (Code Moto defaults are `development` and `production`). Never keep Code Moto's references in a downstream repo. Always set them to this repo's own notes using `op://Projects/<App Name> Development/notesPlain` and `op://Projects/<App Name> Production/notesPlain`, where `<App Name>` is the title-cased app name (for example `Scamp Micro Deck`). Set the references even if the 1Password notes do not exist yet. Do not leave them blank.
 - Mobile app publishing moved from `deploy/` into the standalone `publish/` package (`lib/apps*`, `patches/apps/*` flattened into `publish/patches/`, and `publish.rb`, `approved_version.rb`, `set_version.rb`, `simulate.rb`). Move downstream changes to those files into `publish/`. The tasks are now `mise publish`, `publish:stop_before_prepare`, `publish:stop_before_submit`, `publish:approved_version`, `publish:set_version`, and `publish:simulate`. `mise secrets` is now `mise manager:secrets`, `deploy:spawn` is `manager:spawn` (code in `manager/lib/spawn.rb`), `manager:sync`/`manager:syncall` are `manager:linear_sync`/`manager:linear_syncall`, `merge` is `manager:merge` and `xcode` is `publish:xcode` (both keep their aliases), multi-line task bodies moved into `scripts/mise/`, and `manager:watch` and the `update` tasks are gone; use the `upgrade` skill instead. Update downstream task references to match.
 
 ## Piped mise tasks
@@ -45,5 +46,5 @@ When running for a Linear card, finish the card here instead of sending it to `r
 
 - Comment with the recovery point as soon as `mise merge` prints it.
 - Link the PR to the card.
-- On success, comment with the PR, merge commit, conflict resolutions, and test results, then move the card to `completed`.
+- On success, comment with the PR, merge commit, conflict resolutions, and test results, fast-forward the main checkout `master` as in workflow step 8, then move the card to `completed`.
 - When blocked, comment with the blocker and the recovery point, then move the card to `planned`.
