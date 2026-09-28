@@ -67,7 +67,7 @@
 				CODE_SIGN_ENTITLEMENTS = "App/Config/App-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.8.7;
+				CURRENT_PROJECT_VERSION = 1.8.8;
 				DEVELOPMENT_TEAM = 3QCHM255VF;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -85,7 +85,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.8.7;
+				MARKETING_VERSION = 1.8.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grahamotte.scamp;
 				PRODUCT_NAME = "Scamp Micro Deck";
 				REGISTER_APP_GROUPS = YES;
@@ -108,7 +108,7 @@
 				CODE_SIGN_ENTITLEMENTS = "App/Config/App-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.8.7;
+				CURRENT_PROJECT_VERSION = 1.8.8;
 				DEVELOPMENT_TEAM = 3QCHM255VF;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -126,7 +126,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.8.7;
+				MARKETING_VERSION = 1.8.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grahamotte.scamp;
 				PRODUCT_NAME = "Scamp Micro Deck";
 				REGISTER_APP_GROUPS = YES;
