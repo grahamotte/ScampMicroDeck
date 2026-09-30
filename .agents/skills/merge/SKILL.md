@@ -18,7 +18,7 @@ Check and report every item. Do not stop after the first failure. Abort the merg
 
 ## Workflow
 
-1. Run `mise merge <branch>`. It checks out the merge branch, creating it from `origin/master` if needed, prints the merge recovery point, and merges Code Moto's `master`. Report the recovery point.
+1. Run `mise merge <branch>`. It uses the `codemoto` remote for the basis repository and migrates a legacy `upstream` remote only when its URL points to Code Moto. Unrelated `upstream` remotes are preserved. It checks out the merge branch, creating it from `origin/master` if needed, prints the merge recovery point, and merges Code Moto's `master`. Report the recovery point.
 2. If it stops with conflicts, inspect the output and repository state. Resolve every conflict, stage the resolutions, and run `GIT_EDITOR=true git merge --continue`. Repeat until the merge finishes.
 3. Preserve the intent of both Code Moto and downstream changes. Keep `AGENTS.md` **Repo Specific** and app-specific skills. Inspect surrounding code, history, and tests when a resolution is not obvious.
 4. Ask the user only when there is genuine ambiguity with materially different valid outcomes, or progress requires information or authority only they can provide. Explain the exact decision needed; do not stop merely because a conflict or failure occurred.
