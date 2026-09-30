@@ -112,8 +112,83 @@ class LinearTest < Minitest::Test
     creates = calls.select { |call| graphql?(call, "mutation IssueLabelCreate") }.map { |call| call.dig(:payload, :variables, :input) }
     assert_equal Linear::TAGS.map { |tag| { teamId: "team-1", **tag } }, creates
     assert_includes output, "created working tag"
+    assert_includes creates, { teamId: "team-1", name: "skip review", color: "#4cb782" }
+    assert_includes output, "created skip review tag"
     assert_includes output, "created variant: high tag"
     assert_includes output, "created model: xai/grok-4.7 tag"
+  end
+
+  def test_sync_tags_renames_interactive_in_place_without_removing_assignments
+    tags = synced_tags.map do |tag|
+      tag[:name] == "runner: interactive" ? tag.merge(id: "existing-interactive", name: "interactive") : tag
+    end
+    calls = stub_linear(tags:)
+
+    output, = capture_io { Linear.sync_tags }
+
+    updates = calls.select { |call| graphql?(call, "mutation IssueLabelUpdate") }
+    assert_equal [ { id: "existing-interactive", input: { name: "runner: interactive" } } ], updates.map { |call| call.dig(:payload, :variables) }
+    assert_empty calls.select { |call| graphql?(call, "mutation IssueLabelCreate") || graphql?(call, "mutation IssueLabelDelete") }
+    assert_includes output, "renamed interactive to runner: interactive"
+  end
+
+  def test_sync_tags_rejects_conflicting_interactive_labels_before_mutating
+    calls = stub_linear(tags: synced_tags + [ { id: "legacy", name: "interactive", team: { id: "team-1" } } ])
+
+    error = assert_raises(RuntimeError) { Linear.sync_tags }
+
+    assert_includes error.message, "Merge the interactive and runner: interactive labels"
+    assert_empty calls.select { |call| graphql?(call, "mutation") }
+  end
+
+  def test_sync_tags_removes_unknown_team_and_workspace_tags
+    calls = stub_linear(tags: synced_tags + [
+      { id: "old", name: "old model", team: { id: "team-1" } },
+      { id: "shared", name: "shared", team: nil },
+      { id: "other", name: "other team", team: { id: "team-2" } },
+    ])
+
+    output, = capture_io { Linear.sync_tags }
+
+    deletes = calls.select { |call| graphql?(call, "mutation IssueLabelDelete") }
+    assert_equal [ "old", "shared" ], deletes.map { |call| call.dig(:payload, :variables, :id) }
+    assert_includes output, "removed old model tag"
+  end
+
+  def test_sync_tags_matches_names_case_insensitively
+    calls = stub_linear(tags: synced_tags.map { |tag| tag.merge(name: tag[:name].upcase) })
+
+    output, = capture_io { Linear.sync_tags }
+
+    assert_empty calls.select { |call| graphql?(call, "mutation") }
+    assert_equal "", output
+  end
+
+  def test_sync_tags_paginates_before_removing_unknown_tags
+    calls = stub_linear
+    pages = [
+      { nodes: synced_tags, pageInfo: { hasNextPage: true, endCursor: "next" } },
+      { nodes: [ { id: "old", name: "old", team: { id: "team-1" } } ], pageInfo: { hasNextPage: false } },
+    ]
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "query Tags")
+
+      calls << opts
+      true
+    end.returns(*pages.map { |page| { data: { team: { labels: page } } } })
+
+    capture_io { Linear.sync_tags }
+
+    queries = calls.select { |call| graphql?(call, "query Tags") }
+    assert_equal [ { teamId: "team-1" }, { teamId: "team-1", after: "next" } ], queries.map { |call| call.dig(:payload, :variables) }.uniq
+    assert calls.any? { |call| graphql?(call, "mutation IssueLabelDelete") && call.dig(:payload, :variables, :id) == "old" }
+  end
+
+  def test_runner_from_label_and_missing_runner
+    assert_equal "t3", Linear.runner({ labels: { nodes: [ { name: "Runner: t3" } ] } })
+    assert_nil Linear.runner({})
+    assert_nil Linear.runner({ labels: { nodes: [ { name: "runner:" } ] } })
   end
 
   def test_sync_tags_is_noop_when_already_synced
@@ -243,7 +318,7 @@ class LinearTest < Minitest::Test
     assert_equal "#26b5ce", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :color)
     assert_equal "Completed", updates.find { |variables| variables[:id] == "s-done" }.dig(:input, :name)
     assert_equal [ "Working", "Review", "Approved" ], creates.map { |input| input[:name] }
-    assert_equal [ 3.0, 4.0, 5.0 ], creates.map { |input| input[:position] }
+    assert_equal [ 1000.0, 2000.0, 3000.0 ], creates.map { |input| input[:position] }
     refute updates.any? { |variables| variables.dig(:input, :position).present? }
     assert_equal [ "s-groom" ], archives
     assert_includes output, "renamed Todo to Planned"
@@ -294,17 +369,49 @@ class LinearTest < Minitest::Test
   end
 
   def test_sync_statuses_reorders_started_group
-    calls = stub_linear(states: ranked_started_states(ready: 0.0, working: 3000.0, review: 2000.0, approved: 1000.0))
+    states = ranked_started_states(ready: 0.0, working: 3000.0, review: 2000.0, approved: 1000.0)
+    states << { id: "s-dup", name: "Duplicate", type: "duplicate", color: "#95a2b3", position: 9000.0 }
+    calls = stub_linear(states:)
 
     output, = capture_io { Linear.sync_statuses }
 
     updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
     assert_equal [
-      { id: "s-working", input: { position: 1.0 } },
-      { id: "s-review", input: { position: 2.0 } },
-      { id: "s-approved", input: { position: 3.0 } },
+      { id: "s-ready", input: { position: 10000.0 } },
+      { id: "s-working", input: { position: 11000.0 } },
+      { id: "s-review", input: { position: 12000.0 } },
+      { id: "s-approved", input: { position: 13000.0 } },
     ], updates
     assert_equal "", output
+  end
+
+  def test_sync_statuses_reorders_tied_positions
+    calls = stub_linear(states: ranked_started_states(ready: 0.0, working: 0.0, review: 0.0, approved: 0.0))
+
+    capture_io { Linear.sync_statuses }
+
+    updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
+    assert_equal [
+      { id: "s-ready", input: { position: 1000.0 } },
+      { id: "s-working", input: { position: 2000.0 } },
+      { id: "s-review", input: { position: 3000.0 } },
+      { id: "s-approved", input: { position: 4000.0 } },
+    ], updates
+  end
+
+  def test_sync_statuses_clears_descriptions
+    states = synced_states.map do |status|
+      description = status[:name] == "Ready" ? "Pull request is being reviewed" : ""
+      status.merge(description:)
+    end
+    calls = stub_linear(states:)
+
+    capture_io { Linear.sync_statuses }
+
+    updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
+    assert_equal Linear::STATUSES.map { |status|
+      { id: "s-#{status[:name].downcase}", input: { description: nil } }
+    }, updates
   end
 
   def test_sync_statuses_uses_token_workspace_and_team
@@ -507,6 +614,13 @@ class LinearTest < Minitest::Test
       calls << opts
       true
     end.returns({ data: { issueLabelUpdate: { success: true } } })
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "mutation IssueLabelDelete")
+
+      calls << opts
+      true
+    end.returns({ data: { issueLabelDelete: { success: true } } })
     Req.stubs(:call).with do |*args, **kwargs|
       opts = req_opts(args, kwargs)
       next false unless graphql?(opts, "query GitAutomationStates")

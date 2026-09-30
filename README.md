@@ -14,18 +14,63 @@ Scamp Micro Deck is a native macOS music player for local folders of audio files
 </p>
 <!-- markdownlint-enable MD033 -->
 
+This repository is based on Code Moto. It keeps its own Git history and configuration, and merges foundation updates with the merge skill. Code Moto brings a Rails API, a React website, native Apple apps, and project tooling into one checkout so projects can share the same development, testing, deployment, and release workflow.
+
+## What's included
+
+- **App:** A Swift macOS player for local audio folders, with simulator and Mac App Store publishing tools.
+- **Backend:** Ruby on Rails with PostgreSQL and GoodJob background jobs.
+- **Frontend:** React, TypeScript, Vite, and Tailwind CSS, with separate sites for configured subdomains.
+- **Operations:** Server provisioning and deployment, backups, and shared Ruby gems.
+- **Agent workflow:** A manager that picks up Linear cards, launches coding agents in Git worktrees, and merges approved pull requests.
+
+## Local development
+
+Install mise and PostgreSQL, and have PostgreSQL running locally. Apple app development and tests also require macOS with Xcode.
+
+1. Run `mise install` to install the tool versions pinned in `mise.toml`.
+2. Create `.env.development` and `.env.production` from `.env.default` and fill in the required values. Existing projects with configured 1Password references can use `mise manager:secrets` with a service account instead.
+3. Run `mise dependencies` to install project dependencies.
+4. Run `mise db:migrate` to prepare the development database.
+5. Run `mise start` to start the API, background jobs, and frontend sites. It prints the local URLs; the API runs at `http://localhost:3000`.
+
+Non-secret project settings live in `config.json`, including the domain, GitHub repository, database name, subdomains, agent defaults, and app release details. Credentials live in the gitignored `.env.*` files.
+
+## Common commands
+
+| Command | Purpose |
+| --- | --- |
+| `mise test` | Run all test suites, including frontend type checking |
+| `mise tsc` | Type-check the frontend |
+| `mise console` | Open the Rails development console |
+| `mise simulate macos` | Build and launch the macOS app |
+| `mise xcode` | Open the Apple app project |
+| `mise publish:set_version 1.5.0` | Update release and Xcode versions |
+| `mise publish` | Archive, upload, submit, notarize, and publish a release |
+| `mise manager:trigger` | Process eligible cards for the configured Linear team |
+
+`mise publish` uses the App Store Connect, signing certificate, Codeberg, and GitHub credentials in the ignored `.env.production` file.
+
+Deployment, upstream merges, and publishing follow the card and pull request workflow described in [AGENTS.md](AGENTS.md), using the corresponding skills in [.agents/skills](.agents/skills).
+
+## Repository guide
+
+| Directory | Contents |
+| --- | --- |
+| `apps/` | Native macOS app and screenshots |
+| `backend/` | Rails API and background jobs |
+| `frontend/` | React sites and shared frontend code |
+| `gems/` | Shared Ruby libraries |
+| `deploy/` | Infrastructure and deployment tooling |
+| `publish/` | App versioning, simulation, and publishing |
+| `manager/` | Linear workflow, agent runners, and project creation |
+| `scripts/` | Scripts behind mise tasks |
+
+See [manager runners and labels](docs/manager.md) for agent configuration, [Apple credentials](docs/apple-credentials.md) for publishing setup, and [AGENTS.md](AGENTS.md) for contribution rules.
+
 ## Contributing
 
 Issues and PRs welcome.
-
-Tools:
-
-- `mise test` - run the full test suite
-- `mise simulate macos` - build and launch the macOS app
-- `mise publish:set_version 1.5.0` - update release and Xcode versions
-- `mise publish` - archive, upload, submit, notarize, and publish a release
-
-`mise publish` uses the App Store Connect, signing certificate, Codeberg, and GitHub credentials in the ignored `.env.production` file.
 
 ## License
 

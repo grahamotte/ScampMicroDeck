@@ -12,12 +12,25 @@ class Linear
   ].freeze
   TAGS = [
     { name: "working", color: "#f2c94c" },
-    { name: "interactive", color: "#bb87fc" },
+    { name: "skip review", color: "#4cb782" },
+    { name: "runner: interactive", color: "#bb87fc" },
+    { name: "runner: openchamber", color: "#bb87fc" },
+    { name: "runner: t3", color: "#bb87fc" },
     { name: "variant: low", color: "#4cb782" },
     { name: "variant: medium", color: "#4cb782" },
     { name: "variant: high", color: "#4cb782" },
     { name: "variant: xhigh", color: "#4cb782" },
+    { name: "variant: max", color: "#4cb782" },
+    { name: "variant: ultra", color: "#4cb782" },
+    { name: "variant: ultrathink", color: "#4cb782" },
+    { name: "model: openai/gpt-6.1-sol", color: "#26b5ce" },
+    { name: "model: openai/gpt-6-astra", color: "#26b5ce" },
+    { name: "model: anthropic/claude-opus-5-5", color: "#26b5ce" },
+    { name: "model: anthropic/claude-sonnet-5-5", color: "#26b5ce" },
     { name: "model: xai/grok-4.7", color: "#26b5ce" },
+    { name: "model: google/gemini-3.1-pro", color: "#26b5ce" },
+    { name: "model: cursor/composer-2.5", color: "#26b5ce" },
+    { name: "model: cursor/grok-4.7", color: "#26b5ce" },
   ].freeze
 
   class << self
@@ -88,6 +101,10 @@ class Linear
       item.fetch(:url)
     end
 
+    def runner(item)
+      labeled(item, "runner")
+    end
+
     def model(item)
       labeled(item, "model")
     end
@@ -99,7 +116,7 @@ class Linear
     def sync_statuses
       current = state_nodes
       used_ids = []
-      live = []
+      floor = current.map { |state| state[:position].to_f }.max || -1000.0
 
       STATUSES.each do |want|
         existing = match_state(current, want, used_ids)
@@ -108,19 +125,13 @@ class Linear
           input = {}
           input[:name] = want[:name] if existing[:name] != want[:name]
           input[:color] = want[:color] if existing[:color] != want[:color]
+          input[:description] = nil if existing[:description].is_a?(String)
           if input.present?
             graphql(STATE_UPDATE_MUTATION, { id: existing.fetch(:id), input: })
             puts "renamed #{existing[:name]} to #{want[:name]}" if input[:name].present?
           end
-          live << {
-            id: existing.fetch(:id),
-            name: want[:name],
-            type: want[:type],
-            position: existing[:position],
-          }
         else
-          previous = live.reverse.find { |item| item[:type] == want[:type] }
-          position = previous.blank? ? 0.0 : previous[:position].to_f + 1.0
+          floor = next_position(floor)
           graphql(
             STATE_CREATE_MUTATION,
             {
@@ -129,12 +140,11 @@ class Linear
                 name: want[:name],
                 type: want[:type],
                 color: want[:color],
-                position:,
+                position: floor,
               },
             },
           )
           puts "created #{want[:name]}"
-          live << { name: want[:name], type: want[:type], position: }
         end
       end
 
@@ -150,19 +160,30 @@ class Linear
         end
       end
 
-      sync_status_positions(live)
+      sync_status_positions(state_nodes)
 
       @states = nil
     end
 
     def sync_tags
       current = tag_nodes
+      legacy = current.find { |tag| tag[:name].to_s.casecmp?("interactive") }
+      if legacy.present? && current.any? { |tag| tag[:name].to_s.casecmp?("runner: interactive") }
+        raise "Merge the interactive and runner: interactive labels before syncing"
+      end
+      used_ids = []
       TAGS.each do |want|
         existing = current.find { |tag| tag[:name].to_s.downcase == want[:name].downcase }
+        existing ||= legacy if want[:name] == "runner: interactive"
         if existing
-          next if existing[:color] == want[:color]
+          used_ids << existing.fetch(:id)
+          input = {}
+          input[:name] = want[:name] unless existing[:name].to_s.casecmp?(want[:name])
+          input[:color] = want[:color] if existing[:color] != want[:color]
+          next if input.blank?
 
-          graphql(TAG_UPDATE_MUTATION, { id: existing.fetch(:id), input: { color: want[:color] } })
+          graphql(TAG_UPDATE_MUTATION, { id: existing.fetch(:id), input: })
+          puts "renamed #{existing[:name]} to #{want[:name]}" if input[:name].present?
         else
           graphql(
             TAG_CREATE_MUTATION,
@@ -176,6 +197,14 @@ class Linear
           )
           puts "created #{want[:name]} tag"
         end
+      end
+      current.each do |tag|
+        next if used_ids.include?(tag.fetch(:id))
+        next if TAGS.any? { |want| want[:name].casecmp?(tag[:name].to_s) }
+        next if tag[:team].present? && tag.dig(:team, :id) != team_id
+
+        graphql(TAG_DELETE_MUTATION, { id: tag.fetch(:id) })
+        puts "removed #{tag[:name]} tag"
       end
       @tags = nil
     end
@@ -227,6 +256,7 @@ class Linear
               name
               type
               color
+              description
               position
             }
           }
@@ -302,13 +332,20 @@ class Linear
     GQL
 
     TAGS_QUERY = <<~GQL
-      query Tags($teamId: String!) {
+      query Tags($teamId: String!, $after: String) {
         team(id: $teamId) {
-          labels {
+          labels(first: 100, after: $after) {
             nodes {
               id
               name
               color
+              team {
+                id
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
             }
           }
         }
@@ -326,6 +363,14 @@ class Linear
     TAG_UPDATE_MUTATION = <<~GQL
       mutation IssueLabelUpdate($id: String!, $input: IssueLabelUpdateInput!) {
         issueLabelUpdate(id: $id, input: $input) {
+          success
+        }
+      }
+    GQL
+
+    TAG_DELETE_MUTATION = <<~GQL
+      mutation IssueLabelDelete($id: String!) {
+        issueLabelDelete(id: $id) {
           success
         }
       }
@@ -407,7 +452,17 @@ class Linear
     end
 
     def tag_nodes
-      graphql(TAGS_QUERY, { teamId: team_id }).fetch(:team).fetch(:labels).fetch(:nodes)
+      nodes = []
+      after = nil
+      loop do
+        page = graphql(TAGS_QUERY, { teamId: team_id, after: }.compact).fetch(:team).fetch(:labels)
+        nodes.concat(page.fetch(:nodes))
+        break unless page.dig(:pageInfo, :hasNextPage)
+
+        after = page.dig(:pageInfo, :endCursor)
+        raise "Linear labels pagination cursor is missing" if after.blank?
+      end
+      nodes
     end
 
     def git_automation_nodes
@@ -417,20 +472,27 @@ class Linear
         .fetch(:nodes)
     end
 
-    def sync_status_positions(live)
-      live.group_by { |item| item[:type] }.each_value do |items|
-        ordered = items.sort_by { |item| item[:position].to_f }
-        next if ordered.map { |item| item[:name] } == items.map { |item| item[:name] }
+    def sync_status_positions(states)
+      floor = states.map { |state| state[:position].to_f }.max || -1000.0
 
-        items.each_with_index do |item, index|
-          next if item[:id].blank?
+      STATUSES.group_by { |status| status[:type] }.each_value do |wants|
+        items = wants.filter_map do |want|
+          states.find do |state|
+            state[:name].to_s.downcase == want[:name].downcase && state[:type] == want[:type]
+          end
+        end
+        next unless items.length == wants.length
+        next if items.each_cons(2).all? { |left, right| left[:position].to_f < right[:position].to_f }
 
-          position = index.to_f
-          next if item[:position].to_f == position
-
-          graphql(STATE_UPDATE_MUTATION, { id: item[:id], input: { position: } })
+        items.each do |item|
+          floor = next_position(floor)
+          graphql(STATE_UPDATE_MUTATION, { id: item.fetch(:id), input: { position: floor } })
         end
       end
+    end
+
+    def next_position(floor)
+      (((floor / 1000.0).floor + 1) * 1000).to_f
     end
 
     def match_state(current, want, used_ids)

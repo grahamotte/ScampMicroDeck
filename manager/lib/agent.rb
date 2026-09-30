@@ -3,12 +3,15 @@ class Agent
   URL = "http://127.0.0.1:57123"
 
   class << self
-    def start(prompt, directory: ROOT, model: nil, variant: nil)
-      case Settings.all.dig(:agent, :runner)
+    def start(prompt, directory: ROOT, runner: nil, model: nil, variant: nil)
+      runner = Settings.all.dig(:agent, :runner) if runner.blank?
+      case runner
       when "openchamber"
         openchamber(prompt, directory, model:, variant:)
+      when "t3"
+        T3Runner.start(prompt, directory:, model:, variant:)
       else
-        raise "Unknown agent runner #{Settings.all.dig(:agent, :runner)}"
+        raise "Unknown agent runner #{runner}"
       end
     end
 

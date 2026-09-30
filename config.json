@@ -51,8 +51,8 @@
     "team": "SMD"
   },
   "agent": {
-    "runner": "openchamber",
-    "model": "xai/grok-4.7",
+    "runner": "t3",
+    "model": "openai/gpt-6.1-sol",
     "variant": "medium"
   },
   "apps": {

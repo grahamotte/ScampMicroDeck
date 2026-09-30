@@ -16,6 +16,7 @@ class TriggerTest < Minitest::Test
       [
         { stateId: "s-working" },
         { addedLabelIds: [ "l-working" ] },
+        *default_label_inputs,
       ],
       issue_update_inputs(calls),
     )
@@ -28,9 +29,13 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt, "You may edit existing commits or add new ones."
     assert_includes prompt, "Open a GitHub PR with `gh pr create` using `GITHUB_TOKEN`"
-    assert_includes prompt, "Comment on the card describing what you did"
+    assert_includes prompt, "Comment on the card with a brief summary of what changed and a short fenced pseudocode block showing how the change works at a high level."
+    assert_includes prompt, "Use named components and indentation to show the flow of inputs, key decisions, and results."
+    assert_includes prompt, "Keep it structural and concise; do not explain the flow in paragraphs or include low-level implementation details."
     assert_includes prompt, "Remove the working tag"
     assert_includes prompt, "Move the card to review"
+    refute_includes prompt, "Merge the linked PR immediately"
+    refute_includes prompt, "remove only this card's worktree"
     assert_includes prompt, "Move the card to planned"
     assert_includes prompt, "If the card names a skill, follow it; where the skill says how to finish the card, do that instead of steps 5 and 6, then remove the working tag. Step 7 still applies."
     assert_includes prompt, "If you spent significant time unnecessarily or the instructions misdirected you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog for a matching card first."
@@ -39,8 +44,45 @@ class TriggerTest < Minitest::Test
     refute_includes prompt, "Open a worktree."
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-2") }
     assert_equal Worktree.path_for({ identifier: "MOTO-1" }), directory_for(calls, "MOTO-1")
-    assert_equal "xai/grok-4.7", session_for(calls, "MOTO-1").fetch(:model)
+    assert_equal "openai/gpt-6.1-sol", session_for(calls, "MOTO-1").fetch(:model)
     assert_equal "high", session_for(calls, "MOTO-1").fetch(:variant)
+  end
+
+  def test_skip_review_prompt_creates_pr_and_merges_before_completing_and_cleaning_up
+    calls = stub_manager(
+      items: [
+        {
+          id: "item-1",
+          identifier: "MOTO-1",
+          url: "https://linear.app/gotte/issue/MOTO-1",
+          state: { name: "Ready" },
+          labels: { nodes: [ { name: "Skip Review" } ] },
+        },
+      ],
+    )
+
+    capture_io { Trigger.call }
+
+    prompt = prompt_for(calls, "MOTO-1")
+    assert_includes prompt, "Open a GitHub PR with `gh pr create` using `GITHUB_TOKEN`"
+    assert_includes prompt, "Link the PR to the card"
+    assert_includes prompt, "Comment on the card with a brief summary"
+    assert_includes prompt, "This card has the `skip review` tag."
+    assert_includes prompt, "Merge the linked PR immediately with `gh pr merge` using `GITHUB_TOKEN`"
+    assert_includes prompt, "resolving conflicts and passing required checks first"
+    assert_includes prompt, "Verify that the PR is merged before completing the card or removing its worktree."
+    assert_includes prompt, "If the merge is blocked, follow step 6."
+    assert_includes prompt, "run `git pull --ff-only` there. Do not switch branches."
+    assert_includes prompt, "Move the card to completed"
+    assert_includes prompt, "Remove the working tag"
+    assert_includes prompt, "From the main checkout, remove only this card's worktree with `git worktree remove`."
+    assert_includes prompt, "Do this last, after all card updates and repository work are finished. Do not remove the main checkout."
+    assert_includes prompt, "where the skill says how to finish the card, do that instead of steps 5 and 6"
+    assert_includes prompt, "Move the card to planned"
+    refute_includes prompt, "Move the card to review"
+    assert_operator prompt.index("Link the PR to the card"), :<, prompt.index("Merge the linked PR immediately")
+    assert_operator prompt.index("Merge the linked PR immediately"), :<, prompt.index("Move the card to completed")
+    assert_operator prompt.index("Move the card to completed"), :<, prompt.index("remove only this card's worktree")
   end
 
   def test_starts_agent_with_model_and_variant_labels
@@ -68,6 +110,143 @@ class TriggerTest < Minitest::Test
     assert_equal "medium", session.fetch(:variant)
   end
 
+  def test_preserves_preset_labels_and_records_only_missing_defaults
+    calls = stub_manager(items: [
+      {
+        id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1",
+        state: { name: "Ready" },
+        labels: { nodes: [ { name: "runner: openchamber" }, { name: "model: anthropic/claude-sonnet-5-5" }, { name: "variant: medium" } ] },
+      },
+    ])
+
+    capture_io { Trigger.call }
+
+    assert_equal [ { stateId: "s-working" }, { addedLabelIds: [ "l-working" ] } ], issue_update_inputs(calls)
+    assert_equal "anthropic/claude-sonnet-5-5", session_for(calls, "MOTO-1")[:model]
+    assert_equal "medium", session_for(calls, "MOTO-1")[:variant]
+  end
+
+  def test_omits_blank_default_variant_tag
+    Settings.all[:agent][:variant] = ""
+    calls = stub_manager(items: [
+      { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { name: "Ready" } },
+    ])
+
+    capture_io { Trigger.call }
+
+    labels = issue_update_inputs(calls).filter_map { |input| input[:addedLabelIds] }.flatten
+    assert_equal [ "l-working", "l-runner: openchamber", "l-model: openai/gpt-6.1-sol" ], labels
+    refute session_for(calls, "MOTO-1").key?(:variant) && session_for(calls, "MOTO-1")[:variant].present?
+  end
+
+  def test_preset_t3_runner_reaches_t3_transport
+    calls = stub_manager(items: [
+      {
+        id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { name: "Ready" },
+        labels: { nodes: [ { name: "runner: t3" }, { name: "model: openai/gpt-6.1-sol" } ] },
+      },
+    ])
+    home = File.join(@worktree_test_dir, "t3")
+    FileUtils.mkdir_p(File.join(home, "caches"))
+    File.write(File.join(home, "caches/codex.json"), JSON.generate(
+      instanceId: "codex", enabled: true, status: "ready",
+      models: [ { slug: "gpt-6.1-sol", capabilities: { optionDescriptors: [ { id: "reasoningEffort", options: [ { id: "high" } ] } ] } } ],
+    ))
+    Settings.all[:agent][:t3] = { home:, command: [ "t3" ] }
+    status = Object.new
+    status.define_singleton_method(:success?) { true }
+    Open3.stubs(:capture3).with { |*args| args[1] == "t3" }.returns([ JSON.generate(token: "token", sessionId: "session"), "", status ])
+    card_directory = Worktree.path_for({ identifier: "MOTO-1" })
+    Open3.stubs(:capture3).with do |*args, **kwargs|
+      args == [ "git", "worktree", "list", "--porcelain", "-z" ] && kwargs[:chdir] == File.realpath(card_directory)
+    end.returns([
+      "worktree #{Worktree.root}\0HEAD abc\0branch refs/heads/master\0\0worktree #{card_directory}\0HEAD def\0branch refs/heads/moto-1\0\0",
+      "", status,
+    ])
+    requests = []
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless opts[:url].start_with?("http://127.0.0.1:3773/")
+
+      requests << opts
+      true
+    end.returns({ projects: [], sequence: 1 })
+
+    capture_io { Trigger.call }
+
+    assert_equal [ { stateId: "s-working" }, { addedLabelIds: [ "l-working" ] }, { addedLabelIds: [ "l-variant: high" ] } ], issue_update_inputs(calls)
+    turn = requests.find { |item| item.dig(:payload, :type) == "thread.turn.start" }
+    assert_includes turn.dig(:payload, :message, :text), "MOTO-1"
+    assert_equal "codex", turn.dig(:payload, :modelSelection, :instanceId)
+    project = requests.find { |item| item.dig(:payload, :type) == "project.create" }
+    thread = requests.find { |item| item.dig(:payload, :type) == "thread.create" }
+    assert_equal File.realpath(Worktree.root), project.dig(:payload, :workspaceRoot)
+    assert_equal File.realpath(card_directory), thread.dig(:payload, :worktreePath)
+    assert_equal "moto-1", thread.dig(:payload, :branch)
+    assert_nil session_for(calls, "MOTO-1")
+  end
+
+  def test_merges_approved_card_without_starting_agent
+    calls = stub_manager(items: [
+      { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { name: "Approved" } },
+    ])
+    stub_automatic_merge
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "updated master\nmerged MOTO-3\n", output
+    assert_equal [ { addedLabelIds: [ "l-working" ] }, { stateId: "s-completed" }, { removedLabelIds: [ "l-working" ] } ], issue_update_inputs(calls)
+    assert_nil session_for(calls, "MOTO-3")
+    assert_includes git_commands, [ "gh", "pr", "merge", "https://github.com/grahamotte/codemoto.org/pull/3", "--repo", "grahamotte/codemoto.org", "--merge", "--match-head-commit", "abc" ]
+    assert_includes git_commands, [ "git", "pull", "--ff-only", "origin", "master" ]
+  end
+
+  def test_completes_automatic_merge_without_pulling_dirty_checkout
+    calls = stub_manager(items: [
+      { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { name: "Approved" } },
+    ])
+    stub_automatic_merge
+    Open3.stubs(:capture3).with("git", "status", "--porcelain", chdir: Worktree.root).returns([ " M file.rb", "", Struct.new(:success?).new(true) ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "merged MOTO-3\n", output
+    assert_includes issue_update_inputs(calls), { stateId: "s-completed" }
+    refute git_commands.any? { |command| command[1] == "pull" }
+    assert_nil session_for(calls, "MOTO-3")
+  end
+
+  def test_falls_back_when_main_checkout_cannot_be_updated
+    calls = stub_manager(items: [
+      { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { name: "Approved" } },
+    ])
+    stub_automatic_merge
+    Open3.stubs(:capture3).with("git", "pull", "--ff-only", "origin", "master", chdir: Worktree.root).returns([ "", "diverged", Struct.new(:success?).new(false) ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_includes output, "diverged"
+    refute_includes issue_update_inputs(calls), { stateId: "s-completed" }
+    assert session_for(calls, "MOTO-3").present?
+  end
+
+  def test_falls_back_to_agent_when_automatic_merge_command_fails
+    calls = stub_manager(items: [
+      { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { name: "Approved" } },
+    ])
+    Open3.stubs(:capture3).with("mise", "linear", "issues", "read", "MOTO-3", "--with-attachments", chdir: Worktree.root).returns([
+      "", "could not read card", Struct.new(:success?).new(false),
+    ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_includes output, "automatic merge failed for MOTO-3:"
+    assert_includes output, "could not read card"
+    assert_includes output, "merging MOTO-3"
+    assert_equal [ { addedLabelIds: [ "l-working" ] }, *default_label_inputs ], issue_update_inputs(calls)
+    assert session_for(calls, "MOTO-3").present?
+  end
+
   def test_starts_merge_agent_for_approved_cards
     calls = stub_manager(
       items: [
@@ -79,7 +258,7 @@ class TriggerTest < Minitest::Test
 
     assert_equal "merging MOTO-3\n", output
     assert_equal(
-      [ { addedLabelIds: [ "l-working" ] } ],
+      [ { addedLabelIds: [ "l-working" ] }, *default_label_inputs ],
       issue_update_inputs(calls),
     )
     prompt = prompt_for(calls, "MOTO-3")
@@ -147,6 +326,7 @@ class TriggerTest < Minitest::Test
       [
         { stateId: "s-working" },
         { addedLabelIds: [ "l-working" ] },
+        *default_label_inputs,
         { removedLabelIds: [ "l-working" ] },
         { stateId: "s-ready" },
       ],
@@ -175,6 +355,7 @@ class TriggerTest < Minitest::Test
     assert_equal(
       [
         { addedLabelIds: [ "l-working" ] },
+        *default_label_inputs,
         { removedLabelIds: [ "l-working" ] },
       ],
       issue_update_inputs(calls),
@@ -344,7 +525,7 @@ class TriggerTest < Minitest::Test
     output, = capture_io { Trigger.call }
 
     assert_equal "started working on MOTO-1\nmerging MOTO-3\n", output
-    assert_equal 3, calls.count { |call| graphql?(call, "mutation IssueUpdate") }
+    assert_equal 9, calls.count { |call| graphql?(call, "mutation IssueUpdate") }
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-8") }
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-9") }
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-10") }
@@ -366,7 +547,7 @@ class TriggerTest < Minitest::Test
     output, = capture_io { Trigger.call }
 
     assert_equal "started working on MOTO-1\nmerging MOTO-3\n", output
-    assert_equal 3, calls.count { |call| graphql?(call, "mutation IssueUpdate") }
+    assert_equal 9, calls.count { |call| graphql?(call, "mutation IssueUpdate") }
     assert_includes prompt_for(calls, "MOTO-1"), "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
     assert_includes prompt_for(calls, "MOTO-1"), "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt_for(calls, "MOTO-3"), "Rebase the GitHub PR on the card."
@@ -405,10 +586,21 @@ class TriggerTest < Minitest::Test
     assert_equal path, directory_for(calls, "MOTO-3")
   end
 
+  def test_skips_legacy_interactive_cards_before_label_migration
+    calls = stub_manager(items: [
+      { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { name: "Ready" }, labels: { nodes: [ { name: "interactive" } ] } },
+    ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "", output
+    assert_empty issue_update_inputs(calls)
+  end
+
   def test_skips_interactive_cards_in_ready
     calls = stub_manager(
       items: [
-        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" }, labels: { nodes: [ { id: "l-interactive", name: "interactive" } ] } },
+        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" }, labels: { nodes: [ { id: "l-interactive", name: "runner: interactive" } ] } },
         { id: "item-2", identifier: "MOTO-2", url: "https://linear.app/gotte/issue/MOTO-2", state: { id: "s-ready", name: "Ready" } },
       ],
     )
@@ -423,7 +615,7 @@ class TriggerTest < Minitest::Test
   def test_skips_ready_column_when_all_cards_are_interactive
     calls = stub_manager(
       items: [
-        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" }, labels: { nodes: [ { id: "l-interactive", name: "interactive" } ] } },
+        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" }, labels: { nodes: [ { id: "l-interactive", name: "RUNNER: INTERACTIVE" } ] } },
       ],
     )
 
@@ -436,7 +628,7 @@ class TriggerTest < Minitest::Test
   def test_merges_interactive_cards_when_approved
     calls = stub_manager(
       items: [
-        { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { id: "s-approved", name: "Approved" }, labels: { nodes: [ { id: "l-interactive", name: "interactive" } ] } },
+        { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { id: "s-approved", name: "Approved" }, labels: { nodes: [ { id: "l-interactive", name: "Runner: Interactive" } ] } },
       ],
     )
 
@@ -444,6 +636,9 @@ class TriggerTest < Minitest::Test
 
     assert_equal "merging MOTO-3\n", output
     assert_includes prompt_for(calls, "MOTO-3"), "This Linear issue is approved: https://linear.app/gotte/issue/MOTO-3"
+    assert_equal "openai/gpt-6.1-sol", session_for(calls, "MOTO-3")[:model]
+    labels = issue_update_inputs(calls).filter_map { |input| input[:addedLabelIds] }.flatten
+    assert_equal [ "l-working", "l-model: openai/gpt-6.1-sol", "l-variant: high" ], labels
   end
 
   def test_skips_cards_with_working_tag
@@ -459,7 +654,7 @@ class TriggerTest < Minitest::Test
     assert_equal "merging MOTO-9\n", output
     refute calls.any? { |call| call[:prompt].to_s.include?("MOTO-3") }
     assert_equal(
-      [ { addedLabelIds: [ "l-working" ] } ],
+      [ { addedLabelIds: [ "l-working" ] }, *default_label_inputs ],
       issue_update_inputs(calls),
     )
     assert_equal "item-9", calls.find { |call| graphql?(call, "mutation IssueUpdate") }.dig(:payload, :variables, :id)
@@ -509,6 +704,7 @@ class TriggerTest < Minitest::Test
       end
       true
     end.returns([ "", "", ok ])
+    Open3.stubs(:capture3).with("mise", "linear", "issues", "read", anything, "--with-attachments", chdir: Worktree.root).returns([ JSON.generate(attachments: { nodes: [] }), "", ok ])
     Open3.stubs(:capture3).with("git", "branch", "--show-current", chdir: Worktree.root).returns([ "master\n", "", ok ])
     Open3.stubs(:capture3).with("git", "status", "--porcelain", chdir: Worktree.root).returns([ "", "", ok ])
     Req.stubs(:call).with do |*args, **kwargs|
@@ -553,6 +749,7 @@ class TriggerTest < Minitest::Test
                 { id: "s-working", name: "Working", type: "started" },
                 { id: "s-planned", name: "Planned", type: "unstarted" },
                 { id: "s-approved", name: "Approved", type: "started" },
+                { id: "s-completed", name: "Completed", type: "completed" },
               ],
             },
           },
@@ -588,7 +785,7 @@ class TriggerTest < Minitest::Test
         data: {
           team: {
             labels: {
-              nodes: [ { id: "l-working", name: "working" } ],
+              nodes: Linear::TAGS.map { |tag| { id: "l-#{tag[:name]}", **tag } },
             },
           },
         },
@@ -602,6 +799,28 @@ class TriggerTest < Minitest::Test
       true
     end.returns({ data: { issueUpdate: { success: true } } })
     calls
+  end
+
+  def stub_automatic_merge
+    url = "https://github.com/grahamotte/codemoto.org/pull/3"
+    ok = Struct.new(:success?).new(true)
+    Open3.stubs(:capture3).with("mise", "linear", "issues", "read", "MOTO-3", "--with-attachments", chdir: Worktree.root).returns([
+      JSON.generate(attachments: { nodes: [ { url: } ] }), "", ok,
+    ])
+    pr = { state: "OPEN", baseRefName: "master", headRefOid: "abc", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN" }
+    Open3.stubs(:capture3).with("gh", "pr", "view", url, "--repo", "grahamotte/codemoto.org", "--json", "state,baseRefName,headRefOid,mergeable,mergeStateStatus", chdir: Worktree.root).returns(
+      [ JSON.generate(pr), "", ok ],
+      [ JSON.generate(pr.merge(state: "MERGED")), "", ok ],
+    )
+
+  end
+
+  def default_label_inputs
+    [
+      { addedLabelIds: [ "l-runner: openchamber" ] },
+      { addedLabelIds: [ "l-model: openai/gpt-6.1-sol" ] },
+      { addedLabelIds: [ "l-variant: high" ] },
+    ]
   end
 
   def issue_update_inputs(calls)
