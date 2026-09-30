@@ -18,7 +18,7 @@ class Trigger
 
         item = items.find do |candidate|
           next false if Linear.tagged?(candidate, WORKING)
-          next false if column == READY && Linear.tagged?(candidate, INTERACTIVE)
+          next false if column == READY && (Linear.tagged?(candidate, "runner: #{INTERACTIVE}") || Linear.tagged?(candidate, INTERACTIVE))
 
           true
         end
@@ -35,7 +35,10 @@ class Trigger
           end
           puts "started working on #{Linear.identifier(item)}"
         when APPROVED
-          start_agent(item, merge_prompt(item), directory: Worktree.directory(item))
+          Linear.tag(item, WORKING)
+          next if merge_approved(item)
+
+          start_agent(item, merge_prompt(item), tagged: true)
           puts "merging #{Linear.identifier(item)}"
         end
       end
@@ -57,14 +60,43 @@ class Trigger
       puts "failed to update master: #{error.message}"
     end
 
-    def start_agent(item, prompt, directory:)
-      Linear.tag(item, WORKING)
+    def merge_approved(item)
+      return false unless ApprovedMerge.call(item)
+
+      branch = Worktree.pull_master
+      puts "updated #{branch}" if branch.present?
+      Linear.move(item, COMPLETED)
+      Linear.untag(item, WORKING)
+      puts "merged #{Linear.identifier(item)}"
+      true
+    rescue StandardError => error
+      puts "automatic merge failed for #{Linear.identifier(item)}: #{error.message}"
+      false
+    end
+
+    def start_agent(item, prompt, directory: nil, tagged: false)
+      Linear.tag(item, WORKING) unless tagged
       begin
+        directory ||= Worktree.directory(item)
+        selections = {
+          runner: Linear.runner(item),
+          model: Linear.model(item),
+          variant: Linear.variant(item),
+        }
+        selections[:runner] = Settings.all.dig(:agent, :runner) if selections[:runner].to_s.casecmp?(INTERACTIVE)
+        selections.each do |key, value|
+          next if value.present?
+
+          default = Settings.all.dig(:agent, key)
+          next if default.blank?
+
+          Linear.tag(item, "#{key}: #{default}")
+          selections[key] = default
+        end
         Agent.start(
           prompt,
           directory:,
-          model: Linear.model(item),
-          variant: Linear.variant(item),
+          **selections,
         )
       rescue StandardError
         Linear.untag(item, WORKING)
@@ -73,6 +105,21 @@ class Trigger
     end
 
     def work_prompt(item)
+      completion = if Linear.tagged?(item, "skip review")
+        <<~PROMPT
+          - This card has the `skip review` tag. Merge the linked PR immediately with `gh pr merge` using `GITHUB_TOKEN`, resolving conflicts and passing required checks first. Verify that the PR is merged before completing the card or removing its worktree. If the merge is blocked, follow step 6.
+          - If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there. Do not switch branches.
+          - Move the card to completed
+          - Remove the working tag
+          - From the main checkout, remove only this card's worktree with `git worktree remove`. Do this last, after all card updates and repository work are finished. Do not remove the main checkout.
+        PROMPT
+      else
+        <<~PROMPT
+          - Remove the working tag
+          - Move the card to review
+        PROMPT
+      end
+
       <<~PROMPT
         Do this Linear issue: #{Linear.url(item)}
 
@@ -88,9 +135,8 @@ class Trigger
            - Commit
            - Open a GitHub PR with `gh pr create` using `GITHUB_TOKEN`
            - Link the PR to the card
-           - Comment on the card describing what you did
-           - Remove the working tag
-           - Move the card to review
+           - Comment on the card with a brief summary of what changed and a short fenced pseudocode block showing how the change works at a high level. Use named components and indentation to show the flow of inputs, key decisions, and results. Keep it structural and concise; do not explain the flow in paragraphs or include low-level implementation details.
+        #{completion.lines.map { |line| "   #{line}" }.join.rstrip}
         6. If the card is blocked or the change is not possible:
            - Comment on the card explaining why
            - Remove the working tag

@@ -54,7 +54,8 @@ Columns, in order: `Backlog`, `Planned`, `Ready`, `Working`, `Review`, `Approved
 Tags (pass them by id, not name, since Linearis does not resolve tag names per team):
 
 - `working`: the manager's agent is processing the card. Only add or remove it when a manager prompt tells you to.
-- `interactive`: the card is worked with the user instead of by the manager. The manager does not pick it up from `ready`, but still merges it from `approved`.
+- `skip review`: the manager's work agent still creates and links a PR, then merges it, completes the card, and removes its worktree without waiting for review.
+- `runner: interactive`: the card is worked with the user instead of by the manager. The manager does not pick it up from `ready`, but still merges it from `approved`.
 
 When the user hands you a Linear card, use the `interactive-card` skill, unless the prompt says the manager runs the card.
 

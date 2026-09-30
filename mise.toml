@@ -304,6 +304,7 @@ depends = ["dependencies:manager"]
 run = "cd manager && bundle exec ruby trigger_all.rb"
 
 [tasks."manager:linear_sync"]
+alias = ["manager:sync"]
 depends = ["dependencies:manager"]
 run = "cd manager && bundle exec ruby linear_sync.rb"
 

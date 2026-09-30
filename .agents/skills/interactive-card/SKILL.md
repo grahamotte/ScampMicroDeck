@@ -12,7 +12,7 @@ The card branch is the lowercased card identifier, for example `moto-1` for `MOT
 ## Start
 
 1. Read the card with `mise linear issues read <card> --with-comment-threads --with-attachments`.
-2. Tag the card `interactive`. The manager does not pick up `interactive` cards from `ready`.
+2. Tag the card `runner: interactive`. The manager does not pick up `runner: interactive` cards from `ready`.
 3. Move the card to `working`.
 4. Set up the checkout:
    - In a worktree (`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`), stay on its current branch. Copy the env files and `backend/db/schema.rb` from the main checkout if they are missing.
