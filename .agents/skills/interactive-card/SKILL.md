@@ -7,8 +7,6 @@ description: Work a Linear card interactively with the user and manage its lifec
 
 The manager does not drive this card. You manage the card and any PRs for repository changes while working with the user. Use the `mise linear` commands described in `AGENTS.md`. Reuse this card for the whole task, including its individual operations and steps.
 
-Do not assign users to cards when creating or working on them. Leave existing assignees unchanged.
-
 The card branch is the lowercased card identifier, for example `moto-1` for `MOTO-1`.
 
 ## Start

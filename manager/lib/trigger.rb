@@ -109,11 +109,14 @@ class Trigger
           model: Linear.model(item),
           variant: Linear.variant(item),
         }
-        selections[:runner] = Settings.all.dig(:agent, :runner) if selections[:runner].to_s.casecmp?(INTERACTIVE)
+        interactive = selections[:runner].to_s.casecmp?(INTERACTIVE)
+        selections[:runner] = nil if interactive
+        defaults = AgentSelection.resolve(**selections)
+        selections[:runner] = defaults[:runner] if interactive
         selections.each do |key, value|
           next if value.present?
 
-          default = Settings.all.dig(:agent, key)
+          default = defaults[key]
           next if default.blank?
 
           Linear.tag(item, "#{key}: #{default}")
@@ -151,8 +154,6 @@ class Trigger
 
         The manager runs this card. Do not use the `interactive-card` skill.
 
-        Do not assign users to cards when creating or working on them. Leave existing assignees unchanged.
-
         This may be a new card or a kickback with corrections in later comments. There may already be a worktree, commits, and a PR.
 
         1. This session is already in the card worktree. Env files and schema.rb were copied from the main checkout.
@@ -181,8 +182,6 @@ class Trigger
         The manager runs this card. Do not use the `interactive-card` skill.
 
         Approval of this card means its whole task is ready to finish. Read the card and all comments before merging. If they show remaining steps beyond the PR, record them and keep the card in working after the merge; do not complete it.
-
-        Do not assign users to cards when creating or working on them. Leave existing assignees unchanged.
 
         1. Rebase the GitHub PR on the card. Resolve merge conflicts.
         2. Merge the PR with `gh pr merge` using `GITHUB_TOKEN`.

@@ -20,20 +20,20 @@ class SettingsTest < Minitest::Test
     assert Settings.all.key?(:linear)
   end
 
-  def test_inherits_global_defaults_without_copying_other_global_settings
-    write_global(agentDefaults: { runner: "t3", model: "openai/gpt-6.1-sol", variant: "medium" }, "1passwordServiceAccountToken": "private-token")
+  def test_legacy_defaults_are_ignored_and_global_secrets_are_not_copied
+    write_global(agentDefaults: { runner: "t3", model: "legacy-model", variant: "medium" }, "1passwordServiceAccountToken": "private-token")
     File.write(Settings.path, JSON.generate(linear: { workspace: "local" }))
 
-    assert_equal({ runner: "t3", model: "openai/gpt-6.1-sol", variant: "medium" }, Settings.all[:agent])
+    assert_equal({}, Settings.all[:agent])
     assert_equal "local", Settings.all.dig(:linear, :workspace)
     refute Settings.all.key?(:"1passwordServiceAccountToken")
   end
 
-  def test_repository_overrides_preserve_blank_variant_and_runner_options
-    write_global(agentDefaults: { runner: "t3", model: "global-model", variant: "medium" })
+  def test_repository_settings_are_kept_separate_from_balanced_defaults
+    write_global(agentDefaultsBalance: [ { runner: "t3", model: "openai/gpt-6.1-sol", variant: "medium" } ])
     File.write(Settings.path, JSON.generate(agent: { variant: "", t3: { speed: "normal" } }))
 
-    assert_equal({ runner: "t3", model: "global-model", variant: "", t3: { speed: "normal" } }, Settings.all[:agent])
+    assert_equal({ variant: "", t3: { speed: "normal" } }, Settings.all[:agent])
   end
 
   def test_missing_global_config_preserves_local_settings
@@ -84,12 +84,31 @@ class SettingsTest < Minitest::Test
     assert_includes error.message, "must be an object"
   end
 
-  def test_agent_defaults_require_an_object
-    write_global(agentDefaults: "private-invalid-value")
+  def test_balanced_defaults_require_valid_t3_selections
+    [
+      nil,
+      [],
+      "private-invalid-value",
+      [ "private-invalid-value" ],
+      [ { runner: "openchamber", model: "openai/model" } ],
+      [ { runner: "t3", model: "../private-invalid-value" } ],
+      [ { runner: "t3", model: "openai/model", variant: 42 } ],
+    ].each do |invalid|
+      Settings.reset
+      Settings.global_path = File.join(@worktree_test_dir, "global-config.json")
+      write_global(agentDefaultsBalance: invalid)
 
-    error = assert_raises(RuntimeError) { Settings.all }
-    assert_includes error.message, "agentDefaults must be an object"
-    refute_includes error.message, "private-invalid-value"
+      error = assert_raises(RuntimeError) { Settings.global }
+      assert_includes error.message, "agentDefaultsBalance must be a nonempty array"
+      refute_includes error.message, "private-invalid-value"
+    end
+  end
+
+  def test_balanced_defaults_allow_missing_and_blank_variants
+    candidates = [ { runner: "t3", model: "openai/model" }, { runner: "t3", model: "anthropic/model", variant: "" } ]
+    write_global(agentDefaultsBalance: candidates)
+
+    assert_equal candidates, Settings.global[:agentDefaultsBalance]
   end
 
   def test_reset_restores_default_global_path

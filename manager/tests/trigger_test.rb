@@ -92,7 +92,6 @@ class TriggerTest < Minitest::Test
     prompt = prompt_for(calls, "MOTO-1")
     assert_includes prompt, "Do this Linear issue: https://linear.app/gotte/issue/MOTO-1"
     assert_includes prompt, "The manager runs this card. Do not use the `interactive-card` skill."
-    assert_includes prompt, "Do not assign users to cards when creating or working on them. Leave existing assignees unchanged."
     assert_includes prompt, "This may be a new card or a kickback with corrections in later comments."
     assert_includes prompt, "There may already be a worktree, commits, and a PR."
     assert_includes prompt, "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
@@ -264,6 +263,98 @@ class TriggerTest < Minitest::Test
     assert_equal File.realpath(Worktree.root), project.dig(:payload, :workspaceRoot)
     assert_equal File.realpath(card_directory), thread.dig(:payload, :worktreePath)
     assert_equal "moto-1", thread.dig(:payload, :branch)
+    assert_nil session_for(calls, "MOTO-1")
+  end
+
+  def test_balanced_defaults_are_recorded_and_reach_t3_transport
+    calls = stub_manager(items: [
+      {
+        id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { name: "Ready" },
+      },
+    ])
+    home = File.join(@worktree_test_dir, "t3")
+    FileUtils.mkdir_p(File.join(home, "caches"))
+    File.write(File.join(home, "caches/codex.json"), JSON.generate(
+      instanceId: "codex", enabled: true, status: "ready",
+      models: [ { slug: "gpt-6.1-sol", capabilities: { optionDescriptors: [ { id: "reasoningEffort", options: [ { id: "high" } ] } ] } } ],
+    ))
+    catalog = JSON.parse(File.read(File.join(home, "caches/codex.json")), symbolize_names: true)
+    catalog[:usageLimits] = { checkedAt: Time.now.iso8601, windows: [ { kind: "weekly", usedPercent: 67 } ] }
+    File.write(File.join(home, "caches/codex.json"), JSON.generate(catalog))
+    catalog[:instanceId] = "claudeAgent"
+    catalog[:models].first[:slug] = "claude-opus-5-5"
+    catalog[:usageLimits][:windows] = [ { kind: "weekly", usedPercent: 12 }, { kind: "session", usedPercent: 50 } ]
+    File.write(File.join(home, "caches/claudeAgent.json"), JSON.generate(catalog))
+    Settings.all[:agent] = { t3: { home:, command: [ "t3" ] } }
+    File.write(Settings.global_path, JSON.generate(agentDefaultsBalance: [
+      { runner: "t3", model: "openai/gpt-6.1-sol", variant: "high" },
+      { runner: "t3", model: "anthropic/claude-opus-5-5", variant: "high" },
+    ]))
+    status = Object.new
+    status.define_singleton_method(:success?) { true }
+    Open3.stubs(:capture3).with { |*args| args[1] == "t3" }.returns([ JSON.generate(token: "token", sessionId: "session"), "", status ])
+    card_directory = Worktree.path_for({ identifier: "MOTO-1" })
+    Open3.stubs(:capture3).with do |*args, **kwargs|
+      args == [ "git", "worktree", "list", "--porcelain", "-z" ] && kwargs[:chdir] == File.realpath(card_directory)
+    end.returns([
+      "worktree #{Worktree.root}\0HEAD abc\0branch refs/heads/master\0\0worktree #{card_directory}\0HEAD def\0branch refs/heads/moto-1\0\0",
+      "", status,
+    ])
+    requests = []
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless opts[:url].start_with?("http://127.0.0.1:3773/")
+
+      requests << opts
+      true
+    end.returns({ projects: [], sequence: 1 })
+
+    capture_io { Trigger.call }
+
+    assert_equal(
+      [
+        { stateId: "s-working" },
+        { addedLabelIds: [ "l-working" ] },
+        { addedLabelIds: [ "l-runner: t3" ] },
+        { addedLabelIds: [ "l-model: anthropic/claude-opus-5-5" ] },
+        { addedLabelIds: [ "l-variant: high" ] },
+      ],
+      issue_update_inputs(calls),
+    )
+    turn = requests.find { |item| item.dig(:payload, :type) == "thread.turn.start" }
+    assert_includes turn.dig(:payload, :message, :text), "MOTO-1"
+    assert_equal "claudeAgent", turn.dig(:payload, :modelSelection, :instanceId)
+    project = requests.find { |item| item.dig(:payload, :type) == "project.create" }
+    thread = requests.find { |item| item.dig(:payload, :type) == "thread.create" }
+    assert_equal File.realpath(Worktree.root), project.dig(:payload, :workspaceRoot)
+    assert_equal File.realpath(card_directory), thread.dig(:payload, :worktreePath)
+    assert_equal "moto-1", thread.dig(:payload, :branch)
+    assert_nil session_for(calls, "MOTO-1")
+  end
+
+  def test_returns_ready_card_to_ready_when_balanced_quota_is_unavailable
+    calls = stub_manager(items: [
+      { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { name: "Ready" } },
+    ])
+    Settings.all[:agent] = { t3: { home: File.join(@worktree_test_dir, "missing-t3") } }
+    File.write(Settings.global_path, JSON.generate(agentDefaultsBalance: [
+      { runner: "t3", model: "openai/gpt-6.1-sol", variant: "medium" },
+    ]))
+
+    capture_io do
+      error = assert_raises(RuntimeError) { Trigger.call }
+      assert_includes error.message, "No balanced agent provider"
+    end
+
+    assert_equal(
+      [
+        { stateId: "s-working" },
+        { addedLabelIds: [ "l-working" ] },
+        { removedLabelIds: [ "l-working" ] },
+        { stateId: "s-ready" },
+      ],
+      issue_update_inputs(calls),
+    )
     assert_nil session_for(calls, "MOTO-1")
   end
 
@@ -634,7 +725,6 @@ class TriggerTest < Minitest::Test
     assert_includes prompt_for(calls, "MOTO-1"), "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
     assert_includes prompt_for(calls, "MOTO-1"), "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt_for(calls, "MOTO-3"), "Rebase the GitHub PR on the card."
-    assert_includes prompt_for(calls, "MOTO-3"), "Do not assign users to cards when creating or working on them. Leave existing assignees unchanged."
     assert_equal Worktree.path_for({ identifier: "MOTO-1" }), directory_for(calls, "MOTO-1")
     assert_equal Worktree.root, directory_for(calls, "MOTO-3")
   end
