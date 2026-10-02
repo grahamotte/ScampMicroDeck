@@ -5,6 +5,7 @@ gem "faraday", "2.14.3"
 gem "shellwords", "0.2.2"
 gem "pry", "0.16.0"
 gem "cache", "0.0.0", path: "../gems/cache"
+gem "keychain", "0.0.0", path: "../gems/keychain"
 
 group :test do
   gem "minitest", "6.0.6"

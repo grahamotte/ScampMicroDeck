@@ -114,6 +114,49 @@ class WorktreeTest < Minitest::Test
     refute Dir.exist?(path)
   end
 
+  def test_remove_releases_keychains_inside_worktree
+    item = { identifier: "MOTO-17" }
+    path = Worktree.path_for(item)
+    temporary = File.join(path, "publish", "tmp", "apps", "signing-1.keychain-db")
+    login = Worktree.keychain.login
+    FileUtils.mkdir_p(File.dirname(temporary))
+    File.write(temporary, "temporary")
+    stub_git
+    stub_security(search: temporary, default: temporary)
+    Open3.expects(:capture3).with("security", "list-keychains", "-d", "user", "-s", login).returns([ "", "", status(true) ])
+    Open3.expects(:capture3).with("security", "default-keychain", "-d", "user", "-s", login).returns([ "", "", status(true) ])
+
+    assert Worktree.remove(item)
+
+    assert_includes git_commands, [ "git", "worktree", "remove", "--force", path ]
+  end
+
+  def test_remove_keeps_worktree_when_keychain_release_fails
+    item = { identifier: "MOTO-17" }
+    path = Worktree.path_for(item)
+    temporary = File.join(path, "signing.keychain-db")
+    FileUtils.mkdir_p(path)
+    File.write(temporary, "temporary")
+    stub_git
+    stub_security(search: temporary, default: temporary)
+    Open3.stubs(:capture3).with { |command, *arguments| command == "security" && arguments.include?("-s") }.returns([ "", "denied", status(false) ])
+
+    error = assert_raises(RuntimeError) { Worktree.remove(item) }
+
+    assert_includes error.message, "denied"
+    assert Dir.exist?(path)
+    assert_equal [], git_commands
+  end
+
+  def test_remove_leaves_keychains_outside_worktree
+    item = { identifier: "MOTO-17" }
+    FileUtils.mkdir_p(Worktree.path_for(item))
+    stub_git
+    Open3.expects(:capture3).with { |command, *arguments| command == "security" && arguments.include?("-s") }.never
+
+    assert Worktree.remove(item)
+  end
+
   def test_skips_remove_when_missing
     item = { identifier: "MOTO-17" }
     stub_git
@@ -170,7 +213,7 @@ class WorktreeTest < Minitest::Test
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
-    Open3.stubs(:capture3).returns([ "", "locked", status(false) ])
+    Open3.stubs(:capture3).with { |command, *| command == "git" }.returns([ "", "locked", status(false) ])
 
     error = assert_raises(RuntimeError) { Worktree.remove(item) }
 
@@ -305,6 +348,11 @@ class WorktreeTest < Minitest::Test
     @git_commands || []
   end
 
+  def stub_security(search:, default:)
+    Open3.stubs(:capture3).with("security", "list-keychains", "-d", "user").returns([ "\"#{search}\"\n", "", status(true) ])
+    Open3.stubs(:capture3).with("security", "default-keychain", "-d", "user").returns([ "\"#{default}\"\n", "", status(true) ])
+  end
+
   def write_source(relative, contents)
     path = File.join(Worktree.root, relative)
     FileUtils.mkdir_p(File.dirname(path))
@@ -315,6 +363,7 @@ class WorktreeTest < Minitest::Test
     @git_commands = []
     ok = status(true)
     Open3.stubs(:capture3).with do |*args, **_kwargs|
+      next false if args.first == "security"
       next false if args == [ "git", "show-ref" ]
       next false if args == WORKTREE_LIST
       next false if args == FOR_EACH_REF

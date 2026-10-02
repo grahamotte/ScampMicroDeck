@@ -1,12 +1,13 @@
 class Linear
   HOST = "https://api.linear.app/graphql"
+  ROBOT = "🤖"
   STATUSES = [
     { name: "Backlog", type: "backlog", color: "#f2994a" },
     { name: "Planned", type: "unstarted", color: "#95a2b3" },
-    { name: "Ready", type: "started", color: "#26b5ce" },
+    { name: "#{ROBOT} Ready", type: "started", color: "#26b5ce" },
     { name: "Working", type: "started", color: "#f2c94c" },
     { name: "Review", type: "started", color: "#f2994a" },
-    { name: "Approved", type: "started", color: "#4cb782" },
+    { name: "#{ROBOT} Approved", type: "started", color: "#4cb782" },
     { name: "Completed", type: "completed", color: "#5e6ad2" },
     { name: "Canceled", type: "canceled", color: "#95a2b3" },
   ].freeze
@@ -87,10 +88,17 @@ class Linear
 
     def column(item)
       state = item[:state]
-      return state[:name].downcase if state.is_a?(Hash) && state[:name].present?
+      return column_key(state[:name]) if state.is_a?(Hash) && state[:name].present?
       return states_by_id[state] if state.present?
 
       nil
+    end
+
+    def state_names(*columns)
+      STATUSES
+        .select { |status| columns.include?(column_key(status[:name])) }
+        .flat_map { |status| [ status[:name], status[:name].delete_prefix(ROBOT).strip ] }
+        .uniq
     end
 
     def identifier(item)
@@ -217,6 +225,10 @@ class Linear
     end
 
     private
+
+    def column_key(name)
+      name.to_s.delete_prefix(ROBOT).strip.downcase
+    end
 
     def labeled(item, key)
       nodes = item.dig(:labels, :nodes)
@@ -432,7 +444,7 @@ class Linear
     end
 
     def states
-      @states ||= state_nodes.to_h { |state| [ state.fetch(:name).downcase, state.fetch(:id) ] }
+      @states ||= state_nodes.to_h { |state| [ column_key(state.fetch(:name)), state.fetch(:id) ] }
     end
 
     def states_by_id
@@ -478,7 +490,7 @@ class Linear
       STATUSES.group_by { |status| status[:type] }.each_value do |wants|
         items = wants.filter_map do |want|
           states.find do |state|
-            state[:name].to_s.downcase == want[:name].downcase && state[:type] == want[:type]
+            column_key(state[:name]) == column_key(want[:name]) && state[:type] == want[:type]
           end
         end
         next unless items.length == wants.length
@@ -498,12 +510,12 @@ class Linear
     def match_state(current, want, used_ids)
       current.find do |state|
         !used_ids.include?(state.fetch(:id)) &&
-          state[:name].to_s.downcase == want[:name].downcase &&
+          column_key(state[:name]) == column_key(want[:name]) &&
           state[:type] == want[:type]
       end || current.find do |state|
         !used_ids.include?(state.fetch(:id)) &&
           state[:type] == want[:type] &&
-          STATUSES.none? { |status| status[:name].downcase == state[:name].to_s.downcase }
+          STATUSES.none? { |status| column_key(status[:name]) == column_key(state[:name]) }
       end
     end
 

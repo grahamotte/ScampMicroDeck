@@ -133,6 +133,7 @@ module PublishTestIsolation
     File.write(File.join(apps_root, "apple", "App", "Config", "ExportOptions.plist"), "plist")
     Apps.root = apps_root
     Apps.tmp_root = File.join(@publish_test_dir, "artifacts")
+    Apps.host_keychain_home = @publish_test_dir
   end
 end
 

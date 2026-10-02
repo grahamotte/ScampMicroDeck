@@ -10,7 +10,7 @@ class TriggerTest < Minitest::Test
     assert_equal(
       {
         or: [
-          { state: { name: { in: [ "Ready", "Approved" ] } } },
+          { state: { name: { in: [ "🤖 Ready", "Ready", "🤖 Approved", "Approved" ] } } },
           {
             and: [
               { state: { name: { in: [ "Completed", "Canceled" ] } } },
@@ -21,6 +21,53 @@ class TriggerTest < Minitest::Test
       },
       query.dig(:payload, :variables, :filter),
     )
+  end
+
+  def test_warns_when_host_keychains_need_attention
+    stub_manager(items: [])
+    login = Worktree.keychain.login
+    other = File.join(File.dirname(login), "other.keychain-db")
+    File.write(other, "other")
+    stub_security(search: other, default: other)
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal(
+      [
+        "WARNING: the host keychain configuration needs attention",
+        "- default keychain is #{other}, not #{login}",
+        "- search list does not include #{login}",
+        "Run `mise manager:keychain` to restore the login keychain.",
+      ],
+      output.lines.map(&:chomp),
+    )
+  end
+
+  def test_restores_keychains_left_by_dead_tasks_and_releases_missing_keychains
+    stub_manager(items: [])
+    login = Worktree.keychain.login
+    missing = File.join(@worktree_test_dir, "deleted", "signing.keychain-db")
+    state = File.join(Worktree.keychain.state_root, "20260101000000000000-99999999.json")
+    FileUtils.mkdir_p(File.dirname(state))
+    File.write(state, JSON.generate(pid: 99_999_999, snapshot: { search: [ login ], default: login }))
+    stub_security(search: missing, default: missing)
+    Open3.expects(:capture3).with("security", "list-keychains", "-d", "user", "-s", login).twice.returns([ "", "", Struct.new(:success?).new(true) ])
+    Open3.expects(:capture3).with("security", "default-keychain", "-d", "user", "-s", login).twice.returns([ "", "", Struct.new(:success?).new(true) ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_includes output, "restored keychains from #{state}\n"
+    assert_includes output, "removed missing keychain #{missing}\n"
+    refute File.exist?(state)
+  end
+
+  def test_continues_when_keychain_check_fails
+    stub_manager(items: [])
+    Open3.stubs(:capture3).with("security", "list-keychains", "-d", "user").returns([ "", "no keychains", Struct.new(:success?).new(false) ])
+
+    output, = capture_io { Trigger.call }
+
+    assert_equal "keychain check failed: security list-keychains -d user failed: no keychains\n", output
   end
 
   def test_moves_ready_cards_and_starts_work_agent
@@ -723,12 +770,19 @@ class TriggerTest < Minitest::Test
     opts[:url] == Linear::HOST && opts.dig(:payload, :query).to_s.include?(fragment)
   end
 
+  def stub_security(search:, default:)
+    ok = Struct.new(:success?).new(true)
+    Open3.stubs(:capture3).with("security", "list-keychains", "-d", "user").returns([ "\"#{search}\"\n", "", ok ])
+    Open3.stubs(:capture3).with("security", "default-keychain", "-d", "user").returns([ "\"#{default}\"\n", "", ok ])
+  end
+
   def stub_manager(items:)
     calls = []
     @git_commands = []
     ok = Object.new
     ok.define_singleton_method(:success?) { true }
     Open3.stubs(:capture3).with do |*args, **_kwargs|
+      next false if args.first == "security"
       next false if args == [ "git", "branch", "--show-current" ]
       next false if args == [ "git", "status", "--porcelain" ]
 

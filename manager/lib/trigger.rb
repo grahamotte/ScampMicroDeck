@@ -8,12 +8,13 @@ class Trigger
 
   class << self
     def call
+      check_keychain
       filter = {
         or: [
-          { state: { name: { in: [ "Ready", "Approved" ] } } },
+          { state: { name: { in: Linear.state_names(READY, APPROVED) } } },
           {
             and: [
-              { state: { name: { in: [ "Completed", "Canceled" ] } } },
+              { state: { name: { in: Linear.state_names(COMPLETED, CANCELED) } } },
               { updatedAt: { gte: "-P30D" } },
             ],
           },
@@ -56,6 +57,20 @@ class Trigger
     end
 
     private
+
+    def check_keychain
+      keychain = Worktree.keychain
+      keychain.recover.each { |file| puts "restored keychains from #{file}" }
+      keychain.release.each { |path| puts "removed missing keychain #{path}" }
+      problems = keychain.problems
+      return if problems.blank?
+
+      puts "WARNING: the host keychain configuration needs attention"
+      problems.each { |problem| puts "- #{problem}" }
+      puts "Run `mise manager:keychain` to restore the login keychain."
+    rescue StandardError => error
+      puts "keychain check failed: #{error.message}"
+    end
 
     def cleanup_worktree(item)
       return false unless Worktree.remove(item)

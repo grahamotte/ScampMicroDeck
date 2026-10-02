@@ -53,22 +53,43 @@ class AppsTest < Minitest::Test
     assert_equal ENV.fetch("APPLE_KEY_SECRET_BASE64").unpack1("m0"), File.binread(Apps.private_key_path)
   end
 
-  def test_uses_only_the_temporary_keychain_while_signing
+  def test_adds_the_temporary_keychain_without_changing_the_default
     keychain = File.join(Apps.tmp_root, "signing-#{Process.pid}.keychain-db")
+    login = File.join(@publish_test_dir, "Library", "Keychains", "login.keychain-db")
+    FileUtils.mkdir_p(File.dirname(login))
+    File.write(login, "login")
     commands = []
     Cmd.stubs(:local).with { |command| commands << command; true }.returns("Apple Distribution")
-    Cmd.expects(:local).with("security list-keychains -d user").returns('"/keychain/login.keychain-db"')
-    Cmd.expects(:local).with("security default-keychain -d user").returns('"/keychain/login.keychain-db"')
+    stub_security([ "list-keychains", "-d", "user" ], "\"#{login}\"", "\"#{keychain}\" \"#{login}\"")
+    stub_security([ "default-keychain", "-d", "user" ], "\"#{login}\"", "\"#{login}\"")
+    Cmd.expects(:local).with(Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", login ])).returns("")
 
-    Apps.with_signing_certificate("Apple Distribution", "APPLE_DISTRIBUTION") { }
+    Apps.with_signing_certificate("Apple Distribution", "APPLE_DISTRIBUTION") do
+      assert_equal 1, Dir.glob(File.join(@publish_test_dir, ".config", "codemoto", "keychain", "*.json")).size
+    end
 
     assert_includes commands, Shellwords.join([ "security", "import", File.expand_path("../../lib/apps/apple_certificate_authorities.pem", __dir__), "-k", keychain, "-f", "pemseq" ])
-    assert_includes commands, Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", keychain, "/System/Library/Keychains/SystemRootCertificates.keychain" ])
-    assert_includes commands, Shellwords.join([ "security", "default-keychain", "-d", "user", "-s", keychain ])
-    assert_includes commands, "security default-keychain -d user -s /keychain/login.keychain-db"
-    assert_includes commands, "security list-keychains -d user -s /keychain/login.keychain-db"
+    assert_includes commands, Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", keychain, login, "/System/Library/Keychains/SystemRootCertificates.keychain" ])
+    refute_includes commands, Shellwords.join([ "security", "default-keychain", "-d", "user", "-s", keychain ])
+    assert_includes commands, Shellwords.join([ "security", "delete-keychain", keychain ])
     assert commands.any? { |command| command.start_with?("/usr/bin/openssl pkcs12") }
     refute commands.any? { |command| command.include?("brew") }
+    assert_empty Dir.glob(File.join(@publish_test_dir, ".config", "codemoto", "keychain", "*.json"))
+  end
+
+  def test_restores_host_keychains_when_signing_fails
+    keychain = File.join(Apps.tmp_root, "signing-#{Process.pid}.keychain-db")
+    login = File.join(@publish_test_dir, "Library", "Keychains", "login.keychain-db")
+    FileUtils.mkdir_p(File.dirname(login))
+    File.write(login, "login")
+    Cmd.stubs(:local).returns("")
+    stub_security([ "list-keychains", "-d", "user" ], "\"#{login}\"", "\"#{keychain}\" \"#{login}\"")
+    stub_security([ "default-keychain", "-d", "user" ], "\"#{login}\"", "\"#{login}\"")
+    Cmd.expects(:local).with(Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", login ])).returns("")
+
+    error = assert_raises(RuntimeError) { Apps.with_signing_certificate("Apple Distribution", "APPLE_DISTRIBUTION") { } }
+
+    assert_equal "Missing Apple Distribution identity", error.message
   end
 
   def test_reports_invalid_json
@@ -79,5 +100,11 @@ class AppsTest < Minitest::Test
     error = assert_raises(RuntimeError) { Apps.config }
 
     assert_includes error.message, "Invalid JSON"
+  end
+
+  private
+
+  def stub_security(arguments, before, after)
+    Cmd.stubs(:local).with(Shellwords.join([ "security", *arguments ])).returns(before).then.returns(after)
   end
 end

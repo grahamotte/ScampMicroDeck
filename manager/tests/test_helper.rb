@@ -33,6 +33,9 @@ module ManagerTestIsolation
     @worktree_test_dir = Dir.mktmpdir("manager-worktree")
     Worktree.root = File.join(@worktree_test_dir, "repo")
     FileUtils.mkdir_p(Worktree.root)
+    Worktree.keychain = Keychain.new(home: @worktree_test_dir)
+    FileUtils.mkdir_p(File.dirname(Worktree.keychain.login))
+    File.write(Worktree.keychain.login, "login")
     Settings.path = File.join(@worktree_test_dir, "config.json")
     File.write(
       Settings.path,
@@ -43,6 +46,7 @@ module ManagerTestIsolation
       ),
     )
     super
+    Open3.stubs(:capture3).with { |command, *| command == "security" }.returns([ "\"#{Worktree.keychain.login}\"\n", "", Struct.new(:success?).new(true) ])
   end
 
   def after_teardown

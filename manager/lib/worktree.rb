@@ -7,6 +7,7 @@ class Worktree
   class << self
     def reset
       @root = nil
+      @keychain = nil
     end
 
     def root
@@ -15,6 +16,14 @@ class Worktree
 
     def root=(value)
       @root = value
+    end
+
+    def keychain
+      @keychain ||= Keychain.new
+    end
+
+    def keychain=(value)
+      @keychain = value
     end
 
     def open(item)
@@ -31,6 +40,7 @@ class Worktree
       path = path_for(item)
       return false unless Dir.exist?(path)
 
+      keychain.release(path)
       run("git", "worktree", "remove", "--force", path)
       true
     end

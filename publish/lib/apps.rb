@@ -6,7 +6,7 @@ require "tempfile"
 
 module Apps
   class << self
-    attr_writer :root, :prepare_for_review, :submit_for_review, :tmp_root
+    attr_writer :root, :prepare_for_review, :submit_for_review, :tmp_root, :host_keychain_home
 
     def root = @root || File.join(Constants.local_root, "apps")
     def tmp_root = @tmp_root || File.join(Constants.local_root, "publish", "tmp", "apps")
@@ -83,6 +83,13 @@ module Apps
       ]
     end
 
+    def host_keychain
+      @host_keychain ||= Keychain.new(
+        home: @host_keychain_home || Dir.home,
+        runner: ->(*arguments) { Cmd.local(Shellwords.join([ "security", *arguments ])) },
+      )
+    end
+
     def with_signing_certificate(name, prefix)
       with_signing_certificates([ [ name, prefix, "codesigning" ] ]) { |keychain| yield keychain }
     end
@@ -90,41 +97,38 @@ module Apps
     def with_signing_certificates(certificates)
       keychain = File.join(tmp_root, "signing-#{Process.pid}.keychain-db")
       roots = "/System/Library/Keychains/SystemRootCertificates.keychain"
-      previous = Cmd.local("security list-keychains -d user").scan(/\"([^\"]+)\"/).flatten
-      default = Cmd.local("security default-keychain -d user").scan(/\"([^\"]+)\"/).flatten.first
-      FileUtils.mkdir_p(tmp_root)
-      password = "#{certificates.first.fetch(1)}_CERTIFICATE_PASSWORD"
-      FileUtils.rm_f(keychain)
-      Cmd.local("security create-keychain -p \"$#{password}\" #{Shellwords.escape(keychain)}")
-      Cmd.local("security unlock-keychain -p \"$#{password}\" #{Shellwords.escape(keychain)}")
-      Cmd.local(Shellwords.join([ "security", "default-keychain", "-d", "user", "-s", keychain ]))
-      Cmd.local(Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", keychain, roots ]))
-      Cmd.local(Shellwords.join([ "security", "import", File.join(__dir__, "apps", "apple_certificate_authorities.pem"), "-k", keychain, "-f", "pemseq" ]))
-      certificates.each do |name, prefix, policy|
-        certificate_password = "#{prefix}_CERTIFICATE_PASSWORD"
-        Tempfile.create([ "signing", ".p12" ]) do |certificate|
-          certificate.binmode
-          certificate.write(ENV.fetch("#{prefix}_CERTIFICATE_BASE64").unpack1("m0"))
-          certificate.close
-          Tempfile.create([ "signing", ".pem" ]) do |pem|
-            Tempfile.create([ "signing-modern", ".p12" ]) do |modern|
-              Cmd.local("/usr/bin/openssl pkcs12 -in #{Shellwords.escape(certificate.path)} -passin env:#{certificate_password} -nodes -out #{Shellwords.escape(pem.path)}")
-              Cmd.local("/usr/bin/openssl pkcs12 -export -in #{Shellwords.escape(pem.path)} -out #{Shellwords.escape(modern.path)} -passout env:#{certificate_password}")
-              Cmd.local("security import #{Shellwords.escape(modern.path)} -k #{Shellwords.escape(keychain)} -f pkcs12 -P \"$#{certificate_password}\" -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild")
-              arguments = [ "security", "find-identity", "-v" ]
-              arguments.concat([ "-p", policy ]) if policy.present?
-              identities = Cmd.local(Shellwords.join([ *arguments, keychain ]))
-              raise "Missing #{name} identity" unless identities.include?(name)
+      host_keychain.protect do |saved|
+        FileUtils.mkdir_p(tmp_root)
+        password = "#{certificates.first.fetch(1)}_CERTIFICATE_PASSWORD"
+        FileUtils.rm_f(keychain)
+        Cmd.local("security create-keychain -p \"$#{password}\" #{Shellwords.escape(keychain)}")
+        Cmd.local("security unlock-keychain -p \"$#{password}\" #{Shellwords.escape(keychain)}")
+        Cmd.local(Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", *[ keychain, *saved[:search], roots ].uniq ]))
+        Cmd.local(Shellwords.join([ "security", "import", File.join(__dir__, "apps", "apple_certificate_authorities.pem"), "-k", keychain, "-f", "pemseq" ]))
+        certificates.each do |name, prefix, policy|
+          certificate_password = "#{prefix}_CERTIFICATE_PASSWORD"
+          Tempfile.create([ "signing", ".p12" ]) do |certificate|
+            certificate.binmode
+            certificate.write(ENV.fetch("#{prefix}_CERTIFICATE_BASE64").unpack1("m0"))
+            certificate.close
+            Tempfile.create([ "signing", ".pem" ]) do |pem|
+              Tempfile.create([ "signing-modern", ".p12" ]) do |modern|
+                Cmd.local("/usr/bin/openssl pkcs12 -in #{Shellwords.escape(certificate.path)} -passin env:#{certificate_password} -nodes -out #{Shellwords.escape(pem.path)}")
+                Cmd.local("/usr/bin/openssl pkcs12 -export -in #{Shellwords.escape(pem.path)} -out #{Shellwords.escape(modern.path)} -passout env:#{certificate_password}")
+                Cmd.local("security import #{Shellwords.escape(modern.path)} -k #{Shellwords.escape(keychain)} -f pkcs12 -P \"$#{certificate_password}\" -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild")
+                arguments = [ "security", "find-identity", "-v" ]
+                arguments.concat([ "-p", policy ]) if policy.present?
+                identities = Cmd.local(Shellwords.join([ *arguments, keychain ]))
+                raise "Missing #{name} identity" unless identities.include?(name)
+              end
             end
           end
         end
+        Cmd.local("security set-key-partition-list -S apple-tool:,apple: -s -k \"$#{password}\" #{Shellwords.escape(keychain)}")
+        yield keychain
+      ensure
+        Cmd.local(Shellwords.join([ "security", "delete-keychain", keychain ])) rescue StandardError
       end
-      Cmd.local("security set-key-partition-list -S apple-tool:,apple: -s -k \"$#{password}\" #{Shellwords.escape(keychain)}")
-      yield keychain
-    ensure
-      Cmd.local(Shellwords.join([ "security", "default-keychain", "-d", "user", "-s", default ])) if default.present?
-      Cmd.local(Shellwords.join([ "security", "list-keychains", "-d", "user", "-s", *previous ])) if previous.present?
-      Cmd.local(Shellwords.join([ "security", "delete-keychain", keychain ])) rescue StandardError
     end
 
     def reset
@@ -137,6 +141,8 @@ module Apps
       @prepare_for_review = nil
       @submit_for_review = nil
       @tmp_root = nil
+      @host_keychain_home = nil
+      @host_keychain = nil
     end
 
     private
