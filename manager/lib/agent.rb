@@ -4,7 +4,8 @@ class Agent
 
   class << self
     def start(prompt, directory: ROOT, runner: nil, model: nil, variant: nil)
-      runner = Settings.all.dig(:agent, :runner) if runner.blank?
+      selection = AgentSelection.resolve(runner:, model:, variant:)
+      runner, model, variant = selection.values_at(:runner, :model, :variant)
       case runner
       when "openchamber"
         openchamber(prompt, directory, model:, variant:)

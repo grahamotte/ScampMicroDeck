@@ -10,7 +10,7 @@ Cards can override the defaults in `config.json` using these labels:
 - `model: <provider>/<modelid>`
 - `variant: <effort>`
 
-When the trigger starts a card, it fills in missing labels from the resolved agent configuration: `agentDefaults` in `~/.config/codemoto/config.json`, overridden by repository `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. Move a card to Review or Approved only when its whole task is ready; approval of one PR within a larger task does not approve the card. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
+When the trigger starts a card, it fills in missing labels from the resolved agent configuration: a quota-balanced selection from `agentDefaultsBalance` in `~/.config/codemoto/config.json`, overridden by repository `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. Move a card to Review or Approved only when its whole task is ready; approval of one PR within a larger task does not approve the card. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
 
 `runner: interactive` marks work started manually with the user. The manager skips those cards in Ready, and tries the same automatic merge when Approved, using its configured runner if an agent is needed. Sync renames the old `interactive` label in place, preserving its ID and existing card assignments.
 
@@ -37,16 +37,29 @@ Availability and supported effort levels depend on the runner, provider account,
 
 ```json
 {
-  "agentDefaults": {
-    "runner": "t3",
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
-  },
+  "agentDefaultsBalance": [
+    {
+      "runner": "t3",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium"
+    },
+    {
+      "runner": "t3",
+      "model": "anthropic/claude-opus-5-5",
+      "variant": "medium"
+    }
+  ],
   "1passwordServiceAccountToken": "<service-account-token>"
 }
 ```
 
-Repository `config.json` keeps app-specific settings and optional `agent` overrides, including runner options such as `agent.t3`. Omit runner, model, and variant to inherit the global defaults. An explicitly blank repository variant overrides the global variant. Existing Linear selections still take precedence. Edit the global file to change the defaults for all inheriting repos; no repository PR or merge is needed. Each new manager process reads the current global file.
+Repository `config.json` keeps app-specific settings and optional `agent` overrides, including runner options such as `agent.t3`. Omit runner, model, and variant to inherit the global defaults. An explicitly blank repository variant overrides the global variant. Existing Linear selections still take precedence. Edit the global file to change the defaults for all inheriting repos; no repository PR or merge is needed. Each new manager process reads the current global file. `agentDefaults` is ignored by this version; keep it in the global file only while downstream repos still run the older version.
+
+For each launch without an explicit model, the manager reads the configured T3 providers' `usageLimits` from `~/.t3/caches` (or repository `agent.t3.home`). It chooses the candidate with the most weekly quota remaining. If a provider reports multiple weekly windows, its lowest remaining weekly percentage determines its score. Equal scores use list order. T3 reports percentages used, which the manager converts to percentages remaining. A provider with exhausted weekly quota or less than 5% remaining in any other window is excluded; exactly 5% remains eligible. This includes session and monthly windows.
+
+Candidates must use the T3 runner and offer the requested model, effort, and configured speed. Quota snapshots must be at most ten minutes old, with valid percentages and a weekly window. Missing, failed, future-dated, or expired-reset snapshots are excluded. If none qualify, the launch fails before starting a provider session; Ready cards return to Ready and the working tag is removed. Refresh the provider's Usage Limits in T3 before retrying. The manager does not consume reset credits or infer a reset from an old snapshot.
+
+Repository and card model overrides bypass quota balancing; a matching list entry supplies missing defaults. A repository's explicitly blank variant remains blank. Missing labels are recorded from the single resolved selection before launching, so existing selections and active threads keep their model. Remove a recorded model label to make a later launch eligible for balancing again. This balances new card launches, not messages within a running thread.
 
 `mise manager:secrets` reads `1passwordServiceAccountToken` from the global file and passes it to 1Password through `OP_SERVICE_ACCOUNT_TOKEN`. It no longer reads `.env.service`. Repository `secrets` references and `.env.default` still control which app secrets are fetched and their layout. The token is never copied into repository configuration or generated env files. A missing global file leaves explicit repo settings available; secrets refresh requires the global token.
 

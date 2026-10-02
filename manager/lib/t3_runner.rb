@@ -13,8 +13,8 @@ class T3Runner
 
   class << self
     def start(prompt, directory:, model: nil, variant: nil)
-      model = Settings.all.dig(:agent, :model) if model.blank?
-      variant = Settings.all.dig(:agent, :variant) if variant.blank?
+      defaults = AgentSelection.resolve(runner: "t3", model:, variant:)
+      model, variant = defaults.values_at(:model, :variant)
       selection = model_selection(model, variant)
       directory = File.realpath(directory)
       workspace = workspace(directory)
@@ -72,6 +72,10 @@ class T3Runner
           warn "Could not revoke the temporary T3 session; it expires after five minutes"
         end
       end
+    end
+
+    def selection(model:, variant: nil)
+      model_selection(model, variant)
     end
 
     private
