@@ -54,7 +54,7 @@ When commenting on a card with pseudocode, use readable, imperfect Ruby in a fen
 
 Do not assign users to cards when creating or working on them, including manager tasks. Leave existing assignees unchanged.
 
-Columns, in order: `Backlog`, `Planned`, `Ready`, `Working`, `Review`, `Approved`, `Completed`, `Canceled`.
+Columns, in order: `Backlog`, `Planned`, `🤖 Ready`, `Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it.
 
 Tags (pass them by id, not name, since Linearis does not resolve tag names per team):
 

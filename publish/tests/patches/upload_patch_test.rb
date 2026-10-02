@@ -40,6 +40,7 @@ class AppsUploadPatchTest < Minitest::Test
     Apps.reset
     Apps.root = root
     Apps.tmp_root = tmp_root
+    Apps.host_keychain_home = @publish_test_dir
     target = Apps.targets.fetch(0)
     FileUtils.mkdir_p(Apps.archive_path(target))
     commands = []

@@ -312,6 +312,10 @@ run = "cd manager && bundle exec ruby linear_sync.rb"
 depends = ["dependencies:manager"]
 run = "cd manager && bundle exec ruby linear_sync_all.rb"
 
+[tasks."manager:keychain"]
+depends = ["dependencies:manager"]
+run = "cd manager && bundle exec ruby keychain.rb"
+
 [tasks."manager:secrets"]
 depends = ["dependencies:manager"]
 run = "scripts/mise/manager_secrets.sh"

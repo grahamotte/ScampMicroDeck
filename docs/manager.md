@@ -1,6 +1,6 @@
 # Manager runners and labels
 
-`mise manager:sync` (also available as `mise manager:linear_sync`) reconciles the configured Linear team's workflow, labels, and Git automations. It creates the manager's runner, model, and variant labels and deletes labels outside the managed set, including shared workspace labels returned for the team. Deleting a shared label removes it from cards across the workspace. Labels owned by other teams are left alone. Run sync before triggering cards.
+`mise manager:sync` (also available as `mise manager:linear_sync`) reconciles the configured Linear team's workflow, labels, and Git automations. It creates the manager's runner, model, and variant labels and deletes labels outside the managed set, including shared workspace labels returned for the team. Deleting a shared label removes it from cards across the workspace. Labels owned by other teams are left alone. The manager-driven Ready and Approved columns are named `🤖 Ready` and `🤖 Approved`; sync renames plain `Ready` and `Approved` in place, and the manager matches either name. Run sync before triggering cards.
 
 `mise manager:trigger` filters issues in Linear before paginating: all Ready and Approved cards remain eligible regardless of age, while Completed and Canceled cards are fetched for worktree cleanup only when updated within the last 30 days. Other columns are excluded. The window uses the last update rather than creation, so an old card that is newly completed or canceled still gets cleaned up. Worktrees for terminal cards unchanged for more than 30 days need manual removal if the manager missed the cleanup window.
 
@@ -30,6 +30,14 @@ The model picker contains eight options:
 - `cursor/grok-4.7`
 
 Availability and supported effort levels depend on the runner, provider account, and model. A model without effort options needs a blank default variant. For OpenChamber, model and variant values are forwarded as before.
+
+## Host keychain protection
+
+Tasks that change the user's keychain settings, such as publish signing, wrap the change in `Keychain#protect` from `gems/keychain`. It saves the search list and default keychain under `~/.config/codemoto/keychain` and restores whichever changed when the block finishes, raises, or is interrupted. The login keychain setting is not touched; `security login-keychain -s` fails on current macOS, so tasks cannot change it either.
+
+Each `mise manager:trigger` run first restores snapshots left by processes that are no longer running and removes keychains whose files no longer exist from the search list and default. Before removing a card worktree, the manager also removes keychains stored inside it; if that fails, the worktree is kept. The trigger then warns when the default keychain is not `~/Library/Keychains/login.keychain-db`, the search list omits it, or a larger `login_renamed_*.keychain-db` suggests macOS replaced the login keychain. These checks are skipped while a protected task is running.
+
+Run `mise manager:keychain` to repair the warned state. It resets the default keychain to the login keychain and adds the login keychain to the search list. If a larger `login_renamed_*` file exists, it saves the current login keychain as `login_backup_<timestamp>.keychain-db`, copies the largest renamed file back to `login.keychain-db`, and asks you to log out and back in.
 
 ## Code Moto merge cards
 

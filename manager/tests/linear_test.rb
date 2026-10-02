@@ -61,6 +61,14 @@ class LinearTest < Minitest::Test
     assert_equal "ready", Linear.column({ state: { id: "s-ready", name: "Ready" } })
   end
 
+  def test_column_from_robot_state_name
+    assert_equal "approved", Linear.column({ state: { id: "s-approved", name: "🤖 Approved" } })
+  end
+
+  def test_state_names_include_robot_and_plain_names
+    assert_equal [ "🤖 Ready", "Ready", "Completed" ], Linear.state_names("ready", "completed")
+  end
+
   def test_column_from_state_id
     stub_linear
 
@@ -327,22 +335,48 @@ class LinearTest < Minitest::Test
     archives = calls.select { |call| graphql?(call, "mutation WorkflowStateArchive") }.map { |call| call.dig(:payload, :variables, :id) }
 
     assert_equal "Planned", updates.find { |variables| variables[:id] == "s-todo" }.dig(:input, :name)
-    assert_equal "Ready", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :name)
+    assert_equal "🤖 Ready", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :name)
     assert_equal "#26b5ce", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :color)
     assert_equal "Completed", updates.find { |variables| variables[:id] == "s-done" }.dig(:input, :name)
-    assert_equal [ "Working", "Review", "Approved" ], creates.map { |input| input[:name] }
+    assert_equal [ "Working", "Review", "🤖 Approved" ], creates.map { |input| input[:name] }
     assert_equal [ 1000.0, 2000.0, 3000.0 ], creates.map { |input| input[:position] }
     refute updates.any? { |variables| variables.dig(:input, :position).present? }
     assert_equal [ "s-groom" ], archives
     assert_includes output, "renamed Todo to Planned"
-    assert_includes output, "renamed In Progress to Ready"
+    assert_includes output, "renamed In Progress to 🤖 Ready"
     assert_includes output, "renamed Done to Completed"
     assert_includes output, "created Working"
     assert_includes output, "created Review"
-    assert_includes output, "created Approved"
+    assert_includes output, "created 🤖 Approved"
     assert_includes output, "removed Grooming"
     refute_includes output, "removed Duplicate"
     refute_includes archives, "s-dup"
+  end
+
+  def test_sync_statuses_adds_robot_to_plain_agent_columns
+    states = synced_states.map { |status| status.merge(name: status[:name].delete_prefix(Linear::ROBOT).strip) }
+    calls = stub_linear(states:)
+
+    output, = capture_io { Linear.sync_statuses }
+
+    updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
+    assert_equal [
+      { id: "s-ready", input: { name: "🤖 Ready" } },
+      { id: "s-approved", input: { name: "🤖 Approved" } },
+    ], updates
+    assert_empty calls.select { |call| graphql?(call, "mutation WorkflowStateCreate") }
+    assert_empty calls.select { |call| graphql?(call, "mutation WorkflowStateArchive") }
+    assert_includes output, "renamed Ready to 🤖 Ready"
+    assert_includes output, "renamed Approved to 🤖 Approved"
+  end
+
+  def test_move_resolves_robot_column_by_plain_name
+    calls = stub_linear(states: synced_states)
+
+    Linear.move({ id: "item-1" }, "approved")
+
+    update = calls.find { |call| graphql?(call, "mutation IssueUpdate") }
+    assert_equal({ stateId: "s-approved" }, update.dig(:payload, :variables, :input))
   end
 
   def test_sync_statuses_skips_reserved_archive_errors
@@ -414,7 +448,7 @@ class LinearTest < Minitest::Test
 
   def test_sync_statuses_clears_descriptions
     states = synced_states.map do |status|
-      description = status[:name] == "Ready" ? "Pull request is being reviewed" : ""
+      description = status[:name] == "🤖 Ready" ? "Pull request is being reviewed" : ""
       status.merge(description:)
     end
     calls = stub_linear(states:)
@@ -423,7 +457,7 @@ class LinearTest < Minitest::Test
 
     updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
     assert_equal Linear::STATUSES.map { |status|
-      { id: "s-#{status[:name].downcase}", input: { description: nil } }
+      { id: "s-#{column_key(status[:name])}", input: { description: nil } }
     }, updates
   end
 
@@ -482,8 +516,12 @@ class LinearTest < Minitest::Test
   def synced_states
     Linear::STATUSES.each_with_index.map do |status, index|
       position = index.to_f
-      { id: "s-#{status[:name].downcase}", **status, position: }
+      { id: "s-#{column_key(status[:name])}", **status, position: }
     end
+  end
+
+  def column_key(name)
+    name.delete_prefix(Linear::ROBOT).strip.downcase
   end
 
   def synced_tags
@@ -494,14 +532,14 @@ class LinearTest < Minitest::Test
 
   def ranked_started_states(ready:, working:, review:, approved:)
     Linear::STATUSES.map do |status|
-      position = case status[:name]
-      when "Ready" then ready
-      when "Working" then working
-      when "Review" then review
-      when "Approved" then approved
+      position = case column_key(status[:name])
+      when "ready" then ready
+      when "working" then working
+      when "review" then review
+      when "approved" then approved
       else 0.0
       end
-      { id: "s-#{status[:name].downcase}", **status, position: }
+      { id: "s-#{column_key(status[:name])}", **status, position: }
     end
   end
 
