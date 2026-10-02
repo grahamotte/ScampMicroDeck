@@ -40,13 +40,13 @@ class Linear
       @tags = nil
     end
 
-    def issues
+    def issues(filter: nil)
       nodes = []
       after = nil
       loop do
         page = graphql(
           ISSUES_QUERY,
-          { teamId: team_id, after: }.compact,
+          { teamId: team_id, after:, filter: }.compact,
         ).fetch(:team).fetch(:issues)
         nodes.concat(page.fetch(:nodes))
         break unless page.dig(:pageInfo, :hasNextPage)
@@ -265,9 +265,9 @@ class Linear
     GQL
 
     ISSUES_QUERY = <<~GQL
-      query Issues($teamId: String!, $after: String) {
+      query Issues($teamId: String!, $after: String, $filter: IssueFilter) {
         team(id: $teamId) {
-          issues(first: 100, after: $after) {
+          issues(first: 100, after: $after, filter: $filter) {
             nodes {
               id
               identifier
