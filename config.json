@@ -50,11 +50,6 @@
     "workspace": "gotte",
     "team": "SMD"
   },
-  "agent": {
-    "runner": "t3",
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
-  },
   "apps": {
     "build": "1.8.8",
     "contactEmail": "graham.otte@gmail.com",

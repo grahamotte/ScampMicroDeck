@@ -10,7 +10,7 @@ Cards can override the defaults in `config.json` using these labels:
 - `model: <provider>/<modelid>`
 - `variant: <effort>`
 
-When the trigger starts a card, it fills in missing labels from `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. Move a card to Review or Approved only when its whole task is ready; approval of one PR within a larger task does not approve the card. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
+When the trigger starts a card, it fills in missing labels from the resolved agent configuration: `agentDefaults` in `~/.config/codemoto/config.json`, overridden by repository `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. Move a card to Review or Approved only when its whole task is ready; approval of one PR within a larger task does not approve the card. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
 
 `runner: interactive` marks work started manually with the user. The manager skips those cards in Ready, and tries the same automatic merge when Approved, using its configured runner if an agent is needed. Sync renames the old `interactive` label in place, preserving its ID and existing card assignments.
 
@@ -30,6 +30,25 @@ The model picker contains eight options:
 - `cursor/grok-4.7`
 
 Availability and supported effort levels depend on the runner, provider account, and model. A model without effort options needs a blank default variant. For OpenChamber, model and variant values are forwarded as before.
+
+## Global configuration
+
+`~/.config/codemoto/config.json` holds machine-wide settings for every Code Moto checkout. Keep its permissions private because it contains the 1Password service account token.
+
+```json
+{
+  "agentDefaults": {
+    "runner": "t3",
+    "model": "openai/gpt-6.1-sol",
+    "variant": "medium"
+  },
+  "1passwordServiceAccountToken": "<service-account-token>"
+}
+```
+
+Repository `config.json` keeps app-specific settings and optional `agent` overrides, including runner options such as `agent.t3`. Omit runner, model, and variant to inherit the global defaults. An explicitly blank repository variant overrides the global variant. Existing Linear selections still take precedence. Edit the global file to change the defaults for all inheriting repos; no repository PR or merge is needed. Each new manager process reads the current global file.
+
+`mise manager:secrets` reads `1passwordServiceAccountToken` from the global file and passes it to 1Password through `OP_SERVICE_ACCOUNT_TOKEN`. It no longer reads `.env.service`. Repository `secrets` references and `.env.default` still control which app secrets are fetched and their layout. The token is never copied into repository configuration or generated env files. A missing global file leaves explicit repo settings available; secrets refresh requires the global token.
 
 ## Host keychain protection
 
