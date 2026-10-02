@@ -63,6 +63,50 @@ class T3RunnerTest < Minitest::Test
     end.returns(response)
   end
 
+  def test_refreshes_provider_using_authenticated_rpc_and_revokes_session
+    socket, sent, events = quota_socket
+    WebSocket::Client::Simple.expects(:connect).with(
+      "ws://127.0.0.1:3773/ws",
+      headers: { "Authorization" => "Bearer t3-token" },
+      verify_mode: OpenSSL::SSL::VERIFY_PEER,
+    ).yields(socket).returns(socket)
+
+    T3Runner.refresh_provider("codex")
+
+    assert_equal({ _tag: "Request", id: "1", tag: "server.refreshProviders", payload: { instanceId: "codex" }, headers: [] }, JSON.parse(sent.first, symbolize_names: true))
+    assert_includes events, :closed
+    assert_equal "revoke", @commands.last[4]
+    assert_equal "auth-1", @commands.last[5]
+  end
+
+  def test_refresh_failure_closes_socket_and_revokes_session
+    socket, _, events = quota_socket(success: false)
+    WebSocket::Client::Simple.expects(:connect).yields(socket).returns(socket)
+
+    assert_raises(RuntimeError) { T3Runner.refresh_provider("codex") }
+
+    assert_includes events, :closed
+    assert_equal "revoke", @commands.last[4]
+  end
+
+  def test_refresh_connection_failure_revokes_session
+    WebSocket::Client::Simple.expects(:connect).raises(Timeout::Error)
+
+    assert_raises(Timeout::Error) { T3Runner.refresh_provider("codex") }
+
+    assert_equal "revoke", @commands.last[4]
+  end
+
+  def test_refresh_socket_cleanup_failure_still_revokes_session
+    socket, = quota_socket
+    socket.define_singleton_method(:close) { raise IOError }
+    WebSocket::Client::Simple.expects(:connect).yields(socket).returns(socket)
+
+    assert_raises(IOError) { T3Runner.refresh_provider("codex") }
+
+    assert_equal "revoke", @commands.last[4]
+  end
+
   def test_creates_project_thread_and_turn_with_short_lived_auth
     result = Agent.start("do the work", runner: "t3", directory: @directory)
 
@@ -305,6 +349,26 @@ class T3RunnerTest < Minitest::Test
   end
 
   private
+
+  def quota_socket(success: true)
+    sent = []
+    events = []
+    socket = Object.new
+    socket.define_singleton_method(:send) { |message| sent << message }
+    socket.define_singleton_method(:close) { events << :closed }
+    socket.define_singleton_method(:on) do |event, &callback|
+      events << event
+      callback.call if event == :open
+      if event == :message
+        callback.call(Struct.new(:data).new(JSON.generate(_tag: "Pong")))
+        callback.call(Struct.new(:data).new(JSON.generate([
+          { _tag: "Exit", requestId: "other", exit: { _tag: "Success" } },
+          { _tag: "Exit", requestId: "1", exit: { _tag: success ? "Success" : "Failure" } },
+        ])))
+      end
+    end
+    [ socket, sent, events ]
+  end
 
   def porcelain(*worktrees)
     worktrees.map do |path, branch|
