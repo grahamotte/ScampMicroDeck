@@ -145,7 +145,7 @@ class SpawnerTest < Minitest::Test
   def test_blanks_every_secrets_value_including_extra_keys
     config_path = File.join(@source_repo, "config.json")
     config = JSON.parse(File.read(config_path))
-    config.fetch("secrets")["helios"] = "op://Projects/Helios/notesPlain"
+    config.fetch("secrets")["helios"] = "op://Projects/Helios"
     File.write(config_path, "#{JSON.pretty_generate(config)}\n")
 
     target_dir = Spawner.new(
