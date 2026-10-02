@@ -33,14 +33,20 @@ class LinearSyncAll
     end
 
     def sync(directory)
-      stdout, stderr, status = Open3.capture3("mise", "manager:linear_sync", chdir: directory)
-      $stdout.print(stdout)
-      $stderr.print(stderr) if stderr.present?
-      return if status.success?
+      $stdout.puts "Syncing #{directory}"
+      $stdout.flush
+      output = +""
+      Open3.popen2e("mise", "manager:linear_sync", chdir: directory) do |stdin, stream, wait|
+        stdin.close
+        stream.each_line do |line|
+          output << line
+          $stdout.print(line)
+          $stdout.flush
+        end
+        return if wait.value.success?
+      end
 
-      message = stderr.strip
-      message = stdout.strip if message.blank?
-      raise "mise manager:linear_sync failed in #{directory}: #{message}"
+      raise "mise manager:linear_sync failed in #{directory}: #{output.strip}"
     end
   end
 end

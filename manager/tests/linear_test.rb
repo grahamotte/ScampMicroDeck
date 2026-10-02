@@ -325,6 +325,35 @@ class LinearTest < Minitest::Test
     assert_equal "Invalid token", error.message
   end
 
+  def test_includes_user_presentable_graphql_error
+    stub_linear
+    Req.stubs(:call).returns(
+      {
+        errors: [
+          {
+            message: "Forbidden",
+            extensions: { userPresentableMessage: "You are not allowed to update workflow states for this team" },
+          },
+        ],
+      },
+    )
+
+    error = assert_raises(RuntimeError) { Linear.issues }
+
+    assert_equal "Forbidden: You are not allowed to update workflow states for this team", error.message
+  end
+
+  def test_does_not_repeat_identical_graphql_error_detail
+    stub_linear
+    Req.stubs(:call).returns(
+      { errors: [ { message: "Forbidden", extensions: { userPresentableMessage: "Forbidden" } } ] },
+    )
+
+    error = assert_raises(RuntimeError) { Linear.issues }
+
+    assert_equal "Forbidden", error.message
+  end
+
   def test_sync_statuses_renames_creates_and_removes
     calls = stub_linear(states: default_linear_states)
 
