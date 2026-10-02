@@ -21,6 +21,39 @@ class WorktreeTest < Minitest::Test
     assert_equal "schema", File.read(File.join(path, "backend/db/schema.rb"))
   end
 
+  def test_recreates_missing_prunable_card_worktree_on_existing_branch
+    item = { identifier: "MOTO-17" }
+    path = Worktree.path_for(item)
+    stub_git(
+      show_ref: "abc refs/heads/moto-17\n",
+      worktree_list: porcelain([ Worktree.root, "master" ], [ path, "moto-17" ]) + "prunable gitdir file points to non-existent location\n",
+    )
+
+    assert_equal path, Worktree.open(item)
+
+    assert_includes git_commands, [ "git", "worktree", "add", "--force", path, "moto-17" ]
+  end
+
+  def test_directory_ignores_prunable_card_worktree
+    stub_git(worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "moto-17" ]) + "prunable gitdir file points to non-existent location\n")
+
+    assert_equal Worktree.root, Worktree.directory({ identifier: "MOTO-17" })
+    refute Dir.exist?(other_path)
+  end
+
+  def test_preserves_leftover_directory_without_git_entry
+    item = { identifier: "MOTO-17" }
+    path = Worktree.path_for(item)
+    FileUtils.mkdir_p(path)
+    File.write(File.join(path, "work.txt"), "unfinished work")
+
+    error = assert_raises(RuntimeError) { Worktree.open(item) }
+
+    assert_includes error.message, "has no .git entry"
+    assert_equal "unfinished work", File.read(File.join(path, "work.txt"))
+    assert_equal [], git_commands
+  end
+
   def test_adds_existing_local_branch
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
@@ -57,6 +90,7 @@ class WorktreeTest < Minitest::Test
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
+    File.write(File.join(path, ".git"), "gitdir: card")
     write_source(".env.development", "DEV=1")
 
     Worktree.open(item)
@@ -69,6 +103,7 @@ class WorktreeTest < Minitest::Test
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
+    File.write(File.join(path, ".git"), "gitdir: card")
     File.write(File.join(path, ".env.development"), "OLD")
     write_source(".env.development", "NEW")
 
@@ -224,6 +259,7 @@ class WorktreeTest < Minitest::Test
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
+    File.write(File.join(path, ".git"), "gitdir: card")
 
     assert_equal path, Worktree.directory(item)
   end
@@ -268,6 +304,7 @@ class WorktreeTest < Minitest::Test
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
+    File.write(File.join(path, ".git"), "gitdir: card")
     stub_git(worktree_list: porcelain([ other_path, "moto-17" ]))
 
     assert_equal path, Worktree.directory(item)
@@ -372,7 +409,8 @@ class WorktreeTest < Minitest::Test
 
       @git_commands << args
       if args[1] == "worktree" && args[2] == "add"
-        path = args[3] == "-b" ? args[5] : args[3]
+        arguments = args.drop(3).reject { |argument| argument == "--force" }
+        path = arguments[0] == "-b" ? arguments[2] : arguments[0]
         FileUtils.mkdir_p(path)
       elsif args[1] == "worktree" && args[2] == "remove"
         FileUtils.remove_entry(args.last) if Dir.exist?(args.last)
