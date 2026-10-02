@@ -36,6 +36,7 @@ module ManagerTestIsolation
     Worktree.keychain = Keychain.new(home: @worktree_test_dir)
     FileUtils.mkdir_p(File.dirname(Worktree.keychain.login))
     File.write(Worktree.keychain.login, "login")
+    Settings.global_path = File.join(@worktree_test_dir, "global-config.json")
     Settings.path = File.join(@worktree_test_dir, "config.json")
     File.write(
       Settings.path,
