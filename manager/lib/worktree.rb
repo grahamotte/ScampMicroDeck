@@ -62,7 +62,11 @@ class Worktree
 
     def existing(item)
       path = path_for(item)
-      return path if Dir.exist?(path)
+      if Dir.exist?(path)
+        raise "Card worktree #{path} has no .git entry; preserve the directory and recreate its checkout" unless File.exist?(File.join(path, ".git"))
+
+        return path
+      end
 
       find(item)
     end
@@ -77,7 +81,7 @@ class Worktree
         "refs/heads",
       ).lines.to_h { |line| line.split.values_at(0, 1) }
       found = listed.find do |worktree|
-        worktree[:branch] == branch || upstreams[worktree[:branch]] == "origin/#{branch}"
+        !worktree[:prunable] && (worktree[:branch] == branch || upstreams[worktree[:branch]] == "origin/#{branch}")
       end
       found&.fetch(:path)
     end
@@ -87,7 +91,7 @@ class Worktree
         lines = block.lines.map(&:strip)
         path = lines.find { |line| line.start_with?("worktree ") }&.delete_prefix("worktree ")
         branch = lines.find { |line| line.start_with?("branch ") }&.delete_prefix("branch refs/heads/")
-        { path:, branch: }
+        { path:, branch:, prunable: lines.any? { |line| line.start_with?("prunable") } }
       end
     end
 
@@ -96,12 +100,14 @@ class Worktree
       run("git", "fetch", "origin")
       branch = branch_for(item)
       listed = refs
+      command = [ "git", "worktree", "add" ]
+      command << "--force" if worktrees.any? { |item| item[:path] == path && item[:prunable] }
       if listed.match?(%r{ refs/heads/#{Regexp.escape(branch)}$})
-        run("git", "worktree", "add", path, branch)
+        run(*command, path, branch)
       elsif listed.match?(%r{ refs/remotes/origin/#{Regexp.escape(branch)}$})
-        run("git", "worktree", "add", "-b", branch, path, "origin/#{branch}")
+        run(*command, "-b", branch, path, "origin/#{branch}")
       else
-        run("git", "worktree", "add", "-b", branch, path, "origin/master")
+        run(*command, "-b", branch, path, "origin/master")
       end
       path
     end

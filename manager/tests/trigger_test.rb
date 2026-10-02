@@ -749,6 +749,7 @@ class TriggerTest < Minitest::Test
   def test_merges_from_existing_worktree
     path = Worktree.path_for({ identifier: "MOTO-3" })
     FileUtils.mkdir_p(path)
+    File.write(File.join(path, ".git"), "gitdir: card")
     calls = stub_manager(
       items: [
         { id: "item-3", identifier: "MOTO-3", url: "https://linear.app/gotte/issue/MOTO-3", state: { id: "s-approved", name: "Approved" } },
