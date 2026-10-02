@@ -52,7 +52,7 @@
   },
   "agent": {
     "runner": "t3",
-    "model": "openai/gpt-6.1-sol",
+    "model": "anthropic/claude-opus-5-5",
     "variant": "medium"
   },
   "apps": {
