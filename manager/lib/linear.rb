@@ -527,7 +527,11 @@ class Linear
         payload: { query:, variables: },
       )
       errors = response[:errors]
-      raise errors.first[:message] if errors.present?
+      if errors.present?
+        error = errors.first
+        detail = error.dig(:extensions, :userPresentableMessage)
+        raise [ error[:message], detail ].select(&:present?).uniq.join(": ")
+      end
 
       response.fetch(:data)
     end

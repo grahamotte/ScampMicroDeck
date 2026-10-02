@@ -10,7 +10,7 @@ class LinearSyncAllTest < Minitest::Test
     output, = capture_io { LinearSyncAll.call }
 
     assert_equal [ current, other ].sort, commands.map { |command| command[:directory] }
-    assert_equal "", output
+    assert_equal [ current, other ].sort.map { |directory| "Syncing #{directory}\n" }.join, output
     assert commands.all? { |command| command[:args] == [ "mise", "manager:linear_sync" ] }
   end
 
@@ -48,7 +48,7 @@ class LinearSyncAllTest < Minitest::Test
 
     output, = capture_io { LinearSyncAll.call }
 
-    assert_equal "created Working\n", output
+    assert_equal "Syncing #{File.join(parent, "app.org")}\ncreated Working\n", output
   end
 
   def test_raises_when_sync_fails
@@ -69,6 +69,21 @@ class LinearSyncAllTest < Minitest::Test
     error = assert_raises(RuntimeError) { capture_io { LinearSyncAll.call } }
 
     assert_equal "mise manager:linear_sync failed in #{File.join(parent, "app.org")}: failed", error.message
+  end
+
+  def test_streams_output_before_waiting_for_exit
+    directory = add_repo("app.org")
+    wait = Object.new
+    wait.define_singleton_method(:value) do
+      raise "Output was buffered" unless $stdout.string.include?("created Working\n")
+
+      Struct.new(:success?).new(true)
+    end
+    Open3.stubs(:popen2e).yields(StringIO.new, StringIO.new("created Working\n"), wait)
+
+    output, = capture_io { LinearSyncAll.call }
+
+    assert_equal "Syncing #{directory}\ncreated Working\n", output
   end
 
   def test_directories_lists_syncable_repos
@@ -104,10 +119,10 @@ class LinearSyncAllTest < Minitest::Test
     commands = []
     status = Object.new
     status.define_singleton_method(:success?) { success }
-    Open3.stubs(:capture3).with do |*args, **kwargs|
+    Open3.stubs(:popen2e).with do |*args, **kwargs|
       commands << { args:, directory: kwargs[:chdir] }
       true
-    end.returns([ stdout, stderr, status ])
+    end.yields(StringIO.new, StringIO.new(stdout + stderr), Struct.new(:value).new(status))
     commands
   end
 end
