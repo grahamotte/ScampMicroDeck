@@ -35,7 +35,31 @@ Availability and supported effort levels depend on the runner, provider account,
 
 Cards that invoke the `merge` skill and request local env-file cleanup must target `.env.development` and `.env.production` in the main checkout, where the post-merge `git pull --ff-only` runs. The card worktree contains temporary copies that disappear when it is removed.
 
-Before completing a merge card, follow the merge skill's main-checkout steps: confirm master or main, pull the merged changes, run `mise manager:secrets` from that checkout root in a non-login shell, and verify the refreshed files against the merged `.env.default`. Code Moto keys must appear once in template order and grouping before the separator line, with downstream-only keys afterward. Apply cleanup to the corresponding 1Password notes so regeneration preserves it. A failed refresh or layout check leaves the card blocked rather than completed.
+Before completing a merge card, follow the merge skill's main-checkout steps: confirm master or main, pull the merged changes, run `mise manager:secrets` from that checkout root in a non-login shell, and verify the refreshed files against the merged `.env.default`. Code Moto keys must appear once in template order and grouping before the separator line, with downstream-only keys afterward. Apply cleanup to the corresponding 1Password item fields so regeneration preserves it. A failed refresh or layout check leaves the card blocked rather than completed.
+
+## Operation templates
+
+Linear operation templates invoke checked-in skills. Keep execution steps and completion rules in the skill; templates contain only the invocation and operation inputs.
+
+| Template | Skill | Inputs |
+| --- | --- | --- |
+| Deploy | `deploy` | None |
+| Merge | `merge` | Repository-specific concerns when needed |
+| Merge All | `merge-all` | None |
+| Publish - full | `publish` | Full publish |
+| Publish - stop before prepare | `publish` | TestFlight only |
+| Publish - stop before submission | `publish` | Stop before submission |
+| Triage Jobs | `triage-jobs-card` | None |
+| Set Default Model All | `set-default-model-all` | Target runner, model, and variant (blank variant is allowed) |
+| Cleanup All Mains | `cleanup-all-mains` | None |
+
+Creating or editing these templates does not execute their operations. Blank Default templates and personal recurring reminders are not operation workflows.
+
+## Repository discovery for all-repository skills
+
+Locate the main checkout through `git worktree list --porcelain`, rather than treating a card worktree as a separate repository. Enumerate sibling main checkouts under its parent directory, following the discovery pattern in `manager/lib/linear_sync_all.rb`: a main checkout has a `.git` directory and root `mise.toml` with the `manager:linear_sync` task. Deduplicate by Git common directory and exclude linked card worktrees.
+
+Include Code Moto itself and confirm downstream membership using the Code Moto `codemoto` remote (or legacy `upstream`), shared Code Moto Git ancestry, and the repository's `AGENTS.md`. Read each repository's own `config.json` for its GitHub origin and Linear team. Fetch origin and identify its actual remote default branch; never assume local master is current. If an expected downstream lacks a local checkout, or membership is ambiguous, record the gap as a blocker rather than silently omitting it. Report the inventory, exclusions, and results on the supplied tracking card.
 
 ## macOS agent task execution
 

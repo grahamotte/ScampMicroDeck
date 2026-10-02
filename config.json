@@ -43,8 +43,8 @@
     "size": "s-1vcpu-2gb"
   },
   "secrets": {
-    "development": "op://Projects/Scamp Micro Deck Development/notesPlain",
-    "production": "op://Projects/Scamp Micro Deck Production/notesPlain"
+    "development": "op://Projects/Scamp Micro Deck Development",
+    "production": "op://Projects/Scamp Micro Deck Production"
   },
   "linear": {
     "workspace": "gotte",
