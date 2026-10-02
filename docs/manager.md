@@ -2,17 +2,21 @@
 
 `mise manager:sync` (also available as `mise manager:linear_sync`) reconciles the configured Linear team's workflow, labels, and Git automations. It creates the manager's runner, model, and variant labels and deletes labels outside the managed set, including shared workspace labels returned for the team. Deleting a shared label removes it from cards across the workspace. Labels owned by other teams are left alone. Run sync before triggering cards.
 
+`mise manager:trigger` filters issues in Linear before paginating: all Ready and Approved cards remain eligible regardless of age, while Completed and Canceled cards are fetched for worktree cleanup only when updated within the last 30 days. Other columns are excluded. The window uses the last update rather than creation, so an old card that is newly completed or canceled still gets cleaned up. Worktrees for terminal cards unchanged for more than 30 days need manual removal if the manager missed the cleanup window.
+
 Cards can override the defaults in `config.json` using these labels:
 
 - `runner: openchamber`, `runner: t3`, or `runner: interactive`
 - `model: <provider>/<modelid>`
 - `variant: <effort>`
 
-When the trigger starts a card, it fills in missing labels from `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
+When the trigger starts a card, it fills in missing labels from `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. Move a card to Review or Approved only when its whole task is ready; approval of one PR within a larger task does not approve the card. When a card reaches Approved, the manager first tries to merge its single linked PR in the configured GitHub repository. A clean, mergeable PR targeting master or main is merged with its head commit checked, and the manager confirms it is merged before updating a clean main checkout, completing the card, and removing the working tag. An already merged PR can also complete the card. Missing or ambiguous links, conflicts, pending checks, queued merges, and command failures fall back to the merge agent. The recorded selections apply to that agent; edit the labels to change its runner or model.
 
 `runner: interactive` marks work started manually with the user. The manager skips those cards in Ready, and tries the same automatic merge when Approved, using its configured runner if an agent is needed. Sync renames the old `interactive` label in place, preserving its ID and existing card assignments.
 
-`skip review` tells the manager's work agent to create and link a PR as usual, then merge it immediately after resolving conflicts and passing required checks. The agent confirms the PR is merged, updates a clean main checkout, completes the card, removes the working tag, and removes the card's worktree from the main checkout as its final step. A blocked merge returns the card to Planned with an explanation. Cards without the tag still go to Review, and named skills retain their own finishing instructions.
+`skip review` tells the manager's work agent to create and link a PR for tracked repository changes, then merge it immediately after resolving conflicts and passing required checks. The agent confirms any required PR is merged and updates a clean main checkout. It completes the card and removes its worktree only when the whole task is done, removing the worktree from the main checkout as its final step. Operations without tracked repository changes need no PR, empty commit, or branch. If other steps remain, the agent records them, keeps the card in Working, retains its worktree, and removes the working tag. A blocked merge returns the card to Planned with an explanation. Cards without the tag go to Review when repository changes await review and the whole task is ready, or Completed when the whole task is done without a PR. Named skills record operation results on the same tracking card and complete it only when its full scope is done.
+
+Reuse one tracking card for the whole task, including individual operations and PRs. Record each step and any remaining work there. A finished operation or merged PR leaves a larger card in Working while steps remain, or Planned when blocked. Do not create a separate card for each step.
 
 The model picker contains eight options:
 
@@ -26,6 +30,45 @@ The model picker contains eight options:
 - `cursor/grok-4.7`
 
 Availability and supported effort levels depend on the runner, provider account, and model. A model without effort options needs a blank default variant. For OpenChamber, model and variant values are forwarded as before.
+
+## Code Moto merge cards
+
+Cards that invoke the `merge` skill and request local env-file cleanup must target `.env.development` and `.env.production` in the main checkout, where the post-merge `git pull --ff-only` runs. The card worktree contains temporary copies that disappear when it is removed.
+
+Before completing a merge card, follow the merge skill's main-checkout steps: confirm master or main, pull the merged changes, run `mise manager:secrets` from that checkout root in a non-login shell, and verify the refreshed files against the merged `.env.default`. Code Moto keys must appear once in template order and grouping before the separator line, with downstream-only keys afterward. Apply cleanup to the corresponding 1Password notes so regeneration preserves it. A failed refresh or layout check leaves the card blocked rather than completed.
+
+## macOS agent task execution
+
+Run root `mise` tasks with the card's worktree root as the working directory and a non-login shell. Before running tasks in a newly opened worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout as required by `AGENTS.md`. The manager already copies these files when opening a card worktree.
+
+For Codex's `exec_command`, set `login: false` explicitly on every call that invokes `mise`; the option applies to that call only. This also applies when `exec_command` is called through an orchestration wrapper. For example:
+
+```javascript
+await tools.exec_command({
+  cmd: "mise test",
+  workdir: "/absolute/path/to/card-worktree",
+  login: false,
+});
+```
+
+Other runners should use their equivalent non-login shell option. Keep using the root tasks so their dependencies, environment files, and task shell configuration are applied.
+
+In the failure reported by MOTO-77, login-shell PATH ordering selected `/usr/bin/bundle` and macOS system Ruby 2.6 instead of the Ruby pinned in `mise.toml`. This can look like a missing Bundler version or a Ruby compatibility failure. `mise which ruby` and `mise exec -- ruby --version` resolved the pinned Ruby even while the root task failed. Wrapping the task in `mise exec -- bash -c` also failed in that session; retrying the same root task with `login: false` succeeded.
+
+If this symptom occurs, run these diagnostics from the worktree root with `login: false`:
+
+```sh
+command -v ruby
+command -v bundle
+mise which ruby
+mise which bundle
+mise exec -- ruby --version
+mise exec -- bundle --version
+```
+
+The shell may resolve mise shims or installed tool paths. `mise which` should identify the mise-managed installations, and the Ruby version should match `[tools]` in the root `mise.toml`. Retry the original root task in the same non-login execution mode. A successful direct `mise exec` diagnostic alone does not verify the task's environment.
+
+If a pinned tool is missing, use `mise install` in that mode, then retry. If the task still fails, investigate its actual error with the selected tools confirmed. Do not install gems into system Ruby, change lockfiles, or downgrade pinned versions to address a shell-resolution failure. Share tool paths and versions when reporting the failure; do not dump environment variables or secret files.
 
 ## T3 Code
 

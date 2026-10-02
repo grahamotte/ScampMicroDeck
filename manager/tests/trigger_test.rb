@@ -1,6 +1,28 @@
 require_relative "test_helper"
 
 class TriggerTest < Minitest::Test
+  def test_fetches_all_actionable_cards_and_only_recent_terminal_cards
+    calls = stub_manager(items: [])
+
+    assert_output("") { Trigger.call }
+
+    query = calls.find { |call| graphql?(call, "query Issues") }
+    assert_equal(
+      {
+        or: [
+          { state: { name: { in: [ "Ready", "Approved" ] } } },
+          {
+            and: [
+              { state: { name: { in: [ "Completed", "Canceled" ] } } },
+              { updatedAt: { gte: "-P30D" } },
+            ],
+          },
+        ],
+      },
+      query.dig(:payload, :variables, :filter),
+    )
+  end
+
   def test_moves_ready_cards_and_starts_work_agent
     calls = stub_manager(
       items: [
@@ -23,17 +45,28 @@ class TriggerTest < Minitest::Test
     prompt = prompt_for(calls, "MOTO-1")
     assert_includes prompt, "Do this Linear issue: https://linear.app/gotte/issue/MOTO-1"
     assert_includes prompt, "The manager runs this card. Do not use the `interactive-card` skill."
+    assert_includes prompt, "Do not assign users to cards when creating or working on them. Leave existing assignees unchanged."
     assert_includes prompt, "This may be a new card or a kickback with corrections in later comments."
     assert_includes prompt, "There may already be a worktree, commits, and a PR."
     assert_includes prompt, "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
     assert_includes prompt, "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt, "You may edit existing commits or add new ones."
     assert_includes prompt, "Open a GitHub PR with `gh pr create` using `GITHUB_TOKEN`"
+    assert_includes prompt, "A GitHub PR is required only for code changes or other changes to tracked repository files."
+    assert_includes prompt, "Operations without tracked repository changes need no PR, empty commit, or branch."
+    assert_includes prompt, "Do not require GitHub PR access for such operations."
+    assert_includes prompt, "Reuse this tracking card for the whole task and record individual operations and steps here; do not create a new card for each step."
+    assert_includes prompt, "Completing one operation or PR does not complete a larger task."
+    assert_includes prompt, "reuse an open PR or create a new one on this card after a prior PR has finished"
+    assert_includes prompt, "If there are tracked repository changes, commit them, push the branch, and create or update the card's PR:"
+    assert_includes prompt, "if the card has no open PR for these changes"
     assert_includes prompt, "Comment on the card with a brief summary of what changed and a short fenced pseudocode block showing how the change works at a high level."
+    assert_includes prompt, "Use readable, imperfect Ruby in a fenced `ruby` block; the pseudocode does not need to run."
     assert_includes prompt, "Use named components and indentation to show the flow of inputs, key decisions, and results."
     assert_includes prompt, "Keep it structural and concise; do not explain the flow in paragraphs or include low-level implementation details."
     assert_includes prompt, "Remove the working tag"
     assert_includes prompt, "Move the card to review"
+    assert_includes prompt, "Move the card to review if there are tracked repository changes awaiting review and the whole task is ready; otherwise move it to completed only when the whole task is done."
     refute_includes prompt, "Merge the linked PR immediately"
     refute_includes prompt, "remove only this card's worktree"
     assert_includes prompt, "Move the card to planned"
@@ -68,20 +101,21 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Link the PR to the card"
     assert_includes prompt, "Comment on the card with a brief summary"
     assert_includes prompt, "This card has the `skip review` tag."
-    assert_includes prompt, "Merge the linked PR immediately with `gh pr merge` using `GITHUB_TOKEN`"
+    assert_includes prompt, "If there are tracked repository changes, merge the linked PR immediately with `gh pr merge` using `GITHUB_TOKEN`"
+    assert_includes prompt, "Operations without tracked repository changes complete without a PR when the whole task is done."
     assert_includes prompt, "resolving conflicts and passing required checks first"
     assert_includes prompt, "Verify that the PR is merged before completing the card or removing its worktree."
     assert_includes prompt, "If the merge is blocked, follow step 6."
     assert_includes prompt, "run `git pull --ff-only` there. Do not switch branches."
-    assert_includes prompt, "Move the card to completed"
+    assert_includes prompt, "Move the card to completed only when the whole task is done; otherwise keep it in working and record the remaining steps"
     assert_includes prompt, "Remove the working tag"
-    assert_includes prompt, "From the main checkout, remove only this card's worktree with `git worktree remove`."
+    assert_includes prompt, "Only when the whole task is done, from the main checkout, remove only this card's worktree with `git worktree remove`."
     assert_includes prompt, "Do this last, after all card updates and repository work are finished. Do not remove the main checkout."
     assert_includes prompt, "where the skill says how to finish the card, do that instead of steps 5 and 6"
     assert_includes prompt, "Move the card to planned"
     refute_includes prompt, "Move the card to review"
-    assert_operator prompt.index("Link the PR to the card"), :<, prompt.index("Merge the linked PR immediately")
-    assert_operator prompt.index("Merge the linked PR immediately"), :<, prompt.index("Move the card to completed")
+    assert_operator prompt.index("Link the PR to the card"), :<, prompt.index("merge the linked PR immediately")
+    assert_operator prompt.index("merge the linked PR immediately"), :<, prompt.index("Move the card to completed")
     assert_operator prompt.index("Move the card to completed"), :<, prompt.index("remove only this card's worktree")
   end
 
@@ -267,7 +301,9 @@ class TriggerTest < Minitest::Test
     assert_includes prompt, "Rebase the GitHub PR on the card."
     assert_includes prompt, "Merge the PR with `gh pr merge` using `GITHUB_TOKEN`."
     assert_includes prompt, "Remove the working tag."
-    assert_includes prompt, "Move the card to completed."
+    assert_includes prompt, "Move the card to completed. Do this only when the whole task is done; otherwise keep it in working and record the remaining steps."
+    assert_includes prompt, "Read the card and all comments before merging."
+    assert_includes prompt, "If they show remaining steps beyond the PR, record them and keep the card in working after the merge; do not complete it."
     assert_includes prompt, "If the main checkout is on master or main and has no uncommitted changes, run `git pull --ff-only` there. Do not switch branches."
     refute_includes prompt, "gotomain"
     refute_includes prompt, "Remove any worktrees created for this card."
@@ -551,6 +587,7 @@ class TriggerTest < Minitest::Test
     assert_includes prompt_for(calls, "MOTO-1"), "This session is already in the card worktree. Env files and schema.rb were copied from the main checkout."
     assert_includes prompt_for(calls, "MOTO-1"), "Rebase onto the current origin main, or merge it instead if the branch has merge commits. Do not hard-reset; keep existing commits."
     assert_includes prompt_for(calls, "MOTO-3"), "Rebase the GitHub PR on the card."
+    assert_includes prompt_for(calls, "MOTO-3"), "Do not assign users to cards when creating or working on them. Leave existing assignees unchanged."
     assert_equal Worktree.path_for({ identifier: "MOTO-1" }), directory_for(calls, "MOTO-1")
     assert_equal Worktree.root, directory_for(calls, "MOTO-3")
   end

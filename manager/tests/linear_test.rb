@@ -2,21 +2,24 @@ require_relative "test_helper"
 
 class LinearTest < Minitest::Test
   def test_issues_unwraps_nodes
-    stub_linear(
+    calls = stub_linear(
       issues: [
         { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" } },
       ],
     )
 
     assert_equal "item-1", Linear.issues.first.fetch(:id)
+    query = calls.find { |call| graphql?(call, "query Issues") }
+    assert_equal({ teamId: "team-1" }, query.dig(:payload, :variables))
   end
 
   def test_issues_paginates
-    stub_linear
+    calls = stub_linear
     Req.stubs(:call).with do |*args, **kwargs|
       opts = req_opts(args, kwargs)
       next false unless graphql?(opts, "query Issues")
 
+      calls << opts
       true
     end.returns(
       {
@@ -41,7 +44,17 @@ class LinearTest < Minitest::Test
       },
     )
 
-    assert_equal [ "item-1", "item-2" ], Linear.issues.map { |item| item.fetch(:id) }
+    filter = { updatedAt: { gte: "-P30D" } }
+    assert_equal [ "item-1", "item-2" ], Linear.issues(filter:).map { |item| item.fetch(:id) }
+    queries = calls.select { |call| graphql?(call, "query Issues") }
+    assert_equal [
+      { teamId: "team-1", filter: },
+      { teamId: "team-1", after: "cursor-1", filter: },
+    ], queries.map { |call| call.dig(:payload, :variables) }.uniq
+    queries.each do |call|
+      assert_includes call.dig(:payload, :query), "$filter: IssueFilter"
+      assert_includes call.dig(:payload, :query), "filter: $filter"
+    end
   end
 
   def test_column_from_state_name
