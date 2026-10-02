@@ -1,7 +1,7 @@
 require "time"
 
 class AgentSelection
-  MAX_QUOTA_AGE = 600
+  MAX_QUOTA_AGE = 300
   MIN_REMAINING = 5
 
   class << self
@@ -29,7 +29,28 @@ class AgentSelection
 
     private
 
-    def weekly_remaining(selection)
+    def stale_quota?(limits)
+      Time.now - Time.iso8601(limits.fetch(:checkedAt)) > MAX_QUOTA_AGE
+    rescue KeyError, ArgumentError, TypeError, NoMethodError
+      false
+    end
+
+    def current_quota?(limits)
+      return false if limits.blank? || limits[:unavailable].present?
+
+      now = Time.now
+      checked = Time.iso8601(limits.fetch(:checkedAt))
+      return false unless checked <= now && now - checked <= MAX_QUOTA_AGE
+
+      windows = limits[:windows]
+      return false unless windows.is_a?(Array) && windows.present?
+
+      windows.all? { |window| window[:resetsAt].blank? || Time.iso8601(window[:resetsAt]) > now }
+    rescue KeyError, ArgumentError, TypeError, NoMethodError
+      false
+    end
+
+    def weekly_remaining(selection, refresh: true)
       T3Runner.selection(model: selection.fetch(:model), variant: selection[:variant])
       provider = selection.fetch(:model).split("/", 2).first
       instance = T3Runner::PROVIDERS.fetch(provider, provider)
@@ -37,11 +58,14 @@ class AgentSelection
       home = File.expand_path(home.present? ? home : "~/.t3")
       catalog = JSON.parse(File.read(File.join(home, "caches", "#{instance}.json")), symbolize_names: true)
       limits = catalog[:usageLimits]
-      return if limits.blank? || limits[:unavailable].present?
+      unless current_quota?(limits)
+        return unless refresh && stale_quota?(limits)
+
+        T3Runner.refresh_provider(instance)
+        return weekly_remaining(selection, refresh: false)
+      end
 
       now = Time.now
-      checked = Time.iso8601(limits.fetch(:checkedAt))
-      return unless checked <= now && now - checked <= MAX_QUOTA_AGE
 
       windows = limits[:windows]
       return unless windows.is_a?(Array) && windows.present?
@@ -57,7 +81,7 @@ class AgentSelection
         [ window[:kind], quota ]
       end
       remaining.select { |kind, _| kind == "weekly" }.map(&:last).min
-    rescue JSON::ParserError, SystemCallError, KeyError, ArgumentError, TypeError, NoMethodError, RuntimeError
+    rescue JSON::ParserError, SystemCallError, KeyError, ArgumentError, TypeError, NoMethodError, RuntimeError, Timeout::Error, IOError, SocketError, OpenSSL::SSL::SSLError
       nil
     end
   end

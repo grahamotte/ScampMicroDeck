@@ -1,6 +1,7 @@
 require "open3"
 require "securerandom"
 require "time"
+require "timeout"
 
 class T3Runner
   PROVIDERS = {
@@ -76,6 +77,51 @@ class T3Runner
 
     def selection(model:, variant: nil)
       model_selection(model, variant)
+    end
+
+    def refresh_provider(instance)
+      issued = JSON.parse(auth("issue", "--ttl", "5m", "--label", "Code Moto quota refresh", "--json"), symbolize_names: true)
+      socket = nil
+      responses = Queue.new
+      begin
+        Timeout.timeout(30) do
+          socket = WebSocket::Client::Simple.connect(
+            "#{origin.sub(/\Ahttp/, "ws")}/ws",
+            headers: { "Authorization" => "Bearer #{issued.fetch(:token)}" },
+            verify_mode: OpenSSL::SSL::VERIFY_PEER,
+          ) do |connection|
+            socket = connection
+            connection.on(:open) do
+              connection.send(JSON.generate(_tag: "Request", id: "1", tag: "server.refreshProviders", payload: { instanceId: instance }, headers: []))
+            end
+            connection.on(:message) do |message|
+              begin
+                decoded = JSON.parse(message.data, symbolize_names: true)
+                messages = decoded.is_a?(Array) ? decoded : [ decoded ]
+                messages.each do |response|
+                  responses << response if response[:_tag] == "Exit" && response[:requestId].to_s == "1"
+                end
+              rescue JSON::ParserError
+                responses << { exit: { _tag: "Failure" } }
+              end
+            end
+            connection.on(:error) { responses << { exit: { _tag: "Failure" } } }
+            connection.on(:close) { responses << { exit: { _tag: "Failure" } } }
+          end
+          response = responses.pop
+          raise "T3 provider #{instance} quota refresh failed" unless response.dig(:exit, :_tag) == "Success"
+        end
+      ensure
+        begin
+          socket&.close
+        ensure
+          begin
+            auth("revoke", issued.fetch(:sessionId))
+          rescue StandardError
+            warn "Could not revoke the temporary T3 session; it expires after five minutes"
+          end
+        end
+      end
     end
 
     private

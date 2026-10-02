@@ -10,6 +10,24 @@ class AgentSelectionTest < Minitest::Test
     ]
     File.write(Settings.global_path, JSON.generate(agentDefaultsBalance: @candidates))
     File.write(Settings.path, JSON.generate(agent: { t3: { home: @home } }))
+    @refreshes = []
+    @refresh = nil
+    socket = Object.new
+    socket.define_singleton_method(:send) { |message| }
+    socket.define_singleton_method(:close) {}
+    socket.define_singleton_method(:on) do |event, &callback|
+      callback.call if event == :open
+      callback.call(Struct.new(:data).new(JSON.generate(_tag: "Exit", requestId: "1", exit: { _tag: "Success" }))) if event == :message
+    end
+    Open3.stubs(:capture3).with { |*args| args[1] == "t3" }.returns([
+      JSON.generate(token: "quota-token", sessionId: "quota-session"), "", Struct.new(:success?).new(true),
+    ])
+    Settings.all[:agent][:t3][:command] = [ "t3" ]
+    WebSocket::Client::Simple.stubs(:connect).with do |url, **options|
+      @refreshes << url
+      @refresh&.call
+      true
+    end.yields(socket).returns(socket)
     @now = Time.now
     write_catalog("codex", "gpt-6.1-sol", weekly: 33)
     write_catalog("claudeAgent", "claude-opus-5-5", weekly: 88, session: 50)
@@ -63,7 +81,7 @@ class AgentSelectionTest < Minitest::Test
   end
 
   def test_skips_stale_future_and_expired_snapshots
-    [ @now - 601, @now + 60 ].each do |checked|
+    [ @now - 301, @now + 60 ].each do |checked|
       edit_catalog { |catalog| catalog[:usageLimits][:checkedAt] = checked.iso8601 }
       assert_equal @candidates.first, AgentSelection.resolve
     end
@@ -126,6 +144,63 @@ class AgentSelectionTest < Minitest::Test
   def test_legacy_defaults_cannot_override_balanced_candidates
     Settings.global[:agentDefaults] = { runner: "openchamber", model: "legacy/model", variant: "high" }
     assert_equal @candidates.last, AgentSelection.resolve
+  end
+
+  def test_refreshes_stale_quota_and_scores_the_new_snapshot
+    edit_catalog { |catalog| catalog[:usageLimits][:checkedAt] = (@now - 301).iso8601 }
+    @refresh = -> { write_catalog("claudeAgent", "claude-opus-5-5", weekly: 99) }
+
+    assert_equal @candidates.last, AgentSelection.resolve
+    assert_equal [ "ws://127.0.0.1:3773/ws" ], @refreshes
+  end
+
+  def test_does_not_refresh_recent_or_undated_unusable_usage
+    [
+      nil,
+      { checkedAt: "invalid" },
+      { unavailable: { reason: "probeFailed" } },
+      { checkedAt: @now.iso8601, unavailable: { reason: "probeFailed" } },
+      { checkedAt: (@now + 60).iso8601, windows: [ { kind: "weekly", usedPercent: 5 } ] },
+      { checkedAt: @now.iso8601, windows: [ { kind: "weekly", usedPercent: 5, resetsAt: (@now - 1).iso8601 } ] },
+    ].each do |limits|
+      edit_catalog { |catalog| catalog[:usageLimits] = limits }
+      assert_equal @candidates.first, AgentSelection.resolve
+    end
+    assert_equal [], @refreshes
+  end
+
+  def test_reuses_quota_under_five_minutes_old
+    edit_catalog { |catalog| catalog[:usageLimits][:checkedAt] = (@now - 299).iso8601(6) }
+
+    assert_equal @candidates.last, AgentSelection.resolve
+    assert_equal [], @refreshes
+  end
+
+  def test_refreshes_old_failed_usage_once
+    edit_catalog do |catalog|
+      catalog[:usageLimits] = { checkedAt: (@now - 301).iso8601, unavailable: { reason: "probeFailed" } }
+    end
+    @refresh = -> { write_catalog("claudeAgent", "claude-opus-5-5", weekly: 99) }
+
+    assert_equal @candidates.last, AgentSelection.resolve
+    assert_equal 1, @refreshes.length
+  end
+
+  def test_failed_refresh_keeps_other_fresh_candidates_available
+    edit_catalog { |catalog| catalog[:usageLimits][:checkedAt] = (@now - 301).iso8601 }
+    @refresh = -> { raise Timeout::Error }
+
+    assert_equal @candidates.first, AgentSelection.resolve
+    assert_equal 1, @refreshes.length
+  end
+
+  def test_does_not_refresh_fresh_or_exhausted_quotas_or_explicit_models
+    AgentSelection.resolve
+    write_catalog("claudeAgent", "claude-opus-5-5", weekly: 0)
+    AgentSelection.resolve
+    AgentSelection.resolve(model: @candidates.last[:model])
+
+    assert_equal [], @refreshes
   end
 
   private
