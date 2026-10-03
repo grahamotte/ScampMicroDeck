@@ -35,8 +35,8 @@ The macOS revision is signed, notarized, and released through GitHub. Other Appl
 
 ## Linear card
 
-Reuse the supplied tracking card for this operation and record its result there. Create a card only if none covers the task. Follow this section instead of sending the operation to `review`; complete the card only when its whole task is done. If other steps remain after success, keep it in `working` and record what remains:
+Record the result on the card that invoked this skill. Complete the card only when its whole task is done; otherwise continue with its remaining work.
 
 - Link the version PR to the card.
-- On success, comment with the release report, then move the card to `completed` only if the whole task is done.
+- On success, comment with the release report.
 - When blocked, comment with the failure, its impact, and the state publishing stopped in, then move the card to `planned`.

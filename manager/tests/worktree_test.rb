@@ -34,10 +34,10 @@ class WorktreeTest < Minitest::Test
     assert_includes git_commands, [ "git", "worktree", "add", "--force", path, "moto-17" ]
   end
 
-  def test_directory_ignores_prunable_card_worktree
+  def test_open_ignores_prunable_card_worktree
     stub_git(worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "moto-17" ]) + "prunable gitdir file points to non-existent location\n")
 
-    assert_equal Worktree.root, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal Worktree.path_for({ identifier: "MOTO-17" }), Worktree.open({ identifier: "MOTO-17" })
     refute Dir.exist?(other_path)
   end
 
@@ -255,59 +255,59 @@ class WorktreeTest < Minitest::Test
     assert_equal "git worktree remove --force #{path} failed: locked", error.message
   end
 
-  def test_directory_uses_existing_worktree
+  def test_open_uses_existing_worktree
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
     File.write(File.join(path, ".git"), "gitdir: card")
 
-    assert_equal path, Worktree.directory(item)
+    assert_equal path, Worktree.open(item)
   end
 
-  def test_directory_falls_back_to_root
+  def test_open_adds_card_worktree_when_none_matches
     stub_git(worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "claude/other" ]))
 
-    assert_equal Worktree.root, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal Worktree.path_for({ identifier: "MOTO-17" }), Worktree.open({ identifier: "MOTO-17" })
   end
 
-  def test_directory_finds_worktree_on_card_branch
+  def test_open_finds_worktree_on_card_branch
     stub_git(worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "moto-17" ]))
 
-    assert_equal other_path, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal other_path, Worktree.open({ identifier: "MOTO-17" })
   end
 
-  def test_directory_finds_worktree_pushing_to_card_branch
+  def test_open_finds_worktree_pushing_to_card_branch
     stub_git(
       worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "claude/brave-fox" ]),
       for_each_ref: "master origin/master\nclaude/brave-fox origin/moto-17\nclaude/other\n",
     )
 
-    assert_equal other_path, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal other_path, Worktree.open({ identifier: "MOTO-17" })
   end
 
-  def test_directory_ignores_similar_branches
+  def test_open_ignores_similar_branches
     stub_git(
       worktree_list: porcelain([ Worktree.root, "master" ], [ other_path, "moto-170" ]),
       for_each_ref: "moto-170 origin/moto-170\n",
     )
 
-    assert_equal Worktree.root, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal Worktree.path_for({ identifier: "MOTO-17" }), Worktree.open({ identifier: "MOTO-17" })
   end
 
-  def test_directory_skips_detached_worktrees
+  def test_open_skips_detached_worktrees
     stub_git(worktree_list: "worktree #{Worktree.root}\nHEAD abc\nbranch refs/heads/master\n\nworktree #{other_path}\nHEAD def\ndetached\n")
 
-    assert_equal Worktree.root, Worktree.directory({ identifier: "MOTO-17" })
+    assert_equal Worktree.path_for({ identifier: "MOTO-17" }), Worktree.open({ identifier: "MOTO-17" })
   end
 
-  def test_directory_prefers_manager_worktree
+  def test_open_prefers_manager_worktree
     item = { identifier: "MOTO-17" }
     path = Worktree.path_for(item)
     FileUtils.mkdir_p(path)
     File.write(File.join(path, ".git"), "gitdir: card")
     stub_git(worktree_list: porcelain([ other_path, "moto-17" ]))
 
-    assert_equal path, Worktree.directory(item)
+    assert_equal path, Worktree.open(item)
     assert_equal [], git_commands
   end
 
@@ -348,7 +348,7 @@ class WorktreeTest < Minitest::Test
   def test_raises_when_worktree_list_fails
     Open3.stubs(:capture3).returns([ "", "not a git repository", status(false) ])
 
-    error = assert_raises(RuntimeError) { Worktree.directory({ identifier: "MOTO-17" }) }
+    error = assert_raises(RuntimeError) { Worktree.open({ identifier: "MOTO-17" }) }
 
     assert_equal "git worktree list --porcelain failed: not a git repository", error.message
   end

@@ -32,10 +32,6 @@ class Worktree
       path
     end
 
-    def directory(item)
-      existing(item) || root
-    end
-
     def remove(item)
       path = path_for(item)
       return false unless Dir.exist?(path)

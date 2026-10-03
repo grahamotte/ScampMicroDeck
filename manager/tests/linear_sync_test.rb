@@ -17,7 +17,7 @@ class LinearSyncTest < Minitest::Test
     assert_empty calls.select { |call| graphql?(call, "query Issues") }
     assert_empty calls.select { |call| graphql?(call, "mutation IssueUpdate") }
     assert_empty calls.select { |call| call[:url].to_s.end_with?("/api/openchamber/sessions") }
-    assert_includes output, "created Working"
+    assert_includes output, "renamed In Progress to 🤖 Working"
     assert_includes output, "created working tag"
     assert_includes output, "removed git automation start (In Progress)"
     refute_includes output, "started working"

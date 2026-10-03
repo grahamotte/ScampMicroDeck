@@ -4,7 +4,7 @@ class LinearTest < Minitest::Test
   def test_issues_unwraps_nodes
     calls = stub_linear(
       issues: [
-        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-ready", name: "Ready" } },
+        { id: "item-1", identifier: "MOTO-1", url: "https://linear.app/gotte/issue/MOTO-1", state: { id: "s-working", name: "Working" } },
       ],
     )
 
@@ -58,7 +58,7 @@ class LinearTest < Minitest::Test
   end
 
   def test_column_from_state_name
-    assert_equal "ready", Linear.column({ state: { id: "s-ready", name: "Ready" } })
+    assert_equal "working", Linear.column({ state: { id: "s-working", name: "Working" } })
   end
 
   def test_column_from_robot_state_name
@@ -66,7 +66,7 @@ class LinearTest < Minitest::Test
   end
 
   def test_state_names_include_robot_and_plain_names
-    assert_equal [ "🤖 Ready", "Ready", "Completed" ], Linear.state_names("ready", "completed")
+    assert_equal [ "🤖 Working", "Working", "Completed" ], Linear.state_names("working", "completed")
   end
 
   def test_column_from_state_id
@@ -364,17 +364,16 @@ class LinearTest < Minitest::Test
     archives = calls.select { |call| graphql?(call, "mutation WorkflowStateArchive") }.map { |call| call.dig(:payload, :variables, :id) }
 
     assert_equal "Planned", updates.find { |variables| variables[:id] == "s-todo" }.dig(:input, :name)
-    assert_equal "🤖 Ready", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :name)
-    assert_equal "#26b5ce", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :color)
+    assert_equal "🤖 Working", updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :name)
+    assert_nil updates.find { |variables| variables[:id] == "s-progress" }.dig(:input, :color)
     assert_equal "Completed", updates.find { |variables| variables[:id] == "s-done" }.dig(:input, :name)
-    assert_equal [ "Working", "Review", "🤖 Approved" ], creates.map { |input| input[:name] }
-    assert_equal [ 1000.0, 2000.0, 3000.0 ], creates.map { |input| input[:position] }
+    assert_equal [ "Review", "🤖 Approved" ], creates.map { |input| input[:name] }
+    assert_equal [ 1000.0, 2000.0 ], creates.map { |input| input[:position] }
     refute updates.any? { |variables| variables.dig(:input, :position).present? }
     assert_equal [ "s-groom" ], archives
     assert_includes output, "renamed Todo to Planned"
-    assert_includes output, "renamed In Progress to 🤖 Ready"
+    assert_includes output, "renamed In Progress to 🤖 Working"
     assert_includes output, "renamed Done to Completed"
-    assert_includes output, "created Working"
     assert_includes output, "created Review"
     assert_includes output, "created 🤖 Approved"
     assert_includes output, "removed Grooming"
@@ -390,13 +389,81 @@ class LinearTest < Minitest::Test
 
     updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
     assert_equal [
-      { id: "s-ready", input: { name: "🤖 Ready" } },
+      { id: "s-working", input: { name: "🤖 Working" } },
       { id: "s-approved", input: { name: "🤖 Approved" } },
     ], updates
     assert_empty calls.select { |call| graphql?(call, "mutation WorkflowStateCreate") }
     assert_empty calls.select { |call| graphql?(call, "mutation WorkflowStateArchive") }
-    assert_includes output, "renamed Ready to 🤖 Ready"
+    assert_includes output, "renamed Working to 🤖 Working"
     assert_includes output, "renamed Approved to 🤖 Approved"
+  end
+
+  def test_sync_statuses_merges_ready_into_working
+    states = [
+      { id: "s-backlog", name: "Backlog", type: "backlog", color: "#f2994a", position: 0.0 },
+      { id: "s-planned", name: "Planned", type: "unstarted", color: "#95a2b3", position: 1.0 },
+      { id: "s-ready", name: "🤖 Ready", type: "started", color: "#26b5ce", position: 2.0 },
+      { id: "s-working", name: "Working", type: "started", color: "#f2c94c", position: 3.0 },
+      { id: "s-review", name: "Review", type: "started", color: "#f2994a", position: 4.0 },
+      { id: "s-approved", name: "🤖 Approved", type: "started", color: "#4cb782", position: 5.0 },
+      { id: "s-completed", name: "Completed", type: "completed", color: "#5e6ad2", position: 6.0 },
+      { id: "s-canceled", name: "Canceled", type: "canceled", color: "#95a2b3", position: 7.0 },
+    ]
+    calls = stub_linear(states:)
+    synced = states.reject { |state| state[:id] == "s-ready" }.map do |state|
+      state[:id] == "s-working" ? state.merge(name: "🤖 Working") : state
+    end
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "query States")
+
+      calls << opts
+      true
+    end.returns(
+      { data: { team: { states: { nodes: states } } } },
+      { data: { team: { states: { nodes: states.map { |state| state[:id] == "s-working" ? state.merge(name: "🤖 Working") : state } } } } },
+      { data: { team: { states: { nodes: synced } } } },
+    )
+    working_issues = [
+      { id: "item-claimed", identifier: "MOTO-1", labels: { nodes: [ { name: "working" } ] } },
+      { id: "item-interactive", identifier: "MOTO-2", labels: { nodes: [ { name: "runner: interactive" } ] } },
+      { id: "item-parked", identifier: "MOTO-3", labels: { nodes: [] } },
+    ]
+    ready_issues = [
+      { id: "item-queued", identifier: "MOTO-4", labels: { nodes: [] } },
+      { id: "item-ready-claimed", identifier: "MOTO-5", labels: { nodes: [ { name: "working" } ] } },
+    ]
+    Req.stubs(:call).with do |*args, **kwargs|
+      opts = req_opts(args, kwargs)
+      next false unless graphql?(opts, "query Issues")
+
+      calls << opts
+      true
+    end.returns(
+      { data: { team: { issues: { nodes: working_issues, pageInfo: { hasNextPage: false, endCursor: nil } } } } },
+      { data: { team: { issues: { nodes: ready_issues, pageInfo: { hasNextPage: false, endCursor: nil } } } } },
+    )
+
+    output, = capture_io { Linear.sync_statuses }
+
+    filters = calls.select { |call| graphql?(call, "query Issues") }.map { |call| call.dig(:payload, :variables, :filter) }.uniq
+    assert_equal [ { state: { id: { eq: "s-working" } } }, { state: { id: { eq: "s-ready" } } } ], filters
+    moves = calls.select { |call| graphql?(call, "mutation IssueUpdate") }.map { |call| call.dig(:payload, :variables) }
+    assert_equal [
+      { id: "item-parked", input: { stateId: "s-planned" } },
+      { id: "item-queued", input: { stateId: "s-working" } },
+      { id: "item-ready-claimed", input: { stateId: "s-working" } },
+    ], moves
+    archives = calls.select { |call| graphql?(call, "mutation WorkflowStateArchive") }.map { |call| call.dig(:payload, :variables, :id) }
+    assert_equal [ "s-ready" ], archives
+    assert_operator calls.index { |call| graphql?(call, "mutation IssueUpdate") }, :<, calls.index { |call| graphql?(call, "mutation WorkflowStateArchive") }
+    assert_equal [
+      "renamed Working to 🤖 Working",
+      "moved MOTO-3 from 🤖 Working to Planned",
+      "moved MOTO-4 from 🤖 Ready to 🤖 Working",
+      "moved MOTO-5 from 🤖 Ready to 🤖 Working",
+      "removed 🤖 Ready",
+    ], output.lines.map(&:chomp)
   end
 
   def test_move_resolves_robot_column_by_plain_name
@@ -436,7 +503,7 @@ class LinearTest < Minitest::Test
   end
 
   def test_sync_statuses_is_noop_when_linear_ranks_preserve_order
-    calls = stub_linear(states: ranked_started_states(ready: 0.0, working: 1000.0, review: 2000.0, approved: 3000.0))
+    calls = stub_linear(states: ranked_started_states(working: 1000.0, review: 2000.0, approved: 3000.0))
 
     output, = capture_io { Linear.sync_statuses }
 
@@ -445,7 +512,7 @@ class LinearTest < Minitest::Test
   end
 
   def test_sync_statuses_reorders_started_group
-    states = ranked_started_states(ready: 0.0, working: 3000.0, review: 2000.0, approved: 1000.0)
+    states = ranked_started_states(working: 3000.0, review: 2000.0, approved: 1000.0)
     states << { id: "s-dup", name: "Duplicate", type: "duplicate", color: "#95a2b3", position: 9000.0 }
     calls = stub_linear(states:)
 
@@ -453,31 +520,29 @@ class LinearTest < Minitest::Test
 
     updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
     assert_equal [
-      { id: "s-ready", input: { position: 10000.0 } },
-      { id: "s-working", input: { position: 11000.0 } },
-      { id: "s-review", input: { position: 12000.0 } },
-      { id: "s-approved", input: { position: 13000.0 } },
+      { id: "s-working", input: { position: 10000.0 } },
+      { id: "s-review", input: { position: 11000.0 } },
+      { id: "s-approved", input: { position: 12000.0 } },
     ], updates
     assert_equal "", output
   end
 
   def test_sync_statuses_reorders_tied_positions
-    calls = stub_linear(states: ranked_started_states(ready: 0.0, working: 0.0, review: 0.0, approved: 0.0))
+    calls = stub_linear(states: ranked_started_states(working: 0.0, review: 0.0, approved: 0.0))
 
     capture_io { Linear.sync_statuses }
 
     updates = calls.select { |call| graphql?(call, "mutation WorkflowStateUpdate") }.map { |call| call.dig(:payload, :variables) }
     assert_equal [
-      { id: "s-ready", input: { position: 1000.0 } },
-      { id: "s-working", input: { position: 2000.0 } },
-      { id: "s-review", input: { position: 3000.0 } },
-      { id: "s-approved", input: { position: 4000.0 } },
+      { id: "s-working", input: { position: 1000.0 } },
+      { id: "s-review", input: { position: 2000.0 } },
+      { id: "s-approved", input: { position: 3000.0 } },
     ], updates
   end
 
   def test_sync_statuses_clears_descriptions
     states = synced_states.map do |status|
-      description = status[:name] == "🤖 Ready" ? "Pull request is being reviewed" : ""
+      description = status[:name] == "🤖 Working" ? "Pull request is being reviewed" : ""
       status.merge(description:)
     end
     calls = stub_linear(states:)
@@ -559,10 +624,9 @@ class LinearTest < Minitest::Test
     end
   end
 
-  def ranked_started_states(ready:, working:, review:, approved:)
+  def ranked_started_states(working:, review:, approved:)
     Linear::STATUSES.map do |status|
       position = case column_key(status[:name])
-      when "ready" then ready
       when "working" then working
       when "review" then review
       when "approved" then approved

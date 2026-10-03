@@ -45,9 +45,9 @@ Code Moto sets `[task_config] shell = "bash -o errexit -o pipefail -c"` so inlin
 
 ## Linear card
 
-Reuse the supplied tracking card for this operation and record its result there. Create a card only if none covers the task. Follow this section instead of sending the operation to `review`; complete the card only when its whole task is done. If other steps remain after success, keep it in `working` and record what remains:
+Record the result on the card that invoked this skill. Complete the card only when its whole task is done; otherwise continue with its remaining work.
 
 - Comment with the recovery point as soon as `mise merge` prints it.
 - Link any required PR to the card.
-- On success, finish workflow steps 8–10 before moving the card to `completed`, and do so only when the whole task is done. Comment with the PR, merge commit, conflict resolutions, test results, main checkout path and branch, and successful secrets refresh and layout checks. Worktree env-file copies do not satisfy this completion check.
+- On success, finish workflow steps 8–10 before completing the card. Comment with the PR, merge commit, conflict resolutions, test results, main checkout path and branch, and successful secrets refresh and layout checks. Worktree env-file copies do not satisfy this completion check.
 - When blocked, comment with the blocker and the recovery point, then move the card to `planned`.

@@ -4,8 +4,7 @@ class Linear
   STATUSES = [
     { name: "Backlog", type: "backlog", color: "#f2994a" },
     { name: "Planned", type: "unstarted", color: "#95a2b3" },
-    { name: "#{ROBOT} Ready", type: "started", color: "#26b5ce" },
-    { name: "Working", type: "started", color: "#f2c94c" },
+    { name: "#{ROBOT} Working", type: "started", color: "#f2c94c" },
     { name: "Review", type: "started", color: "#f2994a" },
     { name: "#{ROBOT} Approved", type: "started", color: "#4cb782" },
     { name: "Completed", type: "completed", color: "#5e6ad2" },
@@ -86,6 +85,10 @@ class Linear
       nodes.any? { |label| label[:name].to_s.downcase == name.to_s.downcase }
     end
 
+    def interactive?(item)
+      tagged?(item, "runner: interactive") || tagged?(item, "interactive")
+    end
+
     def column(item)
       state = item[:state]
       return column_key(state[:name]) if state.is_a?(Hash) && state[:name].present?
@@ -155,6 +158,8 @@ class Linear
           puts "created #{want[:name]}"
         end
       end
+
+      merge_ready_into_working(state_nodes)
 
       current.each do |state|
         next if used_ids.include?(state.fetch(:id))
@@ -484,6 +489,26 @@ class Linear
         .fetch(:nodes)
     end
 
+    def merge_ready_into_working(states)
+      by_column = states.to_h { |state| [ column_key(state[:name]), state ] }
+      ready, working, planned = by_column.values_at("ready", "working", "planned")
+      return if ready.blank? || working.blank? || planned.blank?
+
+      state_issues(working).each do |item|
+        move_issue(item, working, planned) unless tagged?(item, "working") || interactive?(item)
+      end
+      state_issues(ready).each { |item| move_issue(item, ready, working) }
+    end
+
+    def move_issue(item, from, to)
+      graphql(ISSUE_UPDATE_MUTATION, { id: item.fetch(:id), input: { stateId: to.fetch(:id) } })
+      puts "moved #{identifier(item)} from #{from[:name]} to #{to[:name]}"
+    end
+
+    def state_issues(state)
+      issues(filter: { state: { id: { eq: state.fetch(:id) } } })
+    end
+
     def sync_status_positions(states)
       floor = states.map { |state| state[:position].to_f }.max || -1000.0
 
@@ -515,6 +540,7 @@ class Linear
       end || current.find do |state|
         !used_ids.include?(state.fetch(:id)) &&
           state[:type] == want[:type] &&
+          column_key(state[:name]) != "ready" &&
           STATUSES.none? { |status| column_key(status[:name]) == column_key(state[:name]) }
       end
     end
