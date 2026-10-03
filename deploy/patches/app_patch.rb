@@ -50,7 +50,7 @@ class AppPatch < BasePatch
       [Service]
       User=#{Constants.deploy_user}
       Type=simple
-      ExecStart=/usr/bin/bash -c 'cd #{Constants.remote_root}/backend && set -a && source ../.env && mise exec -- bin/rails server --port 3000'
+      ExecStart=/usr/bin/bash -c 'cd #{Constants.remote_root}/backend && set -a && source ../.env && mise exec -- bin/rails server --binding 127.0.0.1 --port 3000'
       Restart=always
       TimeoutStopSec=5
       MemoryMax=1200M

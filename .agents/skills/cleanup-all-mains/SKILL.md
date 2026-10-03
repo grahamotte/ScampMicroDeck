@@ -14,4 +14,4 @@ Use one tracking card for the entire operation. Do not create downstream cards. 
 5. Run root `mise manager:secrets` from each updated main checkout in a non-login shell. Verify every configured `secrets` environment produced its `.env.<key>` file without printing secret values. Recheck Git status after refresh. A failed refresh or a newly dirty checkout leaves that repository incomplete.
 6. Comment on the tracking card with each main checkout's path, branch, resulting SHA, clean-status result, secrets-refresh result, and any blockers. No tracked changes may bypass the PR flow; if a repository fix is needed, use an isolated branch from its remote default branch, run its required checks, link and merge its PR under this same card, then repeat the affected checks.
 
-Complete the card directly without review only when every repository passes and the card's whole scope is done. Otherwise move it to Planned with a concrete explanation. Remove the working tag when running for the manager.
+Complete the card without review only when every repository passes and the card's whole task is done. Otherwise move it to Planned with a concrete explanation.

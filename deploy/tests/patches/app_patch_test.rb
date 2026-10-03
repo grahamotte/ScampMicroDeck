@@ -21,12 +21,13 @@ class AppPatchTest < Minitest::Test
     assert commands.any? { |command| command.include?("VITE_SUBDOMAIN=www") }
     assert commands.any? { |command| command.include?("VITE_SUBDOMAIN=hc") }
     assert services.any? { |path, definition| path.end_with?("api.service") && definition.include?("Description=Api") }
+    assert services.any? { |path, definition| path.end_with?("api.service") && definition.include?("bin/rails server --binding 127.0.0.1 --port 3000") }
     assert services.any? { |path, definition| path.end_with?("job.service") && definition.include?("Description=Job Worker") }
   end
 
   def test_service_definitions
     assert_includes AppPatch.send(:api_service), "User=deploy"
-    assert_includes AppPatch.send(:api_service), "rails server --port 3000"
+    assert_includes AppPatch.send(:api_service), "rails server --binding 127.0.0.1 --port 3000"
     assert_includes AppPatch.send(:job_service), "GOOD_JOB_ENABLE_CRON=true"
     assert_includes AppPatch.send(:job_service), "good_job start"
   end

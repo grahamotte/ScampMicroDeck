@@ -52,24 +52,38 @@ Work items are cards in Linear. Use `mise linear <args>`, which runs the [Linear
 
 When commenting on a card with pseudocode, use readable, imperfect Ruby in a fenced `ruby` block. Favor named components and indentation that show inputs, key decisions, and results; the pseudocode does not need to run.
 
-Columns, in order: `Backlog`, `Planned`, `🤖 Ready`, `Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it.
+### Workflow
 
-Tags (pass them by id, not name, since Linearis does not resolve tag names per team):
+Columns, in order: `Backlog`, `Planned`, `🤖 Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it. The `🤖 Working` column and the `working` tag are different things.
 
-- `working`: the manager's agent is processing the card. Only add or remove it when a manager prompt tells you to.
-- `skip review`: for tracked repository changes, the manager's work agent creates and links a PR, then merges it before completing the card and removing its worktree when the whole task is done. Operations without tracked repository changes complete without a PR when the whole task is done. Neither path waits for review.
-- `runner: interactive`: the card is worked with the user instead of by the manager. The manager does not pick it up from `ready`, but still merges it from `approved`.
+- `Planned`: not started, or blocked until the user re-evaluates the card.
+- `🤖 Working`: without the `working` tag, the card is queued and the manager starts a work agent. With it, an agent has claimed the card. The user moves cards here from Planned to start work, or from Review with correction comments.
+- `Review`: a mergeable PR awaits the user's review. Work that depends on the merge, such as deploying, waits for approval.
+- `🤖 Approved`: the manager starts a new agent session that merges the reviewed PR and finishes the remaining work.
+- `Completed`: the card's whole task is done. A merged PR or finished operation does not complete a card while other work remains.
+
+Every agent session ends with one handoff: move the card to `Review`, `Planned`, or `Completed`, comment why, and remove the `working` tag if the manager started the session. Do not leave a non-interactive card in `🤖 Working` without the tag, since that queues another agent.
+
+Sessions share nothing but the card. Before moving a card to `Review`, comment a handoff for the Approved agent: the PR to merge, remaining work after the merge in order (naming skills such as `deploy`), relevant inputs and constraints, work already done, and verification required before completion. Write "Remaining work: none" when nothing remains. The Approved agent reads the card and all comments first; a missing or ambiguous handoff sends the card to `Planned`, never to `Completed`.
+
+Operation skills, such as `deploy`, `merge`, and `publish`, record their results on the card that invokes them and follow this workflow. `mise deploy`, `mise merge`, and `mise publish` all work from `origin/master`.
 
 When the user hands you a Linear card, use the `interactive-card` skill, unless the prompt says the manager runs the card.
 
-Operations can run under an existing tracking card. When a card invokes an operation skill, it names the skill to run: `deploy`, `merge`, or `publish`. Each skill records its result on that card and merges any PRs required for tracked repository changes. Complete the card only when its whole task is done; individual operations and PRs do not complete a larger tracking card. Keep it in `Working` while steps remain, or `Planned` when blocked. Move it to `Review` or `Approved` only when its whole task is ready; approval of an individual PR does not approve the whole card. `mise deploy`, `mise merge`, and `mise publish` all work from `origin/master`.
+### Tags
+
+Pass tags by id, not name, since Linearis does not resolve tag names per team.
+
+- `working`: an agent has claimed the card. The manager adds it when starting an agent; that agent removes it at handoff.
+- `skip review`: the work agent merges its own PR instead of moving the card to Review, then finishes the remaining work.
+- `runner: interactive`: the user works the card with an agent directly. The manager starts no work agent for it in `🤖 Working`, but still handles it in `🤖 Approved`.
 
 ## GitHub
 
 Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `githubRepo` in `config.json`, never `codemoto`: `mise merge` sets `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
 
-- Push the branch, then `gh pr create`.
-- Merge with `gh pr merge`.
+- Push the branch, then `gh pr create`. Link each PR to its card.
+- Merge with `gh pr merge`. Then, if the main checkout is on master or main with no uncommitted changes, run `git pull --ff-only` there. Do not switch its branch.
 
 ## File Structure
 

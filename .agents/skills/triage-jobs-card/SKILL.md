@@ -10,4 +10,4 @@ description: Triage production job issues into deduplicated Planned Linear cards
 3. For each actually addressable issue, search the configured Linear team's existing cards with `mise linear`. Reuse a matching card and comment only when new information adds value. Otherwise create a card in Planned with a clear problem description and supporting evidence. Do not create cards for expected conditions or issues that cannot be addressed.
 4. Comment on the triage tracking card with the complete list of findings, including conditions without cards and the identifiers of all created or reused cards.
 
-Complete the triage card directly without review when investigation and reporting cover its whole scope. No PR is needed for triage alone. If required production data or tools are unavailable, record the blocker and move it to Planned. Remove the working tag when running for the manager.
+Complete the triage card without review when investigation and reporting cover its whole task. No PR is needed for triage alone. If required production data or tools are unavailable, record the blocker and move it to Planned.
