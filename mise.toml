@@ -295,27 +295,6 @@ run = "open apps/apple/App.xcodeproj"
 # Manager
 #
 
-[tasks."manager:trigger"]
-depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby trigger.rb"
-
-[tasks."manager:triggerall"]
-depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby trigger_all.rb"
-
-[tasks."manager:linear_sync"]
-alias = ["manager:sync"]
-depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby linear_sync.rb"
-
-[tasks."manager:linear_syncall"]
-depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby linear_sync_all.rb"
-
-[tasks."manager:keychain"]
-depends = ["dependencies:manager"]
-run = "cd manager && bundle exec ruby keychain.rb"
-
 [tasks."manager:secrets"]
 depends = ["dependencies:manager"]
 run = "scripts/mise/manager_secrets.sh"

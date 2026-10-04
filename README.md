@@ -22,7 +22,7 @@ This repository is based on Code Moto. It keeps its own Git history and configur
 - **Backend:** Ruby on Rails with PostgreSQL and GoodJob background jobs.
 - **Frontend:** React, TypeScript, Vite, and Tailwind CSS, with separate sites for configured subdomains.
 - **Operations:** Server provisioning and deployment, backups, and shared Ruby gems.
-- **Agent workflow:** A manager that picks up Linear cards, launches coding agents in Git worktrees, and merges approved pull requests.
+- **Agent workflow:** Linear cards are worked by coding agents in Git worktrees, dispatched by the sister repository [Mr. Moto](https://github.com/grahamotte/mr-moto).
 
 ## Local development
 
@@ -47,7 +47,6 @@ Non-secret project settings live in `config.json`, including the domain, GitHub 
 | `mise xcode` | Open the Apple app project |
 | `mise publish:set_version 1.5.0` | Update release and Xcode versions |
 | `mise publish` | Archive, upload, submit, notarize, and publish a release |
-| `mise manager:trigger` | Process eligible cards for the configured Linear team |
 
 `mise publish` uses the App Store Connect, signing certificate, Codeberg, and GitHub credentials in the ignored `.env.production` file.
 
@@ -63,10 +62,10 @@ Deployment, upstream merges, and publishing follow the card and pull request wor
 | `gems/` | Shared Ruby libraries |
 | `deploy/` | Infrastructure and deployment tooling |
 | `publish/` | App versioning, simulation, and publishing |
-| `manager/` | Linear workflow, agent runners, and project creation |
+| `manager/` | Secrets refresh, project creation, and Code Moto merges |
 | `scripts/` | Scripts behind mise tasks |
 
-See [manager runners and labels](docs/manager.md) for agent configuration, [Apple credentials](docs/apple-credentials.md) for publishing setup, and [AGENTS.md](AGENTS.md) for contribution rules.
+See [manager](docs/manager.md) for how Code Moto works with Mr. Moto, [Apple credentials](docs/apple-credentials.md) for publishing setup, and [AGENTS.md](AGENTS.md) for contribution rules.
 
 ## Contributing
 

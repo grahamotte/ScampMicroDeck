@@ -10,7 +10,7 @@ You work this card with the user and manage it through the workflow in `AGENTS.m
 ## Start
 
 1. Read the card with `mise linear issues read <card> --with-comment-threads --with-attachments`.
-2. Tag the card `runner: interactive` and move it to `working`. Do not add the `working` tag; the manager starts no work agent for interactive cards.
+2. Tag the card `runner: interactive` and move it to `🤖 Working` (Linearis needs the exact column name). Do not add the `working` tag; the manager starts no work agent for interactive cards.
 3. When tracked repository files need changes, set up the checkout:
    - In a worktree (`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`), stay on its current branch. Copy the env files and `backend/db/schema.rb` from the main checkout if they are missing.
    - In the main checkout, run `git fetch origin`. Check out the card branch if it exists; otherwise create it from `origin/master`. Never commit to `master`.

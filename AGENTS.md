@@ -54,6 +54,8 @@ When commenting on a card with pseudocode, use readable, imperfect Ruby in a fen
 
 ### Workflow
 
+The manager is [Mr. Moto](https://github.com/grahamotte/mr-moto), a sister repository checked out at `../mr-moto` that manages every Code Moto repository from one install.
+
 Columns, in order: `Backlog`, `Planned`, `🤖 Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it. The `🤖 Working` column and the `working` tag are different things.
 
 - `Planned`: not started, or blocked until the user re-evaluates the card.
@@ -91,7 +93,7 @@ Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environmen
 - `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values.
-- `~/.config/codemoto/config.json` - Machine-wide Code Moto configuration. `agentDefaultsBalance` lists T3 runner, model, and variant candidates, selected using weekly quota remaining and a 5% reserve in other quota windows; repository `agent` settings override them. `agentDefaults` is ignored by this version and retained only for downstream repos awaiting rollout. `1passwordServiceAccountToken` authenticates `mise manager:secrets`, which uses it to pull every `secrets` key in `config.json` as `.env.<key>` from its `op://<vault>/<item>` reference. Each item stores one concealed field per env key, labeled with the key name; the file follows the `.env.default` layout with extra keys at the end.
+- `~/.config/codemoto/config.json` - Machine-wide configuration shared with Mr. Moto. `projects` lists the main checkouts Mr. Moto manages, `linearTokens` holds its Linear API keys per workspace, and `agentDefaultsBalance` lists the T3 runner, model, and variant candidates it balances across; repository `agent` settings override them. `1passwordServiceAccountToken` authenticates `mise manager:secrets`, which uses it to pull every `secrets` key in `config.json` as `.env.<key>` from its `op://<vault>/<item>` reference. Each item stores one concealed field per env key, labeled with the key name; the file follows the `.env.default` layout with extra keys at the end.
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
@@ -100,7 +102,7 @@ Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environmen
 - `docs/` - Project documentation in Markdown.
 - `frontend/` - React website.
 - `gems/` - Shared Ruby gems.
-- `manager/` - Linear issue polling, agent triggers, secrets, and spawning new apps.
+- `manager/` - Secrets refresh, spawning new apps, and Code Moto merges. Linear dispatch lives in Mr. Moto.
 - `publish/` - Mobile app versioning, simulators, and App Store publishing.
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.
