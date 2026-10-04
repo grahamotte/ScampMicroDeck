@@ -1,75 +1,12 @@
-# Manager runners and labels
+# Manager
 
-`mise manager:sync` (also available as `mise manager:linear_sync`) reconciles the configured Linear team's workflow, labels, and Git automations. It creates the manager's runner, model, and variant labels and deletes labels outside the managed set, including shared workspace labels returned for the team. Deleting a shared label removes it from cards across the workspace. Labels owned by other teams are left alone. The manager-driven columns are named `🤖 Working` and `🤖 Approved`; sync renames plain `Working` and `Approved` in place, and the manager matches either name. Run sync before triggering cards.
+Linear dispatch lives in [Mr. Moto](https://github.com/grahamotte/mr-moto), the sister repository checked out at `../mr-moto`. A single install manages Code Moto and every downstream repository listed under `projects` in `~/.config/codemoto/config.json`. It syncs Linear columns and tags, starts agents for queued and approved cards, and creates and removes card worktrees. See its `docs/manager.md` for runners, labels, agent selection, and the global configuration. The card workflow itself is described in `AGENTS.md`.
 
-Sync also merges the retired `🤖 Ready` column into `🤖 Working`. It first moves unclaimed, non-interactive `Working` cards to `Planned`, since under the old workflow they were parked rather than queued. It then moves every `Ready` card into `🤖 Working` with its tags and archives `Ready`. Claimed and interactive `Working` cards stay put.
+Code Moto's `manager/` keeps the per-repository tasks:
 
-`mise manager:trigger` filters issues in Linear before paginating: all Working and Approved cards remain eligible regardless of age, while Completed and Canceled cards are fetched for worktree cleanup only when updated within the last 30 days. Other columns are excluded. The window uses the last update rather than creation, so an old card that is newly completed or canceled still gets cleaned up. Worktrees for terminal cards unchanged for more than 30 days need manual removal if the manager missed the cleanup window.
-
-Each trigger starts at most one agent per column. In `🤖 Working`, it picks a card without the `working` tag or `runner: interactive` and starts a work agent. In `🤖 Approved`, it picks a card without the `working` tag, including interactive cards, and starts an Approved agent. The manager never merges or completes cards itself. Both agents run in the card worktree, which is opened or created from the card branch with env files and `schema.rb` copied in. The manager adds the `working` tag before launching and removes it if the launch fails, leaving the card in its column to retry. The worktree is removed only after the card is Completed or Canceled. See the workflow in `AGENTS.md` for how agents hand cards off.
-
-Cards can override the defaults in `config.json` using these labels:
-
-- `runner: openchamber`, `runner: t3`, or `runner: interactive`
-- `model: <provider>/<modelid>`
-- `variant: <effort>`
-
-When the trigger starts a card, it fills in missing labels from the resolved agent configuration: a quota-balanced selection from `agentDefaultsBalance` in `~/.config/codemoto/config.json`, overridden by repository `agent.runner`, `agent.model`, and `agent.variant`. Existing selections take precedence. A blank default variant leaves that label unset. The recorded selections also apply to the Approved agent; edit the labels to change its runner or model. Interactive cards use the resolved default runner.
-
-Sync renames the old `interactive` label to `runner: interactive` in place, preserving its ID and existing card assignments.
-
-The model picker contains eight options:
-
-- `openai/gpt-6.1-sol`
-- `openai/gpt-6-astra`
-- `anthropic/claude-opus-5-5`
-- `anthropic/claude-sonnet-5-5`
-- `xai/grok-4.7`
-- `google/gemini-3.1-pro`
-- `cursor/composer-2.5`
-- `cursor/grok-4.7`
-
-Availability and supported effort levels depend on the runner, provider account, and model. A model without effort options needs a blank default variant. For OpenChamber, model and variant values are forwarded as before.
-
-## Global configuration
-
-`~/.config/codemoto/config.json` holds machine-wide settings for every Code Moto checkout. Keep its permissions private because it contains the 1Password service account token.
-
-```json
-{
-  "agentDefaultsBalance": [
-    {
-      "runner": "t3",
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium"
-    },
-    {
-      "runner": "t3",
-      "model": "anthropic/claude-opus-5-5",
-      "variant": "medium"
-    }
-  ],
-  "1passwordServiceAccountToken": "<service-account-token>"
-}
-```
-
-Repository `config.json` keeps app-specific settings and optional `agent` overrides, including runner options such as `agent.t3`. Omit runner, model, and variant to inherit the global defaults. An explicitly blank repository variant overrides the global variant. Existing Linear selections still take precedence. Edit the global file to change the defaults for all inheriting repos; no repository PR or merge is needed. Each new manager process reads the current global file. `agentDefaults` is ignored by this version; keep it in the global file only while downstream repos still run the older version.
-
-For each launch without an explicit model, the manager reads the configured T3 providers' `usageLimits` from `~/.t3/caches` (or repository `agent.t3.home`). It chooses the candidate with the most weekly quota remaining. If a provider reports multiple weekly windows, its lowest remaining weekly percentage determines its score. Equal scores use list order. T3 reports percentages used, which the manager converts to percentages remaining. A provider with exhausted weekly quota or less than 5% remaining in any other window is excluded; exactly 5% remains eligible. This includes session and monthly windows.
-
-Candidates must use the T3 runner and offer the requested model, effort, and configured speed. Quota snapshots must be at most five minutes old, with valid percentages and a weekly window. The manager requests an authenticated T3 provider refresh only when its usage timestamp is more than five minutes old, then rereads its cache once. Recent, missing, invalid, or future-dated timestamps do not trigger a refresh. Each refresh waits at most 30 seconds and revokes its temporary session. Snapshots that remain unusable are excluded. If none qualify, the launch fails before starting a provider session; the working tag is removed and the card stays queued in its column. If automatic refresh fails, check that T3 is running and refresh the provider's Usage Limits before retrying. The manager does not consume reset credits or infer a reset from an old snapshot.
-
-Repository and card model overrides bypass quota balancing; a matching list entry supplies missing defaults. A repository's explicitly blank variant remains blank. Missing labels are recorded from the single resolved selection before launching, so existing selections and active threads keep their model. Remove a recorded model label to make a later launch eligible for balancing again. This balances new card launches, not messages within a running thread.
-
-`mise manager:secrets` reads `1passwordServiceAccountToken` from the global file and passes it to 1Password through `OP_SERVICE_ACCOUNT_TOKEN`. It no longer reads `.env.service`. Repository `secrets` references and `.env.default` still control which app secrets are fetched and their layout. The token is never copied into repository configuration or generated env files. A missing global file leaves explicit repo settings available; secrets refresh requires the global token.
-
-## Host keychain protection
-
-Tasks that change the user's keychain settings, such as publish signing, wrap the change in `Keychain#protect` from `gems/keychain`. It saves the search list and default keychain under `~/.config/codemoto/keychain` and restores whichever changed when the block finishes, raises, or is interrupted. The login keychain setting is not touched; `security login-keychain -s` fails on current macOS, so tasks cannot change it either.
-
-Each `mise manager:trigger` run first restores snapshots left by processes that are no longer running and removes keychains whose files no longer exist from the search list and default. Before removing a card worktree, the manager also removes keychains stored inside it; if that fails, the worktree is kept. The trigger then warns when the default keychain is not `~/Library/Keychains/login.keychain-db`, the search list omits it, or a larger `login_renamed_*.keychain-db` suggests macOS replaced the login keychain. These checks are skipped while a protected task is running.
-
-Run `mise manager:keychain` to repair the warned state. It resets the default keychain to the login keychain and adds the login keychain to the search list. If a larger `login_renamed_*` file exists, it saves the current login keychain as `login_backup_<timestamp>.keychain-db`, copies the largest renamed file back to `login.keychain-db`, and asks you to log out and back in.
+- `mise manager:secrets` reads `1passwordServiceAccountToken` from the global file and passes it to 1Password through `OP_SERVICE_ACCOUNT_TOKEN`. Repository `secrets` references and `.env.default` control which app secrets are fetched and their layout. The token is never copied into repository configuration or generated env files.
+- `mise manager:spawn <domain>` clones Code Moto into a new app. Add the new checkout to `projects` in the global config so Mr. Moto manages it.
+- `mise manager:merge <branch>` merges the latest Code Moto into a downstream repository.
 
 ## Code Moto merge cards
 
@@ -97,7 +34,7 @@ Creating or editing these templates does not execute their operations. Blank Def
 
 ## Repository discovery for all-repository skills
 
-Locate the main checkout through `git worktree list --porcelain`, rather than treating a card worktree as a separate repository. Enumerate sibling main checkouts under its parent directory, following the discovery pattern in `manager/lib/linear_sync_all.rb`: a main checkout has a `.git` directory and root `mise.toml` with the `manager:linear_sync` task. Deduplicate by Git common directory and exclude linked card worktrees.
+The inventory starts from `projects` in `~/.config/codemoto/config.json`, the main checkouts Mr. Moto manages. Also check sibling directories of the Code Moto main checkout for repositories with a `codemoto` remote that are missing from `projects`, and report any as gaps. Locate main checkouts through `git worktree list --porcelain`, deduplicate by Git common directory, and exclude linked card worktrees. Mr. Moto itself is a sister repository, not a downstream.
 
 Include Code Moto itself and confirm downstream membership using the Code Moto `codemoto` remote (or legacy `upstream`), shared Code Moto Git ancestry, and the repository's `AGENTS.md`. Read each repository's own `config.json` for its GitHub origin and Linear team. Fetch origin and identify its actual remote default branch; never assume local master is current. If an expected downstream lacks a local checkout, or membership is ambiguous, record the gap as a blocker rather than silently omitting it. Report the inventory, exclusions, and results on the supplied tracking card.
 
@@ -133,47 +70,3 @@ mise exec -- bundle --version
 The shell may resolve mise shims or installed tool paths. `mise which` should identify the mise-managed installations, and the Ruby version should match `[tools]` in the root `mise.toml`. Retry the original root task in the same non-login execution mode. A successful direct `mise exec` diagnostic alone does not verify the task's environment.
 
 If a pinned tool is missing, use `mise install` in that mode, then retry. If the task still fails, investigate its actual error with the selected tools confirmed. Do not install gems into system Ruby, change lockfiles, or downgrade pinned versions to address a shell-resolution failure. Share tool paths and versions when reporting the failure; do not dump environment variables or secret files.
-
-## T3 Code
-
-Start T3 Code and enable/authenticate the provider you want to use. For example, these settings select Codex through T3:
-
-```json
-{
-  "agent": {
-    "runner": "t3",
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium",
-    "t3": {
-      "speed": "normal"
-    }
-  }
-}
-```
-
-Provider prefixes map to T3 instances as follows:
-
-| Prefix | Default T3 instance |
-| --- | --- |
-| `openai` | `codex` |
-| `anthropic` | `claudeAgent` |
-| `xai` | `grok` |
-| `google` | `antigravity` |
-| `cursor` | `cursor` |
-
-You can also use a configured T3 instance ID as the prefix, such as `codex/gpt-6.1-sol`. The manager validates the model and effort against the running app's cached provider catalog before dispatching. `cursor/grok-4.7` selects Cursor's Grok model; `xai/grok-4.7` selects the separate Grok provider.
-
-Optional `agent.t3` settings:
-
-| Setting | Default | Purpose |
-| --- | --- | --- |
-| `url` | `http://127.0.0.1:3773` | Local T3 backend origin |
-| `home` | `~/.t3` | Data directory used by this backend |
-| `command` | Installed macOS Alpha app, otherwise `["t3"]` | Argument array for the T3 CLI |
-| `speed` | Provider default | `fast` or `normal` |
-
-Speed uses the catalog's service tier or Fast Mode option. This accommodates provider-specific values such as Codex's `priority` tier. Unsupported model, effort, or fast-speed selections fail before starting a thread.
-
-The CLI issues a five-minute bearer token for each launch and revokes it afterward. No permanent T3 token is required in the environment. CLI, catalog, and backend must belong to the same local T3 installation. The macOS Alpha app can supply its bundled CLI even when `t3` is absent from PATH.
-
-The manager reuses a project matching the card checkout, or registers that directory as a project, then creates a thread and sends the prompt through `/api/orchestration/dispatch`. Threads run in T3's `full-access` mode for unattended manager work. T3's API, CLI, and cache layouts are internal interfaces and may require adapter updates after an app upgrade.

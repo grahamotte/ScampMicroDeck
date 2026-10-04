@@ -127,7 +127,7 @@ Repeat this preparation for Apple Development, Apple Distribution, or Developer 
 
 The publish workflow imports this identity into an isolated temporary keychain under `publish/tmp/apps` and passes it to signing with `--keychain`. Leaving the identity installed in the login keychain should not change which identity the workflow uses.
 
-While signing, the temporary keychain is added to the front of the user's search list. The default keychain and the rest of the search list are left unchanged. The `keychain` gem snapshots those settings first and restores them when signing finishes, fails, or is interrupted. If the process is killed, `mise manager:trigger` restores the snapshot on its next run.
+While signing, the temporary keychain is added to the front of the user's search list. The default keychain and the rest of the search list are left unchanged. The `keychain` gem snapshots those settings first and restores them when signing finishes, fails, or is interrupted. If the process is killed, Mr. Moto's `mise trigger` restores the snapshot on its next run.
 
 ## Verify a replacement identity
 
