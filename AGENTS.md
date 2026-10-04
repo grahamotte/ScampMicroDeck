@@ -80,7 +80,7 @@ Pass tags by id, not name, since Linearis does not resolve tag names per team.
 - `skip review`: the work agent merges its own PR instead of moving the card to Review, then finishes the remaining work.
 - `runner: interactive`: the user works the card with an agent directly. The manager starts no work agent for it in `🤖 Working`, but still handles it in `🤖 Approved`.
 
-Mr. Moto can preserve project-specific labels with `linear.keepTags` in its project entry in Mr. Moto's `config.json`. Projects without `githubRepo` use card branch review and fast-forward merges as described in its shared workflow.
+Mr. Moto can preserve project-specific labels with `keepTags` in its project entry in Mr. Moto's `config.json`. Projects without `githubRepo` use card branch review and fast-forward merges as described in its shared workflow.
 
 ## GitHub
 
@@ -95,7 +95,7 @@ Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environmen
 - `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values.
-- `~/.config/codemoto/config.json` - Private credentials shared with Mr. Moto. `linearTokens` holds its Linear API keys per workspace. Mr. Moto's own `config.json` maps Linear teams to checkouts under `projects` and holds `agentDefaultsBalance` and per-project agent settings. `1passwordServiceAccountToken` authenticates `mise manager:secrets`, which uses it to pull every `secrets` key in `config.json` as `.env.<key>` from its `op://<vault>/<item>` reference. Each item stores one concealed field per env key, labeled with the key name; the file follows the `.env.default` layout with extra keys at the end.
+- `~/.config/codemoto/config.json` - Private credentials shared with Mr. Moto. `linearTokens` holds its Linear API keys per workspace. Mr. Moto's own `config.json` lists explicit workspace/team/path entries under `projects` and holds `agentDefaultsBalance` and per-project agent settings. `1passwordServiceAccountToken` authenticates `mise manager:secrets`, which uses it to pull every `secrets` key in `config.json` as `.env.<key>` from its `op://<vault>/<item>` reference. Each item stores one concealed field per env key, labeled with the key name; the file follows the `.env.default` layout with extra keys at the end.
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.

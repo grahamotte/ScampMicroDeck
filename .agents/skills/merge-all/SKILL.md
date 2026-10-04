@@ -5,7 +5,7 @@ description: Create queued merge cards for every Code Moto downstream repository
 
 # Merge All
 
-1. Discover all downstream repositories using [repository discovery](../../../docs/manager.md#repository-discovery-for-all-repository-skills). Exclude Code Moto itself. Read each project's team key and workspace from Mr. Moto's `config.json`.
+1. Discover all downstream repositories using [repository discovery](../../../docs/manager.md#repository-discovery-for-all-repository-skills). Exclude Code Moto itself. Read each project's explicit team and workspace from Mr. Moto's `config.json`.
 2. Fetch Code Moto and each downstream origin. Review recent Code Moto commits and the changes not yet incorporated into each downstream default branch. Identify relevant compatibility concerns and downstream-specific changes. Describe concerns without prescribing implementation solutions.
 3. Use `mise linear` to check each downstream team for an existing unfinished merge card. Reuse one covering this rollout, adding only new relevant concerns; do not create duplicates. Otherwise create a card in `🤖 Working`, without the `working` tag, titled `Merge`, with a description invoking the `merge` skill plus any repository-specific concerns. Use the workspace credentials and project team configured in Mr. Moto.
 4. Comment on the parent tracking card with the complete repository inventory and identifiers of the created or reused merge cards. This operation schedules the rollout; the downstream cards own executing their merges.
