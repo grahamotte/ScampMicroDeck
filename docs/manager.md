@@ -5,7 +5,7 @@ Linear dispatch lives in [Mr. Moto](https://github.com/grahamotte/mr-moto), the 
 Code Moto's `manager/` keeps the per-repository tasks:
 
 - `mise manager:secrets` reads `1passwordServiceAccountToken` from the global file and passes it to 1Password through `OP_SERVICE_ACCOUNT_TOKEN`. Repository `secrets` references and `.env.default` control which app secrets are fetched and their layout. The token is never copied into repository configuration or generated env files.
-- `mise manager:spawn <domain>` clones Code Moto into a new app. Add the new checkout to `projects` in Mr. Moto's config, keyed by its Linear team, so Mr. Moto manages it.
+- `mise manager:spawn <domain>` clones Code Moto into a new app. Add the new checkout to `projects` in Mr. Moto's config, with explicit workspace, team and path fields, so Mr. Moto manages it.
 - `mise manager:merge <branch>` merges the latest Code Moto into a downstream repository.
 
 ## Code Moto merge cards
@@ -30,13 +30,15 @@ Linear operation templates invoke checked-in skills. Keep execution steps and co
 | Set Default Model All | `set-default-model-all` | Target runner, model, and variant (blank variant is allowed) |
 | Cleanup All Mains | `cleanup-all-mains` | None |
 
+Workspace-wide operation templates name the checked-in skill location. Merge All, Cleanup All Mains, and Set Default Model All use the shared skills in the Code Moto main checkout, even when the card belongs to Mr. Moto or a non-Code Moto project. Cleanup and default-model operations cover every project in Mr. Moto's registry; Code Moto merges only cover Code Moto downstreams. Deploy, publish, and job triage use the target repository's own skills and tooling.
+
 Creating or editing these templates does not execute their operations. Blank Default templates and personal recurring reminders are not operation workflows.
 
 ## Repository discovery for all-repository skills
 
-The inventory starts from `projects` in `../mr-moto/config.json`, the main checkouts Mr. Moto manages. It maps Linear team keys to path strings or objects with `path`. Read manager settings from these entries; do not load them from managed repository configuration. The inventory also includes non-Code Moto repos; exclude those from Code Moto merge operations. Also check sibling directories of the Code Moto main checkout for repositories with a `codemoto` remote that are missing from `projects`, and report any as gaps. Locate main checkouts through `git worktree list --porcelain`, deduplicate by Git common directory, and exclude linked card worktrees. Mr. Moto itself is a sister repository, not a downstream.
+The inventory starts from `projects` in `../mr-moto/config.json`, the main checkouts Mr. Moto manages. It lists project objects with explicit `workspace`, `team`, and `path`. Read manager settings from these entries; do not load them from managed repository configuration. The inventory also includes non-Code Moto repos; exclude those from Code Moto merge operations. Also check sibling directories of the Code Moto main checkout for repositories with a `codemoto` remote that are missing from `projects`, and report any as gaps. Locate main checkouts through `git worktree list --porcelain`, deduplicate by Git common directory, and exclude linked card worktrees. Mr. Moto itself is a sister repository, not a downstream.
 
-Include Code Moto itself and confirm downstream membership using the Code Moto `codemoto` remote (or legacy `upstream`), shared Code Moto Git ancestry, and the repository's `AGENTS.md`. Read each entry for its GitHub origin and Linear settings, inheriting the workspace from Mr. Moto's root `linear.workspace`. Fetch origin and identify its actual remote default branch; never assume local master is current. If an expected downstream lacks a local checkout, or membership is ambiguous, record the gap as a blocker rather than silently omitting it. Report the inventory, exclusions, and results on the supplied tracking card.
+Include Code Moto itself and confirm downstream membership using the Code Moto `codemoto` remote (or legacy `upstream`), shared Code Moto Git ancestry, and the repository's `AGENTS.md`. Read each entry for its workspace, team, path, GitHub repository and optional `gitRemote` (default `origin`). Fetch origin and identify its actual remote default branch; never assume local master is current. If an expected downstream lacks a local checkout, or membership is ambiguous, record the gap as a blocker rather than silently omitting it. Report the inventory, exclusions, and results on the supplied tracking card.
 
 ## macOS agent task execution
 
