@@ -54,7 +54,7 @@ When commenting on a card with pseudocode, use readable, imperfect Ruby in a fen
 
 ### Workflow
 
-The manager is [Mr. Moto](https://github.com/grahamotte/mr-moto), a sister repository checked out at `../mr-moto` that manages every registered Git repository from one install. Its shared card workflow is in `../mr-moto/docs/workflow.md`; the rules below describe that workflow for Code Moto projects, which use GitHub PRs.
+The manager is [Mr. Moto](https://github.com/grahamotte/mr-moto), a sister repository checked out at `../mr-moto` that manages every registered Git repository from one install. Its shared card workflow is in `../mr-moto/docs/workflow.md`; the rules below describe the same workflow for every registered forge. Each project has one `repo` URL and a `repoProvider` in Mr. Moto's registry, independently of its configured Git remote.
 
 Columns, in order: `Backlog`, `Planned`, `🤖 Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it. The `🤖 Working` column and the `working` tag are different things.
 
@@ -80,14 +80,17 @@ Pass tags by id, not name, since Linearis does not resolve tag names per team.
 - `skip review`: the work agent merges its own PR instead of moving the card to Review, then finishes the remaining work.
 - `runner: interactive`: the user works the card with an agent directly. The manager starts no work agent for it in `🤖 Working`, but still handles it in `🤖 Approved`.
 
-Mr. Moto can preserve project-specific labels with `keepTags` in its project entry in Mr. Moto's `config.json`. Projects without `githubRepo` use card branch review and fast-forward merges as described in its shared workflow.
+Mr. Moto can preserve project-specific labels with `keepTags` in its project entry in Mr. Moto's `config.json`. All registered projects use forge PRs through Mr. Moto's `mise pr` task; missing forge access is a Planned blocker, never permission to push directly to the default branch.
 
-## GitHub
+## Pull Requests
 
-Open pull requests on GitHub with `gh`, using `GITHUB_TOKEN` from the environment. `gh` targets `origin`, the app repo from `githubRepo` in `config.json`, never `codemoto`: `mise merge` sets `origin` as the `gh` default, and the `mise` env exports it as `GH_REPO`.
+Use the project's `repo`, `repoProvider`, and one configured `gitRemote` from Mr. Moto's registry. Follow `../mr-moto/docs/workflow.md`. All tracked changes require a forge PR, including skip-review work and additional changes found during Approved work. Never push directly to the default branch.
 
-- Push the branch, then `gh pr create`. Link each PR to its card.
-- Merge with `gh pr merge`. Then, if the main checkout is on master or main with no uncommitted changes, run `git pull --ff-only` there. Do not switch its branch.
+- Fetch the configured remote and use its actual default branch. Preserve merge commits with a merge instead of a rebase when needed.
+- Push the card branch, then use `mise -C <mr-moto-checkout> pr <project> create <CARD> --title "<title>" --body-file <path>` to create or update the open PR and attach it to Linear. Returned-review cards reuse their open PR.
+- Inspect the handoff PR with `mise -C <mr-moto-checkout> pr <project> inspect <CARD> --number <number>`. After reconciliation, tests and pushing, verify the head SHA and checks, then merge with `mise -C <mr-moto-checkout> pr <project> merge <CARD> --number <number> --sha <verified-head-sha>`. Skip the merge if that PR is already merged. GitHub uses authenticated `gh` with explicit `--repo`; Forgejo uses its authenticated API. Credentials stay private.
+- Verify the merged state, then update the main checkout with `git pull --ff-only <gitRemote> <default-branch>` only when it is already on the default branch and clean. Do not switch its branch.
+- New tracked changes after a merge require a fresh card branch and another linked PR under the same card, with a new Review handoff unless `skip review` applies. Complete only after all merges and remaining work are verified.
 
 ## File Structure
 
