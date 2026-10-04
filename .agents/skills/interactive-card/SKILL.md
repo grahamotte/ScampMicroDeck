@@ -5,7 +5,7 @@ description: Work a Linear card interactively with the user and manage its lifec
 
 # Interactive Card
 
-You work this card with the user and manage it through the workflow in `AGENTS.md`. The card branch is the lowercased card identifier, for example `moto-1` for `MOTO-1`.
+You work this card with the user and manage it through the workflow in `AGENTS.md`. Mr. Moto supplies the same workflow in `../mr-moto/docs/workflow.md`; read it when available. Code Moto projects use GitHub PR review. The card branch is the lowercased card identifier, for example `moto-1` for `MOTO-1`.
 
 ## Start
 
