@@ -4,7 +4,7 @@ import SwiftUI
 struct AboutScampMicroDeckView: View {
     static let windowID = "about-scamp"
 
-    private let sourceCodeURL = URL(string: "https://codeberg.org/grahamotte/scamp-micro-deck")!
+    private let sourceCodeURL = URL(string: "https://github.com/grahamotte/ScampMicroDeck")!
 
     private var appIcon: NSImage {
         NSApplication.shared.applicationIconImage
