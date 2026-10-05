@@ -1,6 +1,6 @@
 {
   "domain": "scampmicrodeck.com",
-  "githubRepo": "git@github.com:grahamotte/scampmicrodeck.com.git",
+  "githubRepo": "git@github.com:grahamotte/ScampMicroDeck.git",
   "database": "scampmicrodeck",
   "site": {
     "title": "Scamp Micro Deck",
@@ -54,13 +54,13 @@
     "demoAccountRequired": false,
     "description": "Scamp is a native macOS music player meant to emulate all the tedious, crappy charm of a real vinyl record player.",
     "keywords": "music, vinyl, record, mp3, flac, audio",
-    "marketingUrl": "https://codeberg.org/grahamotte/scampmicrodeck.com",
+    "marketingUrl": "https://codeberg.org/grahamotte/ScampMicroDeck",
     "name": "Scamp Micro Deck",
     "notes": "Scamp is a local macOS music player. To use the app, you must load a folder that contains playable audio files such as MP3s. Scamp does not open individual song files one at a time.\n\nNo login, account, subscription, or external device is required.\n\nThe easiest way to review the app is to open it and choose Help > Load Demo Album. That will load a bundled sample album right away.\n\nYou can also test normal playback by either clicking the eject button and choosing a folder with audio files, or by dragging a folder into the app window.\n\nOn first launch, Scamp automatically shows a short help guide. That guide is also available later from Help > Scamp Micro Deck Help. You will need to dismiss the guide before you can play music through Scamp.\n\nThe attached \"demo album.zip\" will need to be unzipped before Scamp is able to play it. \n\nAlbum art used in screenshots: https://www.loc.gov/resource/ppmsca.51533/",
     "primaryLocale": "en-US",
     "promotionalText": "Rediscover your music library with the tedious, crappy charm of a real vinyl record player.",
     "releaseType": "AFTER_APPROVAL",
-    "supportUrl": "https://codeberg.org/grahamotte/scampmicrodeck.com",
+    "supportUrl": "https://codeberg.org/grahamotte/ScampMicroDeck",
     "targets": {
       "apple": {
         "macos": {

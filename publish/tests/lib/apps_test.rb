@@ -35,10 +35,10 @@ class AppsTest < Minitest::Test
   end
 
   def test_mr_moto_root_defaults_beside_the_main_checkout
-    assert_equal File.join(@publish_test_dir, "mr-moto"), Apps.mr_moto_root
+    assert_equal File.join(@publish_test_dir, "MrMoto"), Apps.mr_moto_root
     ENV.delete("MR_MOTO_ROOT")
 
-    assert_equal File.expand_path("../mr-moto", Apps.main_root), Apps.mr_moto_root
+    assert_equal File.expand_path("../MrMoto", Apps.main_root), Apps.mr_moto_root
     assert_equal File.basename(Apps.main_root), Apps.project_name
   end
 

@@ -60,7 +60,7 @@ module PublishTestIsolation
   def before_setup
     @publish_test_dir = Dir.mktmpdir
     $cache = Cache.new(dir: File.join(@publish_test_dir, "cache"))
-    ENV["MR_MOTO_ROOT"] = File.join(@publish_test_dir, "mr-moto")
+    ENV["MR_MOTO_ROOT"] = File.join(@publish_test_dir, "MrMoto")
     FileUtils.mkdir_p(ENV["MR_MOTO_ROOT"])
     File.write(File.join(ENV["MR_MOTO_ROOT"], "release.rb"), "")
     configure_config_fixture
