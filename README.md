@@ -47,7 +47,7 @@ Non-secret project settings live in `config.json`, including the domain, GitHub 
 | `mise publish:set_version 1.5.0` | Update release and Xcode versions |
 | `mise publish` | Archive, upload, submit, notarize, and publish a release |
 
-`mise publish` uses the App Store Connect, signing certificate, Codeberg, and GitHub credentials in the ignored `.env.production` file.
+`mise publish` uses the App Store Connect, signing certificate, and GitHub credentials in the ignored `.env.production` file.
 
 Deployment, basis merges, and publishing use the project-specific instructions in [.agents/skills](.agents/skills). Mr. Moto owns card tracking, enqueueing, and the review workflow.
 
