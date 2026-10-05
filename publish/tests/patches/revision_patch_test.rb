@@ -1,7 +1,7 @@
 require_relative "../test_helper"
 
 class AppsRevisionPatchTest < Minitest::Test
-  def test_releases_only_macos_through_mr_moto_once
+  def test_releases_only_macos_through_mr_once
     ios = Apps.targets.fetch(0)
     target = ios.merge(name: :macos, platform: "MAC_OS")
     Apps.targets << target
@@ -18,7 +18,7 @@ class AppsRevisionPatchTest < Minitest::Test
         FileUtils.mkdir_p(File.join(Apps.revision_export_path(target), "App.app"))
       elsif command.include?("ditto")
         File.write(Apps.revision_path(target), "signed-app")
-      elsif command.start_with?("mise ")
+      elsif command.include?(" && mr release ")
         arguments = Shellwords.split(command)
         notes = File.read(arguments.fetch(arguments.index("--notes-file") + 1))
         bundler = ENV["BUNDLE_GEMFILE"]
@@ -36,10 +36,10 @@ class AppsRevisionPatchTest < Minitest::Test
     assert_includes options, "developer-id"
     refute_includes options, "release-testing"
     assert commands.any? { |command| command.include?("security import") }
-    releases = commands.select { |value| value.start_with?("mise ") }.map { |value| Shellwords.split(value) }
+    releases = commands.select { |value| value.include?(" && mr release ") }.map { |value| Shellwords.split(value) }
     assert_equal 1, releases.length
     release = releases.fetch(0)
-    assert_equal [ "mise", "-C", ENV.fetch("MR_MOTO_ROOT"), "release", Apps.project_name, "--tag", "v#{Apps.version}" ], release.first(7)
+    assert_equal [ "cd", Apps.main_root, "&&", "mr", "release", "--tag", "v#{Apps.version}" ], release.first(7)
     assert_equal Apps.revision_path(target), release.fetch(release.index("--asset") + 1)
     assert_equal "-macos-#{Apps.version}.zip", release.fetch(release.index("--obsolete-suffix") + 1)
     assert_equal "Changes", notes
@@ -102,7 +102,7 @@ class AppsRevisionPatchTest < Minitest::Test
     FileUtils.mkdir_p(Apps.archive_path(target))
     FileUtils.mkdir_p(File.dirname(Apps.revision_path(target)))
     File.write(Apps.revision_path(target), "new")
-    Cmd.expects(:local).with { |command| command.start_with?("mise ") }.raises(RuntimeError, "Command failed")
+    Cmd.expects(:local).with { |command| command.include?(" && mr release ") }.raises(RuntimeError, "Command failed")
 
     assert_raises(RuntimeError) { Apps::RevisionPatch.apply }
 

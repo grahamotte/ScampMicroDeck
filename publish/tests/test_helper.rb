@@ -60,16 +60,19 @@ module PublishTestIsolation
   def before_setup
     @publish_test_dir = Dir.mktmpdir
     $cache = Cache.new(dir: File.join(@publish_test_dir, "cache"))
-    ENV["MR_MOTO_ROOT"] = File.join(@publish_test_dir, "MrMoto")
-    FileUtils.mkdir_p(ENV["MR_MOTO_ROOT"])
-    File.write(File.join(ENV["MR_MOTO_ROOT"], "release.rb"), "")
+    @original_path = ENV["PATH"]
+    mr = File.join(@publish_test_dir, "bin", "mr")
+    FileUtils.mkdir_p(File.dirname(mr))
+    File.write(mr, "")
+    File.chmod(0755, mr)
+    ENV["PATH"] = File.dirname(mr)
     configure_config_fixture
     super
   end
 
   def after_teardown
     FileUtils.rm_rf(@publish_test_dir)
-    ENV.delete("MR_MOTO_ROOT")
+    ENV["PATH"] = @original_path
     Apps.reset
     Constants.config_path = nil
     Constants.instance_variable_set(:@config, nil)

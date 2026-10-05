@@ -42,8 +42,8 @@ module Apps
         required.each do |name|
           raise "Missing #{name}" if ENV[name].blank?
         end
-        if Apps.targets.any? { |target| target.fetch(:platform) == "MAC_OS" } && !File.file?(File.join(Apps.mr_moto_root, "release.rb"))
-          raise "Mr. Moto not found at #{Apps.mr_moto_root}; set MR_MOTO_ROOT to publish macOS releases"
+        if Apps.targets.any? { |target| target.fetch(:platform) == "MAC_OS" } && !Apps.mr_installed?
+          raise "mr not found on PATH; run mise install_mr in Mr. Moto to publish macOS releases"
         end
       end
 

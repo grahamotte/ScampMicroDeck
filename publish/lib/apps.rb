@@ -52,8 +52,7 @@ module Apps
       File.dirname(File.expand_path(gitdir, root).sub(%r{/worktrees/[^/]+/?\z}, ""))
     end
 
-    def project_name = File.basename(main_root)
-    def mr_moto_root = ENV["MR_MOTO_ROOT"].present? ? File.expand_path(ENV["MR_MOTO_ROOT"]) : File.expand_path("../MrMoto", main_root)
+    def mr_installed? = ENV["PATH"].to_s.split(File::PATH_SEPARATOR).any? { |directory| File.executable?(File.join(directory, "mr")) }
 
     def project_path(target)
       File.expand_path(target.fetch(:project), Constants.local_root)

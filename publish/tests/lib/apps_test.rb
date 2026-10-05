@@ -34,12 +34,11 @@ class AppsTest < Minitest::Test
     assert_includes error.message, "Cannot locate the main checkout"
   end
 
-  def test_mr_moto_root_defaults_beside_the_main_checkout
-    assert_equal File.join(@publish_test_dir, "MrMoto"), Apps.mr_moto_root
-    ENV.delete("MR_MOTO_ROOT")
+  def test_mr_installed_checks_path
+    assert Apps.mr_installed?
+    ENV["PATH"] = File.join(@publish_test_dir, "missing")
 
-    assert_equal File.expand_path("../MrMoto", Apps.main_root), Apps.mr_moto_root
-    assert_equal File.basename(Apps.main_root), Apps.project_name
+    refute Apps.mr_installed?
   end
 
   def test_loads_skip_app_stores
