@@ -112,6 +112,7 @@ class Spawner
     @output.puts "New app created at #{target_dir}"
     @output.puts "Create #{repo} on GitHub, then run 'git push -u origin master' there."
     @output.puts "Run 'mise merge' there to merge updates from Code Moto."
+    @output.puts "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
     target_dir
   end
 
@@ -150,7 +151,6 @@ class Spawner
       "domain" => @app_name,
       "githubRepo" => repo,
       "database" => database_name,
-      "secrets" => config.fetch("secrets", {}).transform_values { "" },
     )
     File.write(path, "#{JSON.pretty_generate(config)}\n")
     @output.puts "Updated #{path}"

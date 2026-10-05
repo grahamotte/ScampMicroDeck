@@ -21,7 +21,7 @@ The request or card chooses the mode. Default to a full publish.
 2. Review the commits since the most recent commit named `Version` and choose the smallest appropriate semantic version bump from the current configured version: major for breaking changes, minor for new user-facing capabilities, and patch for everything else. Ask before a major bump. A publish request permits a patch release when there are no notable changes.
 3. Run `mise publish:approved_version` to find the latest version actually approved by App Store Connect. Find the `Version` commit that set that approved version and review every subsequent change when writing `whatsNew`, including changes already included in newer unapproved versions. If no approved version exists, review changes from the beginning of the repository. Write a concise, user-facing summary based on that full range, using `Bug fixes.` when nothing user-facing is notable.
 4. Run `mise publish:set_version <version>` and `mise test`, then commit only the version files with the message `Version`.
-5. Push with `git push -u origin HEAD:<branch>`, create or reuse and link a PR through Mr. Moto's `mise pr <project> create <CARD> --title "<title>" --body-file <path>`, inspect its head SHA and checks, and merge with `mise pr <project> merge <CARD> --number <number> --sha <verified-head-sha>`. Confirm the merge before deleting the remote branch.
+5. Deliver the version commit through the supplied repository review instructions and hand off Review with the selected publish mode and release commands as remaining work. The Approved session releases only after the version PR has been merged and verified.
 
 ## Release
 
@@ -33,12 +33,6 @@ The request or card chooses the mode. Default to a full publish.
 
 The macOS revision is signed, notarized, and released through GitHub. Other Apple targets are distributed through App Store Connect. Report stop-before-submission builds as prepared for review, not submitted, and TestFlight-only builds as uploaded for TestFlight, not prepared or submitted for review.
 
-## Linear card
+## Results
 
-Every tracked change uses the configured forge PR workflow in `../mr-moto/docs/workflow.md`. Existing open PRs are reused; a merged PR is never reused for subsequent tracked changes. In a manager work session, stop at Review and list merge-dependent steps for the Approved agent, unless `skip review` authorizes merging. Credentials remain in private configuration or the environment.
-
-Record the result on the card that invoked this skill. Complete the card only when its whole task is done; otherwise continue with its remaining work.
-
-- Link the version PR to the card.
-- On success, comment with the release report.
-- When blocked, comment with the failure, its impact, and the state publishing stopped in, then move the card to `planned`.
+Report the version PR and release result. When blocked, report the failure, its impact, and the state publishing stopped in. Record results on the invoking card when present. In a work session, hand off successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, hand off Planned using the launch prompt’s commands.
