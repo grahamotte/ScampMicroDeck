@@ -25,14 +25,14 @@ class AppsValidationPatchTest < Minitest::Test
     ENV["APPLE_KEY_ID"] = value
   end
 
-  def test_requires_mr_moto_for_macos_releases
+  def test_requires_mr_for_macos_releases
     Apps.targets.fetch(0)[:platform] = "MAC_OS"
-    FileUtils.rm_f(File.join(ENV.fetch("MR_MOTO_ROOT"), "release.rb"))
+    ENV["PATH"] = File.join(@publish_test_dir, "missing")
     Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
 
     error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
 
-    assert_equal "Mr. Moto not found at #{ENV.fetch("MR_MOTO_ROOT")}; set MR_MOTO_ROOT to publish macOS releases", error.message
+    assert_equal "mr not found on PATH; run mise install_mr in Mr. Moto to publish macOS releases", error.message
   end
 
   def test_rejects_missing_metadata

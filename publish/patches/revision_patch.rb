@@ -129,12 +129,9 @@ module Apps
         Tempfile.create([ "release-notes", ".md" ]) do |file|
           file.write(Apps.config.fetch(:whatsNew))
           file.close
-          command = Shellwords.join([
-            "mise",
-            "-C",
-            Apps.mr_moto_root,
+          command = "cd #{Shellwords.escape(Apps.main_root)} && " + Shellwords.join([
+            "mr",
             "release",
-            Apps.project_name,
             "--tag",
             tag,
             "--notes-file",
