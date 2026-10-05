@@ -33,7 +33,7 @@ Install mise and PostgreSQL, and have PostgreSQL running locally. Apple app deve
 4. Run `mise db:migrate` to prepare the development database.
 5. Run `mise start` to start the API, background jobs, and frontend sites. It prints the local URLs; the API runs at `http://localhost:3000`.
 
-Non-secret project settings live in `config.json`, including the domain, GitHub repository, database name, subdomains, and app release details. Application credentials live in the gitignored `.env.*` files. GitHub release artifact publishing uses `GITHUB_TOKEN` from `.env.production`. Linear and GitHub/Forgejo PR operations use the central commands supplied by Mr. Moto; repository-local tokens are not supported.
+Non-secret project settings live in `config.json`, including the domain, GitHub repository, database name, subdomains, and app release details. Application credentials live in the gitignored `.env.*` files. Linear, GitHub/Forgejo PR operations, and macOS release uploads use Mr. Moto's central commands; repository-local tokens are not supported.
 
 ## Common commands
 

@@ -11,9 +11,35 @@ class AppsTest < Minitest::Test
     assert_equal File.join(@publish_test_dir, "artifacts", "1.2.3", "ios.xcarchive"), Apps.archive_path(Apps.targets.fetch(0))
     Apps.config[:name] = "Example App"
     assert_equal File.join(@publish_test_dir, "artifacts", "1.2.3", "revisions", "Example-App-ios-1.2.3.ipa"), Apps.revision_path(Apps.targets.fetch(0))
-    assert_equal "github-token", Apps.revision_repositories.fetch(0).fetch(:token)
-    assert_equal "github.com", Apps.revision_repositories.fetch(0).fetch(:host)
-    assert_equal "app", Apps.revision_repositories.fetch(0).fetch(:name)
+  end
+
+  def test_main_root_resolves_linked_worktrees_to_their_main_checkout
+    main = File.join(@publish_test_dir, "code", "app.com")
+    worktree = File.join(@publish_test_dir, "code", "app.com-moto-1")
+    FileUtils.mkdir_p(File.join(main, ".git", "worktrees", "app.com-moto-1"))
+    FileUtils.mkdir_p(worktree)
+    File.write(File.join(worktree, ".git"), "gitdir: #{File.join(main, ".git", "worktrees", "app.com-moto-1")}\n")
+
+    assert_equal main, Apps.main_root(main)
+    assert_equal main, Apps.main_root(worktree)
+  end
+
+  def test_main_root_rejects_an_unreadable_worktree_link
+    worktree = File.join(@publish_test_dir, "broken")
+    FileUtils.mkdir_p(worktree)
+    File.write(File.join(worktree, ".git"), "nothing\n")
+
+    error = assert_raises(RuntimeError) { Apps.main_root(worktree) }
+
+    assert_includes error.message, "Cannot locate the main checkout"
+  end
+
+  def test_mr_moto_root_defaults_beside_the_main_checkout
+    assert_equal File.join(@publish_test_dir, "mr-moto"), Apps.mr_moto_root
+    ENV.delete("MR_MOTO_ROOT")
+
+    assert_equal File.expand_path("../mr-moto", Apps.main_root), Apps.mr_moto_root
+    assert_equal File.basename(Apps.main_root), Apps.project_name
   end
 
   def test_loads_skip_app_stores
