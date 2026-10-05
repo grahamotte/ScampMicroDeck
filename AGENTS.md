@@ -64,7 +64,7 @@ Follow the launch prompt for task scope, card access, review, and handoff comman
 - `docs/` - Project documentation in Markdown.
 - `frontend/` - React website.
 - `gems/` - Shared Ruby gems.
-- `manager/` - Project tooling for secrets refresh, spawning new apps, and Code Moto merges.
+- `manager/` - Project tooling for spawning new apps and Code Moto merges.
 - `publish/` - Mobile app versioning, simulators, and App Store publishing.
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.
