@@ -53,7 +53,7 @@ module Apps
     end
 
     def project_name = File.basename(main_root)
-    def mr_moto_root = ENV["MR_MOTO_ROOT"].present? ? File.expand_path(ENV["MR_MOTO_ROOT"]) : File.expand_path("../mr-moto", main_root)
+    def mr_moto_root = ENV["MR_MOTO_ROOT"].present? ? File.expand_path(ENV["MR_MOTO_ROOT"]) : File.expand_path("../MrMoto", main_root)
 
     def project_path(target)
       File.expand_path(target.fetch(:project), Constants.local_root)

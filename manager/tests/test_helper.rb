@@ -20,7 +20,7 @@ module ManagerTestIsolation
     File.write(
       Settings.path,
       JSON.generate(
-        githubRepo: "git@github.com:grahamotte/codemoto.org.git",
+        githubRepo: "git@github.com:grahamotte/CodeMoto.git",
         domain: "codemoto.org",
       ),
     )
