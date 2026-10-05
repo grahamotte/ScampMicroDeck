@@ -17,9 +17,9 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 5. Use root `mise` tasks instead of invoking underlying tools directly when an applicable task exists.
 6. Do not create a canvas or visualization unless the user specifically requests one.
 7. When opening a git worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout into the worktree before running tests or mise tasks.
-8. Every task needs a Linear tracking card, including operations such as deploys, merges, and publishes. Reuse an existing card for the whole task and record individual operations and steps there; create a card only if none covers the task. All code changes and other changes to tracked repository files need a GitHub PR. Operations without tracked repository changes need no PR, empty commit, or branch. Never commit to or push `master`, and never make repository changes outside the PR flow.
+8. All code changes and other changes to tracked repository files need a PR through the launch prompt's supplied commands. Operations without tracked repository changes need no PR, empty commit, or branch. Never commit to or push `master`, and never make repository changes outside the PR flow.
 9. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
-10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), search the MOTO backlog (`mise linear issues search "<issue>" --team MOTO --status Backlog`). If a matching card exists, comment with a brief summary of your experience. Otherwise create a MOTO backlog card. Do not file app-specific issues that cannot be backported.
+10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`codemoto.org` / MOTO), report it with enough detail for Mr. Moto to track the basis-repository follow-up. Keep app-specific issues separate.
 11. On macOS, run root `mise` tasks from the worktree root in a non-login shell. For Codex `exec_command`, set `login: false` explicitly on each call that runs `mise`, including through wrappers. If Bundler reports system Ruby or a missing Bundler version, check tool resolution and retry the same root task this way before changing dependencies. See [macOS agent task execution](docs/manager.md#macos-agent-task-execution).
 
 ## Ruby
@@ -46,59 +46,16 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 - After every code change, run the whole suite with `mise test`.
 - Do not write integration tests.
 
-## Linear
+## Session instructions
 
-Work items are cards in Linear. Use `mise linear <args>`, which runs the [Linearis](https://github.com/linearis-oss/linearis) CLI with `LINEAR_TOKEN`; see `mise linear usage` for commands. Do not use Linear MCP tools. Refer to cards by identifier, for example `MOTO-1`. The default team is `linear.team` in `config.json`; pass `--team <key>` where a command needs one.
-
-When commenting on a card with pseudocode, use readable, imperfect Ruby in a fenced `ruby` block. Favor named components and indentation that show inputs, key decisions, and results; the pseudocode does not need to run.
-
-### Workflow
-
-The manager is [Mr. Moto](https://github.com/grahamotte/mr-moto), a sister repository checked out at `../mr-moto` that manages every registered Git repository from one install. Its shared card workflow is in `../mr-moto/docs/workflow.md`; the rules below describe the same workflow for every registered forge. Each project has one `repo` URL and a `repoProvider` in Mr. Moto's registry, independently of its configured Git remote.
-
-Columns, in order: `Backlog`, `Planned`, `🤖 Working`, `Review`, `🤖 Approved`, `Completed`, `Canceled`. The 🤖 marks columns the manager acts on; prose may refer to them without it. The `🤖 Working` column and the `working` tag are different things.
-
-- `Planned`: not started, or blocked until the user re-evaluates the card.
-- `🤖 Working`: without the `working` tag, the card is queued and the manager starts a work agent. With it, an agent has claimed the card. The user moves cards here from Planned to start work, or from Review with correction comments.
-- `Review`: a mergeable PR awaits the user's review. Work that depends on the merge, such as deploying, waits for approval.
-- `🤖 Approved`: the manager starts a new agent session that merges the reviewed PR and finishes the remaining work.
-- `Completed`: the card's whole task is done. A merged PR or finished operation does not complete a card while other work remains.
-
-Every agent session ends with one handoff: move the card to `Review`, `Planned`, or `Completed`, comment why, and remove the `working` tag if the manager started the session. Do not leave a non-interactive card in `🤖 Working` without the tag, since that queues another agent.
-
-Sessions share nothing but the card. Before moving a card to `Review`, comment a handoff for the Approved agent: the PR to merge, remaining work after the merge in order (naming skills such as `deploy`), relevant inputs and constraints, work already done, and verification required before completion. Write "Remaining work: none" when nothing remains. The Approved agent reads the card and all comments first; a missing or ambiguous handoff sends the card to `Planned`, never to `Completed`.
-
-Operation skills, such as `deploy`, `merge`, and `publish`, record their results on the card that invokes them and follow this workflow. `mise deploy`, `mise merge`, and `mise publish` all work from `origin/master`.
-
-When the user hands you a Linear card, use the `interactive-card` skill, unless the prompt says the manager runs the card.
-
-### Tags
-
-Pass tags by id, not name, since Linearis does not resolve tag names per team.
-
-- `working`: an agent has claimed the card. The manager adds it when starting an agent; that agent removes it at handoff.
-- `skip review`: the work agent merges its own PR instead of moving the card to Review, then finishes the remaining work.
-- `runner: interactive`: the user works the card with an agent directly. The manager starts no work agent for it in `🤖 Working`, but still handles it in `🤖 Approved`.
-
-Mr. Moto can preserve project-specific labels with `keepTags` in its project entry in Mr. Moto's `config.json`. All registered projects use forge PRs through Mr. Moto's `mise pr` task; missing forge access is a Planned blocker, never permission to push directly to the default branch.
-
-## Pull Requests
-
-Use the project's `repo`, `repoProvider`, and one configured `gitRemote` from Mr. Moto's registry. Follow `../mr-moto/docs/workflow.md`. All tracked changes require a forge PR, including skip-review work and additional changes found during Approved work. Never push directly to the default branch.
-
-- Fetch the configured remote and use its actual default branch. Preserve merge commits with a merge instead of a rebase when needed.
-- Push the card branch, then use `mise -C <mr-moto-checkout> pr <project> create <CARD> --title "<title>" --body-file <path>` to create or update the open PR and attach it to Linear. Returned-review cards reuse their open PR.
-- Inspect the handoff PR with `mise -C <mr-moto-checkout> pr <project> inspect <CARD> --number <number>`. After reconciliation, tests and pushing, verify the head SHA and checks, then merge with `mise -C <mr-moto-checkout> pr <project> merge <CARD> --number <number> --sha <verified-head-sha>`. Skip the merge if that PR is already merged. GitHub uses authenticated `gh` with explicit `--repo`; Forgejo uses its authenticated API. Credentials stay private.
-- Verify the merged state, then update the main checkout with `git pull --ff-only <gitRemote> <default-branch>` only when it is already on the default branch and clean. Do not switch its branch.
-- New tracked changes after a merge require a fresh card branch and another linked PR under the same card, with a new Review handoff unless `skip review` applies. Complete only after all merges and remaining work are verified.
+Follow the launch prompt for task scope, card access, review, and handoff commands. This repository provides implementation instructions, checks, and operation tooling. The launch prompt supplies the session workflow; do not search another repository for workflow instructions.
 
 ## File Structure
 
 - `.agents/skills/` - Project-specific agent skills.
 - `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
 - `.env.default` - Template for the `.env.*` secret files.
-- `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values.
-- `~/.config/codemoto/config.json` - Private credentials shared with Mr. Moto. `linearTokens` holds its Linear API keys per workspace. Mr. Moto's own `config.json` lists explicit workspace/team/path entries under `projects` and holds `agentDefaultsBalance` and per-project agent settings. `1passwordServiceAccountToken` authenticates `mise manager:secrets`, which uses it to pull every `secrets` key in `config.json` as `.env.<key>` from its `op://<vault>/<item>` reference. Each item stores one concealed field per env key, labeled with the key name; the file follows the `.env.default` layout with extra keys at the end.
+- `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, and the file follows the `.env.default` layout with extra keys at the end.
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
@@ -107,7 +64,7 @@ Use the project's `repo`, `repoProvider`, and one configured `gitRemote` from Mr
 - `docs/` - Project documentation in Markdown.
 - `frontend/` - React website.
 - `gems/` - Shared Ruby gems.
-- `manager/` - Secrets refresh, spawning new apps, and Code Moto merges. Linear dispatch lives in Mr. Moto.
+- `manager/` - Project tooling for secrets refresh, spawning new apps, and Code Moto merges.
 - `publish/` - Mobile app versioning, simulators, and App Store publishing.
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.

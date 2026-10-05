@@ -154,7 +154,7 @@ module Apps
       host, owner, name = match.captures
       raise "Unsupported revision repository #{host}" unless host == "github.com"
 
-      { api: "https://api.github.com", host:, name:, owner:, token: ENV.fetch("GITHUB_TOKEN") }
+      { api: "https://api.github.com", host:, name:, owner:, token: Constants.github_token }
     end
 
     def read_json(path)

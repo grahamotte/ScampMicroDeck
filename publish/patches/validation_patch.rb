@@ -30,7 +30,6 @@ module Apps
           APPLE_KEY_ID
           APPLE_KEY_SECRET_BASE64
           APPLE_TEAM_ID
-          GITHUB_TOKEN
         ]
         unless Apps.skip_app_stores?
           required.concat(%w[

@@ -123,7 +123,7 @@ class SpawnerTest < Minitest::Test
     assert_equal "git@github.com:grahamotte/new-app.net.git", config.fetch("githubRepo")
     assert_equal "new-app.net", config.fetch("domain")
     assert_equal "new_app", config.fetch("database")
-    assert_equal({ "development" => "", "production" => "" }, config.fetch("secrets"))
+    refute config.key?("secrets")
     assert_equal source_config.fetch("instance"), config.fetch("instance")
     assert_equal source_config.fetch("subdomains"), config.fetch("subdomains")
     assert_includes File.read(File.join(target_dir, ".env.production")), "OPENROUTER_TOKEN=xxx\n"
@@ -139,25 +139,8 @@ class SpawnerTest < Minitest::Test
     assert_includes @shell.commands, [ %w[git config remote.origin.gh-resolved base], target_dir ]
     assert_includes @output.string, "Create git@github.com:grahamotte/new-app.net.git on GitHub, then run 'git push -u origin master' there."
     assert_includes @output.string, "Run 'mise merge' there to merge updates from Code Moto."
+    assert_includes @output.string, "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
     assert_equal 0600, File.stat(File.join(target_dir, ".env.production")).mode & 0777
-  end
-
-  def test_blanks_every_secrets_value_including_extra_keys
-    config_path = File.join(@source_repo, "config.json")
-    config = JSON.parse(File.read(config_path))
-    config.fetch("secrets")["helios"] = "op://Projects/Helios"
-    File.write(config_path, "#{JSON.pretty_generate(config)}\n")
-
-    target_dir = Spawner.new(
-      "new-app.net",
-      shell: @shell,
-      credentials: @credentials,
-      output: @output,
-    ).call
-
-    spawned = JSON.parse(File.read(File.join(target_dir, "config.json")))
-    assert_equal({ "development" => "", "production" => "", "helios" => "" }, spawned.fetch("secrets"))
-    refute File.exist?(File.join(target_dir, ".env.helios"))
   end
 
   def test_rejects_an_app_name_without_a_tld
