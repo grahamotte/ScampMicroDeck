@@ -42,9 +42,18 @@ module Apps
       File.join(tmp_root, version, "#{target.fetch(:name)}-revision-export")
     end
 
-    def revision_repositories
-      [ Constants.github_repo ].filter_map { |repo| revision_repository(repo) if repo.present? }
+    def main_root(root = Constants.local_root)
+      git = File.join(root, ".git")
+      return root unless File.file?(git)
+
+      gitdir = File.read(git)[/\Agitdir: (.+)$/, 1]
+      raise "Cannot locate the main checkout from #{git}" if gitdir.blank?
+
+      File.dirname(File.expand_path(gitdir, root).sub(%r{/worktrees/[^/]+/?\z}, ""))
     end
+
+    def project_name = File.basename(main_root)
+    def mr_moto_root = ENV["MR_MOTO_ROOT"].present? ? File.expand_path(ENV["MR_MOTO_ROOT"]) : File.expand_path("../mr-moto", main_root)
 
     def project_path(target)
       File.expand_path(target.fetch(:project), Constants.local_root)
@@ -146,16 +155,6 @@ module Apps
     end
 
     private
-
-    def revision_repository(repo)
-      match = repo.match(%r{(?:ssh://)?git@([^/:]+)[:/](.+?)/(.+?)(?:\.git)?\z})
-      raise "Invalid revision repository #{repo}" if match.blank?
-
-      host, owner, name = match.captures
-      raise "Unsupported revision repository #{host}" unless host == "github.com"
-
-      { api: "https://api.github.com", host:, name:, owner:, token: Constants.github_token }
-    end
 
     def read_json(path)
       JSON.parse(File.read(path), symbolize_names: true)

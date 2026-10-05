@@ -25,13 +25,14 @@ class AppsValidationPatchTest < Minitest::Test
     ENV["APPLE_KEY_ID"] = value
   end
 
-  def test_rejects_missing_configuration
-    Constants.config[:githubRepo] = ""
+  def test_requires_mr_moto_for_macos_releases
+    Apps.targets.fetch(0)[:platform] = "MAC_OS"
+    FileUtils.rm_f(File.join(ENV.fetch("MR_MOTO_ROOT"), "release.rb"))
     Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
 
     error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
 
-    assert_equal "Missing githubRepo in config.json", error.message
+    assert_equal "Mr. Moto not found at #{ENV.fetch("MR_MOTO_ROOT")}; set MR_MOTO_ROOT to publish macOS releases", error.message
   end
 
   def test_rejects_missing_metadata

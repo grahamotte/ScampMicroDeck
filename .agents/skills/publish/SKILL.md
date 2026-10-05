@@ -31,7 +31,7 @@ The request or card chooses the mode. Default to a full publish.
 4. If anything else fails, stop publishing and help the user diagnose it before proceeding. Make the failure immediately clear, focus on the error and its impact, inspect the relevant logs and state, and work with the user on recovery instead of presenting a routine release summary.
 5. When publishing succeeds, briefly report the version, release notes, version PR, repository releases, and App Store status for each target.
 
-The macOS revision is signed, notarized, and released through GitHub. Other Apple targets are distributed through App Store Connect. Report stop-before-submission builds as prepared for review, not submitted, and TestFlight-only builds as uploaded for TestFlight, not prepared or submitted for review.
+The macOS revision is signed, notarized, and released to the project's repository through Mr. Moto's `mise release`, found at `MR_MOTO_ROOT` or `../mr-moto` beside the main checkout. Other Apple targets are distributed through App Store Connect. Report stop-before-submission builds as prepared for review, not submitted, and TestFlight-only builds as uploaded for TestFlight, not prepared or submitted for review.
 
 ## Results
 

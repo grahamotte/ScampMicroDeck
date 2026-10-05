@@ -42,8 +42,9 @@ module Apps
         required.each do |name|
           raise "Missing #{name}" if ENV[name].blank?
         end
-        raise "Missing githubRepo in config.json" if Constants.github_repo.blank?
-        Apps.revision_repositories
+        if Apps.targets.any? { |target| target.fetch(:platform) == "MAC_OS" } && !File.file?(File.join(Apps.mr_moto_root, "release.rb"))
+          raise "Mr. Moto not found at #{Apps.mr_moto_root}; set MR_MOTO_ROOT to publish macOS releases"
+        end
       end
 
       def validate_release

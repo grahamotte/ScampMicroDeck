@@ -2,9 +2,7 @@ module Apps
   class RevisionPatch < BasePatch
     class << self
       def needed?
-        repositories.any? do |repository|
-          targets.any? { |target| Cache.get(cache_key(repository, target)).blank? }
-        end
+        targets.any? { |target| Cache.get(cache_key(target)).blank? }
       end
 
       def apply
@@ -12,13 +10,12 @@ module Apps
           raise "Missing archive for #{target.fetch(:name)}" unless File.directory?(Apps.archive_path(target))
 
           package(target)
-          repositories.each { |repository| upload(repository, target) }
+          release(target)
         end
       end
 
       private
 
-      def repositories = Apps.revision_repositories
       def targets = Apps.targets.select { |target| target.fetch(:platform) == "MAC_OS" }
 
       def package(target)
@@ -126,81 +123,36 @@ module Apps
         named_product
       end
 
-      def upload(repository, target)
-        return if Cache.get(cache_key(repository, target)).present?
+      def release(target)
+        return if Cache.get(cache_key(target)).present?
 
-        release = release(repository)
-        name = File.basename(Apps.revision_path(target))
-        content = File.binread(Apps.revision_path(target))
-        assets = release.fetch(:assets, [])
-        obsolete_assets(assets, target, name).each do |item|
-          delete_asset(repository, item.fetch(:id))
+        Tempfile.create([ "release-notes", ".md" ]) do |file|
+          file.write(Apps.config.fetch(:whatsNew))
+          file.close
+          command = Shellwords.join([
+            "mise",
+            "-C",
+            Apps.mr_moto_root,
+            "release",
+            Apps.project_name,
+            "--tag",
+            tag,
+            "--notes-file",
+            file.path,
+            "--asset",
+            Apps.revision_path(target),
+            "--obsolete-suffix",
+            "-#{target.fetch(:name)}-#{Apps.version}.zip",
+          ])
+          Bundler.with_unbundled_env { Cmd.local(command) }
         end
-        asset = assets.find { |item| item.fetch(:name) == name }
-        unless asset_matches?(repository, asset, content)
-          delete_asset(repository, asset.fetch(:id)) if asset.present?
-          upload_asset(repository, release.fetch(:id), name, content)
-        end
-        Cache.set(cache_key(repository, target), "uploaded")
-      end
-
-      def obsolete_assets(assets, target, name)
-        suffix = "-#{target.fetch(:name)}-#{Apps.version}.#{File.extname(name).delete_prefix(".")}"
-        assets.select { |item| item.fetch(:name) != name && item.fetch(:name).end_with?(suffix) }
-      end
-
-      def asset_matches?(repository, asset, content)
-        return false if asset.blank?
-
-        asset.fetch(:digest, "") == "sha256:#{Digest::SHA256.hexdigest(content)}"
-      end
-
-      def delete_asset(repository, asset_id)
-        Req.call(
-          url: "#{repository.fetch(:api)}/repos/#{repository.fetch(:owner)}/#{repository.fetch(:name)}/releases/assets/#{asset_id}",
-          method: :delete,
-          headers: headers(repository),
-        )
-      end
-
-      def release(repository)
-        release = Req.call(
-          url: "#{repository.fetch(:api)}/repos/#{repository.fetch(:owner)}/#{repository.fetch(:name)}/releases",
-          headers: headers(repository),
-          params: { per_page: 100 },
-        ).find { |item| item.fetch(:tag_name) == tag }
-        return release if release.present?
-
-        Req.call(
-          url: "#{repository.fetch(:api)}/repos/#{repository.fetch(:owner)}/#{repository.fetch(:name)}/releases",
-          method: :post,
-          headers: headers(repository),
-          payload: { tag_name: tag, name: tag, body: Apps.config.fetch(:whatsNew), draft: false, prerelease: false },
-        )
-      end
-
-      def upload_asset(repository, release_id, name, content)
-        Req.call(
-          url: "https://uploads.github.com/repos/#{repository.fetch(:owner)}/#{repository.fetch(:name)}/releases/#{release_id}/assets",
-          method: :post,
-          headers: headers(repository).merge("Content-Type" => "application/zip"),
-          params: { name: },
-          body: content,
-        )
-      end
-
-      def headers(repository)
-        {
-          "Accept" => "application/vnd.github+json",
-          "Authorization" => "Bearer #{repository.fetch(:token)}",
-          "X-GitHub-Api-Version" => "2022-11-28",
-        }
+        Cache.set(cache_key(target), "uploaded")
       end
 
       def tag = "v#{Apps.version}"
 
-      def cache_key(repository, target)
-        "apps/#{Apps.version}/#{target.fetch(:name)}/revisions/v3/#{repository.fetch(:host)}"
+      def cache_key(target)
+        "apps/#{Apps.version}/#{target.fetch(:name)}/revisions/v4"
       end
     end
   end

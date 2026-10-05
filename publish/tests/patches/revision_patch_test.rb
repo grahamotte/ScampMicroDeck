@@ -1,13 +1,15 @@
 require_relative "../test_helper"
 
 class AppsRevisionPatchTest < Minitest::Test
-  def test_uploads_only_macos_to_github_once
+  def test_releases_only_macos_through_mr_moto_once
     ios = Apps.targets.fetch(0)
     target = ios.merge(name: :macos, platform: "MAC_OS")
     Apps.targets << target
     FileUtils.mkdir_p(Apps.archive_path(target))
     commands = []
     options = nil
+    notes = nil
+    bundler = nil
     Cmd.stubs(:local).with do |command|
       commands << command
       if command.include?("xcodebuild")
@@ -16,16 +18,14 @@ class AppsRevisionPatchTest < Minitest::Test
         FileUtils.mkdir_p(File.join(Apps.revision_export_path(target), "App.app"))
       elsif command.include?("ditto")
         File.write(Apps.revision_path(target), "signed-app")
+      elsif command.start_with?("mise ")
+        arguments = Shellwords.split(command)
+        notes = File.read(arguments.fetch(arguments.index("--notes-file") + 1))
+        bundler = ENV["BUNDLE_GEMFILE"]
       end
       true
     end.returns("Developer ID Application\nstatus: Accepted")
-    Req.expects(:call).with { |request| request[:method].blank? }.once.returns([])
-    Req.expects(:call).with { |request| request[:method] == :post && request[:payload].present? }
-      .once
-      .returns(id: 1, assets: [])
-    Req.expects(:call).with do |request|
-      request[:method] == :post && request[:url].include?("/assets") && request[:body].include?("signed-app")
-    end.once.returns({})
+    Req.expects(:call).never
 
     Apps::RevisionPatch.apply
     Apps::RevisionPatch.apply
@@ -36,6 +36,14 @@ class AppsRevisionPatchTest < Minitest::Test
     assert_includes options, "developer-id"
     refute_includes options, "release-testing"
     assert commands.any? { |command| command.include?("security import") }
+    releases = commands.select { |value| value.start_with?("mise ") }.map { |value| Shellwords.split(value) }
+    assert_equal 1, releases.length
+    release = releases.fetch(0)
+    assert_equal [ "mise", "-C", ENV.fetch("MR_MOTO_ROOT"), "release", Apps.project_name, "--tag", "v#{Apps.version}" ], release.first(7)
+    assert_equal Apps.revision_path(target), release.fetch(release.index("--asset") + 1)
+    assert_equal "-macos-#{Apps.version}.zip", release.fetch(release.index("--obsolete-suffix") + 1)
+    assert_equal "Changes", notes
+    assert_nil bundler
     refute File.exist?(Apps.revision_path(ios))
     refute Apps::RevisionPatch.needed?
   end
@@ -88,28 +96,16 @@ class AppsRevisionPatchTest < Minitest::Test
     assert_raises(RuntimeError) { Apps::RevisionPatch.apply }
   end
 
-  def test_replaces_changed_asset
+  def test_failed_release_is_retried
     target = Apps.targets.fetch(0)
     target[:platform] = "MAC_OS"
     FileUtils.mkdir_p(Apps.archive_path(target))
     FileUtils.mkdir_p(File.dirname(Apps.revision_path(target)))
     File.write(Apps.revision_path(target), "new")
-    Req.expects(:call).with { |request| request[:method].blank? }.returns([
-      {
-        id: 1,
-        tag_name: "v#{Apps.version}",
-        assets: [ { id: 2, name: File.basename(Apps.revision_path(target)), digest: "sha256:old" } ],
-      },
-    ])
-    Req.expects(:call).with do |request|
-      request[:method] == :delete && request[:url].end_with?("/releases/assets/2")
-    end.returns({})
-    Req.expects(:call).with do |request|
-      request[:method] == :post && request[:url].include?("uploads.github.com") && request[:body] == "new"
-    end.returns({})
+    Cmd.expects(:local).with { |command| command.start_with?("mise ") }.raises(RuntimeError, "Command failed")
 
-    Apps::RevisionPatch.apply
+    assert_raises(RuntimeError) { Apps::RevisionPatch.apply }
 
-    refute Apps::RevisionPatch.needed?
+    assert Apps::RevisionPatch.needed?
   end
 end
