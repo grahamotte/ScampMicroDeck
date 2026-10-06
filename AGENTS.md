@@ -50,7 +50,7 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 
 Use `origin` as the sole workflow repository remote, preserving its hosting provider and actual default branch. A Code Moto basis remote named `codemoto` and an optional `deployment` remote may also be present. Do not add mirrors or alternate origin names. Fetch before updating default branches, use fast-forward-only pulls, and never force-push a default branch.
 
-Follow the launch prompt for task scope and the session workflow, and use Mr. Moto's `mr` CLI for card access, Git sync and push, PRs, secrets, and handoff; `mr --help` lists its commands. This repository provides implementation instructions, checks, and operation tooling. Do not search another repository for workflow instructions.
+For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow its output, and see `mr --help` for the rest. This repository provides implementation instructions, checks, and operation tooling.
 
 ## File Structure
 
