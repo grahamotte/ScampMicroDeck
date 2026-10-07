@@ -34,7 +34,7 @@ class CertPatchTest < Minitest::Test
     assert_includes commands, "sudo nginx -t"
     assert_includes commands, "sudo snap install --classic certbot"
     assert_includes commands, "sudo ln -s /snap/bin/certbot /usr/bin/certbot"
-    assert commands.any? { |command| command.include?("--cert-name example.com") && command.include?("-d errors.example.com") }
+    assert commands.any? { |command| command.include?("--cert-name example.com") && command.include?("-d jobs.example.com") }
   end
 
   private

@@ -7,7 +7,9 @@ gem "good_job", "4.19.2"
 gem "bootsnap", "1.25.0"
 gem "ostruct", "0.6.3"
 gem "timeout", "0.6.1"
-gem "solid_errors", "0.7.0"
+gem "opentelemetry-sdk", "1.13.1"
+gem "opentelemetry-logs-sdk", "0.8.0"
+gem "opentelemetry-exporter-otlp-logs", "0.6.0"
 gem "path", "0.0.0", path: "../gems/path"
 
 group :development, :test do
