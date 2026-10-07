@@ -29,13 +29,6 @@
         "jobs"
       ],
       "backend": true
-    },
-    {
-      "name": "errors",
-      "subdomains": [
-        "errors"
-      ],
-      "backend": true
     }
   ],
   "instance": {

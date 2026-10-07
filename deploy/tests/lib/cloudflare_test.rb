@@ -65,7 +65,7 @@ class CloudflareTest < Minitest::Test
 
     records = Cloudflare.desired_dns_records
 
-    assert_equal 11, records.length
+    assert_equal 10, records.length
     assert_equal(
       { type: "A", name: "www.example.com", content: "1.2.3.4", proxied: false, ttl: 1 },
       records[1],

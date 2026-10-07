@@ -12,6 +12,7 @@ Rails.application.configure do
   config.good_job.enable_cron = ENV.fetch("GOOD_JOB_ENABLE_CRON", "false") == "true"
   config.good_job.cron_graceful_restart_period = 5.minutes
   config.good_job.cron = {}
+  config.good_job.on_thread_error = ->(error) { Rails.error.report(error, handled: false, source: "good_job") }
 end
 
 Rails.application.config.after_initialize do
