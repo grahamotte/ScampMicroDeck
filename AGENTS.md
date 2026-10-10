@@ -73,4 +73,6 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 
 ## Repo Specific
 
-None.
+### Deployment
+
+This repository is not deployed. Do not run `mise deploy` or the `deploy` skill. The `deploy/` tooling is inherited from Code Moto and unused.
