@@ -67,7 +67,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `frontend/` - React website.
 - `gems/` - Shared Ruby gems.
 - `manager/` - Project tooling for spawning new apps and Code Moto merges.
-- `publish/` - Mobile app versioning, simulators, and App Store publishing.
+- `publish/` - Mobile app versioning, simulators, and App Store publishing. `mise keychain` restores the user keychain search list after a killed signing run and runs before `mise publish`; `mise keychain --repair` resets the login keychain, default keychain, and search list.
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.
 

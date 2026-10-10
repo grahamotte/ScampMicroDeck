@@ -259,8 +259,13 @@ run = "set -a && source .env.production && cd deploy && ruby status.rb"
 # Publish
 #
 
-[tasks.publish]
+[tasks.keychain]
 depends = ["dependencies:publish"]
+usage = 'flag "--repair" help="Reset the login keychain, default keychain, and search list"'
+run = "cd publish && ruby keychain.rb ${usage_repair:+--repair}"
+
+[tasks.publish]
+depends = ["dependencies:publish", "keychain"]
 usage = 'arg "[mode]" help="Where to stop publishing" choices "stop_before_prepare" "stop_before_submit"'
 run = 'set -a && source .env.production && cd publish && ruby publish.rb ${usage_mode:-} 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_publish.log'
 

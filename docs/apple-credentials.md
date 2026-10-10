@@ -127,7 +127,7 @@ Repeat this preparation for Apple Development, Apple Distribution, or Developer 
 
 The publish workflow imports this identity into an isolated temporary keychain under `publish/tmp/apps` and passes it to signing with `--keychain`. Leaving the identity installed in the login keychain should not change which identity the workflow uses.
 
-While signing, the temporary keychain is added to the front of the user's search list. The default keychain and the rest of the search list are left unchanged. The `keychain` gem snapshots those settings first and restores them when signing finishes, fails, or is interrupted. If the process is killed, Mr. Moto's `mise trigger` restores the snapshot on its next run.
+While signing, the temporary keychain is added to the front of the user's search list. The default keychain and the rest of the search list are left unchanged. The `keychain` gem snapshots those settings first and restores them when signing finishes, fails, or is interrupted. If the process is killed, the next `mise keychain` or `mise publish` restores the snapshot and drops the deleted temporary keychain from the search list.
 
 ## Verify a replacement identity
 
@@ -147,6 +147,8 @@ bundle exec ruby -e 'require_relative "lib/require"; Apps.with_signing_certifica
 
 bundle exec ruby -e 'require_relative "lib/require"; Apps.with_signing_certificate("Developer ID Application", "APPLE_DEVELOPER_ID") { puts "Developer ID identity is valid" }'
 ```
+
+`mise keychain` checks the host keychain configuration without importing any identity. It restores snapshots left by dead signing runs, removes keychains that no longer exist from the search list, and fails when the login keychain is missing, is not the default, or is missing from the search list. It skips its checks while another signing run is in progress. `mise publish` runs it first, so publishing stops before signing against a broken setup. Run `mise keychain --repair` to reset the default keychain and search list and restore a login keychain that macOS renamed; a restored login keychain needs a log out and back in.
 
 Return to the repository root and run `mise test`. Keep the previous certificate active until an end-to-end publish proves the relevant archive, export, upload, and, for Developer ID, notarization paths.
 
