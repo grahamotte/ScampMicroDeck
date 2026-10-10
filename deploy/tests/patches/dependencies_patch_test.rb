@@ -26,6 +26,8 @@ class DependenciesPatchTest < Minitest::Test
 
     assert_includes commands, "sudo apt-get install -y ffmpeg"
     assert_includes commands, "sudo apt-get install -y imagemagick"
+    assert_includes commands, "sudo apt-get install -y unzip"
+    assert commands.any? { |command| command.include?("awscli-exe-linux-$(uname -m).zip") && command.include?("sudo ./aws/install --update") }
     assert_includes commands, "sudo apt install -y mise"
   end
 
