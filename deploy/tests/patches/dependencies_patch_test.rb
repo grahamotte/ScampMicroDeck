@@ -28,6 +28,7 @@ class DependenciesPatchTest < Minitest::Test
     assert_includes commands, "sudo apt-get install -y imagemagick"
     assert_includes commands, "sudo apt-get install -y unzip"
     assert commands.any? { |command| command.include?("awscli-exe-linux-$(uname -m).zip") && command.include?("sudo ./aws/install --update") }
+    assert commands.any? { |command| command.include?("d=$(mktemp -d) && trap 'rm -rf \"$d\"' EXIT && cd \"$d\"") && command.include?("awscliv2.zip") }
     assert_includes commands, "sudo apt install -y mise"
   end
 

@@ -4,7 +4,7 @@ class DependenciesPatch < BasePatch
       Instance.install_package("ffmpeg")
       Instance.install_package("imagemagick", bin: "convert")
       Instance.install_package("unzip")
-      Cmd.ssh("set -o pipefail && cd $(mktemp -d) && curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip -o awscliv2.zip && unzip -q awscliv2.zip && sudo ./aws/install --update")
+      Cmd.ssh("set -o pipefail && d=$(mktemp -d) && trap 'rm -rf \"$d\"' EXIT && cd \"$d\" && curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip -o awscliv2.zip && unzip -q awscliv2.zip && sudo ./aws/install --update")
 
       unless Instance.installed?("mise")
         Cmd.ssh("sudo apt update -y && sudo apt install -y gpg sudo wget curl")
