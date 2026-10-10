@@ -46,6 +46,7 @@ Non-secret project settings live in `config.json`, including the domain, GitHub 
 | `mise xcode` | Open the Apple app project |
 | `mise publish:set_version 1.5.0` | Update release and Xcode versions |
 | `mise publish` | Archive, upload, submit, notarize, and publish a release |
+| `mise keychain` | Restore keychain settings left by an interrupted signing run; `--repair` resets the login keychain |
 
 `mise publish` uses the App Store Connect, signing certificate, and GitHub credentials in the ignored `.env.production` file.
 
