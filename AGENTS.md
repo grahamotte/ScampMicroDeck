@@ -75,4 +75,13 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 
 ### Deployment
 
+<<<<<<< HEAD
 This repository is not deployed. Do not run `mise deploy` or the `deploy` skill. The `deploy/` tooling is inherited from Code Moto and unused.
+=======
+This repository is deployed to codemoto.org with `mise deploy` and the `deploy` skill.
+
+Every Code Moto downstream repository states deployment in its own Repo Specific section with one of these lines, and merges preserve it:
+
+- Not deployed: "This repository is not deployed. Do not run `mise deploy` or the `deploy` skill. The `deploy/` tooling is inherited from Code Moto and unused."
+- Deployed: "This repository is deployed to <host or domain> with `mise deploy` and the `deploy` skill."
+>>>>>>> codemoto/master
