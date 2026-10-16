@@ -51,4 +51,14 @@ Code Moto sets `[task_config] shell = "bash -o errexit -o pipefail -c"` so inlin
 
 ## Results
 
-Report the recovery point as soon as `mise merge` prints it. After the merge, verify steps 8–10 and report the PR, merge commit, conflict resolutions, tests, main checkout path and branch, and secrets refresh and layout results. Any "deploy after merge" follow-up applies only when the repository's `AGENTS.md` Repo Specific section says it is deployed; otherwise record it as not applicable and complete the card. Worktree env-file copies do not satisfy main-checkout verification. When blocked, include the recovery point. Record results on the invoking card when present. In a work session, hand off successful work even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. When the merge is low risk or clear (clean or trivially resolved conflicts, passing tests, nothing needing the user's judgment), run `mr handoff review --body-file F` and then `mr linear issues update <CARD> --status "🤖 Approved"` so the card goes straight to Approved. Leave it in Review only when something significant deserves the user's look, such as non-obvious conflict resolutions, behavior or compatibility changes, or env or secrets concerns, and say what to look at in the comment. The Approved session finishes any remaining steps, then completes the card. When blocked, hand off Planned with `mr handoff planned`.
+Report the recovery point as soon as `mise merge` prints it. After the merge, verify steps 8–10 and report the PR, merge commit, conflict resolutions, tests, main checkout path and branch, and secrets refresh and layout results. Any "deploy after merge" follow-up applies only when the repository's `AGENTS.md` Repo Specific section says it is deployed; otherwise record it as not applicable and complete the card. Worktree env-file copies do not satisfy main-checkout verification. When blocked, include the recovery point.
+
+## Finishing
+
+Every card that runs this skill finishes with the comment, push, move, and untag steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
+
+Record results on the invoking card when present. In a work session, move successful work even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card.
+
+- When the merge is low risk or clear (clean or trivially resolved conflicts, passing tests, nothing needing the user's judgment), move the card directly to Approved.
+- Move it to Review when something significant deserves the user's look, such as non-obvious conflict resolutions, behavior or compatibility changes, or env or secrets concerns, and say what to look at in the comment.
+- When blocked, report what is needed and move it to Planned.
