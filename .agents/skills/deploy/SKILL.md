@@ -19,4 +19,10 @@ description: Deploy `origin/master` to production. Use only when the user explic
 
 ## Results
 
-Report the deployed SHA and any fix PRs. When blocked, report the failure and what is needed to unblock it. Record results on the invoking card when present. In a work session, hand off successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, hand off Planned with `mr handoff planned`.
+Report the deployed SHA and any fix PRs. When blocked, report the failure and what is needed to unblock it.
+
+## Finishing
+
+Every card that runs this skill finishes with the comment, push, move, and untag steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
+
+Record results on the invoking card when present. In a work session, move successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, report what is needed and move the card to Planned.

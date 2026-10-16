@@ -35,4 +35,10 @@ The macOS revision is signed, notarized, and released to the project's repositor
 
 ## Results
 
-Report the version PR and release result. When blocked, report the failure, its impact, and the state publishing stopped in. Record results on the invoking card when present. In a work session, hand off successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, hand off Planned with `mr handoff planned`.
+Report the version PR and release result. When blocked, report the failure, its impact, and the state publishing stopped in.
+
+## Finishing
+
+Every card that runs this skill finishes with the comment, push, move, and untag steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
+
+Record results on the invoking card when present. In a work session, move successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, report what is needed and move the card to Planned.
