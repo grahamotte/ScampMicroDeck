@@ -178,7 +178,7 @@ depends = ["dependencies:publish"]
 run = 'cd publish && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
 
 [tasks."test:apps"]
-run = 'cd apps/apple && cp Tests/Package.swift Package.swift && trap "rm Package.swift" EXIT && swift test --quiet --scratch-path ../../publish/tmp/apps/swift-tests'
+run = 'if [ "$(uname)" != Darwin ]; then echo "Skipping Apple app tests on $(uname)"; exit 0; fi && cd apps/apple && cp Tests/Package.swift Package.swift && trap "rm Package.swift" EXIT && swift test --quiet --scratch-path ../../publish/tmp/apps/swift-tests'
 
 [tasks.tsc]
 depends = ["dependencies:frontend"]
