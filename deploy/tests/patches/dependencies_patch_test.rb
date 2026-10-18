@@ -45,8 +45,8 @@ class DependenciesPatchTest < Minitest::Test
   def test_tool_versions
     versions = DependenciesPatch.send(:tool_versions)
 
-    assert_equal "4.0.6", versions.fetch("ruby")
-    assert_equal "26.7.0", versions.fetch("node")
+    assert_equal "4.0.7", versions.fetch("ruby")
+    assert_equal "26.12.0", versions.fetch("node")
     refute versions.key?("opencode")
   end
 

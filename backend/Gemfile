@@ -1,20 +1,20 @@
 source "https://rubygems.org"
 
-gem "rails", "8.1.3.1"
-gem "pg", "1.6.3"
+gem "rails", "8.1.4"
+gem "pg", "1.7.0"
 gem "puma", "8.0.2"
-gem "good_job", "4.19.2"
-gem "bootsnap", "1.25.0"
+gem "good_job", "4.22.1"
+gem "bootsnap", "1.26.0"
 gem "ostruct", "0.6.3"
 gem "timeout", "0.6.1"
 gem "opentelemetry-sdk", "1.13.1"
-gem "opentelemetry-logs-sdk", "0.8.0"
-gem "opentelemetry-exporter-otlp-logs", "0.6.0"
+gem "opentelemetry-logs-sdk", "0.8.1"
+gem "opentelemetry-exporter-otlp-logs", "0.7.0"
 gem "path", "0.0.0", path: "../gems/path"
 
 group :development, :test do
-  gem "annotaterb", "4.24.0"
+  gem "annotaterb", "4.25.0"
   gem "mocha", "3.1.0"
   gem "test_safety", "0.0.0", path: "../gems/test_safety", require: false
-  gem "webmock", "3.26.2"
+  gem "webmock", "3.34.0"
 end
