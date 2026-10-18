@@ -1,8 +1,3 @@
----
-name: deploy
-description: Deploy `origin/master` to production. Use only when the user explicitly invokes `$deploy`, asks to use the deploy skill by name, or a Linear card says to run the deploy skill.
----
-
 # Deploy
 
 `mise deploy` fetches `origin` and deploys `origin/master`, whatever is checked out locally. Only merged changes are deployed.
@@ -23,6 +18,6 @@ Report the deployed SHA and any fix PRs. When blocked, report the failure and wh
 
 ## Finishing
 
-Every card that runs this skill finishes with the comment, push, move, and untag steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
+Every card that runs this runbook finishes with the comment, push, and move steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
 
 Record results on the invoking card when present. In a work session, move successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, report what is needed and move the card to Planned.

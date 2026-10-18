@@ -17,7 +17,7 @@ class DependenciesPatch < BasePatch
 
       Cmd.ssh("mise settings add idiomatic_version_file_enable_tools \"[]\"")
       Cmd.ssh("mise settings set ruby.compile=false")
-      Cmd.ssh("set -o pipefail && curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && sudo ln -sf ~/.opencode/bin/opencode /usr/local/bin/opencode")
+      Cmd.ssh("sudo rm -f /usr/local/bin/opencode && rm -rf ~/.opencode")
     end
 
     def needed?

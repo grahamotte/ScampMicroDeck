@@ -7,6 +7,7 @@ pnpm = "12.14.0"
 ruby = "4.0.7"
 python = "3.15.0"
 deno = "2.9.7"
+opencode = "2.0.32"
 
 [env]
 _.file = '.env.development'
@@ -20,30 +21,38 @@ shell = "bash -o errexit -o pipefail -c"
 #
 
 [tasks."dependencies:backend"]
+description = "Install Rails backend Ruby dependencies"
 run = "cd backend && mkdir -p log && bundle install"
 
 [tasks."dependencies:frontend"]
+description = "Install frontend packages with pnpm"
 run = "cd frontend && mkdir -p log && pnpm install"
 
 [tasks."dependencies:deploy"]
+description = "Install deployment tooling Ruby dependencies"
 run = "cd deploy && mkdir -p log && bundle install"
 
 [tasks."dependencies:manager"]
+description = "Install project creation and merge Ruby dependencies"
 run = "cd manager && mkdir -p log && bundle install"
 
 [tasks."dependencies:publish"]
+description = "Install Apple publishing Ruby dependencies"
 run = "cd publish && mkdir -p log && bundle install"
 
 [tasks."dependencies:gems"]
+description = "Install dependencies for all shared Ruby gems"
 run = "scripts/mise/dependencies_gems.sh"
 
 [tasks."dependencies:python"]
+description = "Upgrade pip and install shared Python packages"
 run = [
   "pip install --upgrade pip",
   "pip install requests PyYAML numpy pandas pydantic",
 ]
 
 [tasks.dependencies]
+description = "Install dependencies for all project components"
 depends = ["dependencies:*"]
 
 #
@@ -51,9 +60,11 @@ depends = ["dependencies:*"]
 #
 
 [tasks."reset:logs"]
+description = "Delete component log files older than seven days"
 run = "find */log -type f -mtime +7 -exec rm -v {} \\;"
 
 [tasks."reset:db"]
+description = "Drop and recreate the development database, migrate it, and seed reset data"
 depends = ["dependencies:backend"]
 run = [
   "cd backend && rm -rf db/schema.rb",
@@ -64,6 +75,7 @@ run = [
 ]
 
 [tasks."reset:frontend"]
+description = "Remove frontend builds, caches, and node_modules, then reinstall packages"
 run = [
   "cd frontend && rm -rf build || true",
   "cd frontend && rm -rf dist || true",
@@ -74,6 +86,7 @@ run = [
 ]
 
 [tasks.reset]
+description = "Reset development database, frontend dependencies and caches, and old logs"
 depends = ["reset:*"]
 
 #
@@ -81,18 +94,22 @@ depends = ["reset:*"]
 #
 
 [tasks."db:add:migration"]
+description = "Generate a named Rails database migration"
 depends = ["dependencies:backend"]
 run = 'cd backend && rails g migration {{arg(name="name")}}'
 
 [tasks."db:reset"]
+description = "Drop and recreate the development database with migrations and reset data"
 depends = ["reset:db"]
 
 [tasks."db:migrate"]
+description = "Apply pending development database migrations"
 alias = ["migrate"]
 depends = ["dependencies:backend"]
 run = "cd backend && rails db:migrate"
 
 [tasks."db:rollback"]
+description = "Roll back the latest development database migration"
 alias = ["rollback"]
 depends = ["dependencies:backend"]
 run = "cd backend && rails db:rollback"
@@ -102,29 +119,35 @@ run = "cd backend && rails db:rollback"
 #
 
 [tasks."start:backend"]
+description = "Start the development Rails API on port 3000"
 depends = ["dependencies:backend", "migrate", "start:details"]
 run = "cd backend && bin/rails server --port 3000"
 
 [tasks."start:jobs"]
+description = "Start development GoodJob workers with cron enabled"
 depends = ["dependencies:backend", "migrate", "start:details"]
 env = { GOOD_JOB_ENABLE_CRON = "true" }
 run = "cd backend && bundle exec good_job start"
 
 [tasks."start:portless"]
+description = "Start the local portless HTTPS proxy interactively"
 depends = ["dependencies:frontend"]
 dir = "frontend"
 interactive = true
 run = "pnpm exec portless proxy start --https"
 
 [tasks."start:subdomains"]
+description = "Register backend aliases and start frontend sites for configured subdomains"
 depends = ["dependencies:frontend", "start:details"]
 run = "scripts/mise/start_subdomains.sh"
 
 [tasks."start:details"]
+description = "Print configured development site and API URLs"
 depends = ["start:portless"]
 run = "scripts/mise/start_details.js"
 
 [tasks.start]
+description = "Start the development API, job workers, HTTPS proxy, and frontend sites"
 depends = [
   "start:backend",
   "start:jobs",
@@ -136,27 +159,33 @@ depends = [
 #
 
 [tasks.console]
+description = "Open an interactive development Rails console for humans; agents use runner or query"
 depends = ["dependencies:backend"]
 run = "cd backend && rails console"
 
 [tasks."console:production"]
+description = "Open an interactive production Rails console for humans; agents use runner:production or query:production"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby fix.rb"
 
 [tasks.runner]
+description = "Run Ruby application code in development; can modify development data"
 depends = ["dependencies:backend"]
 env = { RAILS_LOG_LEVEL = "info" }
 run = 'cd backend && rails runner {{arg(name="code")}}'
 
 [tasks."runner:production"]
+description = "Run Ruby application code in production; can modify live data"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby runner.rb"
 
 [tasks.query]
+description = "Execute SQL against the development database and print JSON rows"
 depends = ["dependencies:backend"]
 run = 'cd backend && rails runner script/query.rb {{arg(name="query")}}'
 
 [tasks."query:production"]
+description = "Query production PostgreSQL in a read-only transaction and print JSON rows"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby query.rb"
 
@@ -165,37 +194,46 @@ run = "set -a && source .env.production && cd deploy && ruby query.rb"
 #
 
 [tasks."test:backend"]
+description = "Run Rails backend unit tests"
 depends = ["dependencies:backend"]
 run = "cd backend && rails test"
 
 [tasks."test:deploy"]
+description = "Run deployment tooling unit tests"
 depends = ["dependencies:deploy"]
 run = 'cd deploy && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
 
 [tasks."test:manager"]
+description = "Run project manager unit tests"
 depends = ["dependencies:manager"]
 run = 'cd manager && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
 
 [tasks."test:publish"]
+description = "Run Apple publishing tooling unit tests"
 depends = ["dependencies:publish"]
 run = 'cd publish && bundle exec ruby -Itests -e "Dir.glob(\"tests/**/*_test.rb\").each { |f| require_relative f }"'
 
 [tasks."test:apps"]
+description = "Run Swift app tests on macOS; skip on other platforms"
 run = 'if [ "$(uname)" != Darwin ]; then echo "Skipping Apple app tests on $(uname)"; exit 0; fi && cd apps/apple && cp Tests/Package.swift Package.swift && trap "rm Package.swift" EXIT && swift test --quiet --scratch-path ../../publish/tmp/apps/swift-tests'
 
 [tasks.tsc]
+description = "Type-check the frontend TypeScript code"
 depends = ["dependencies:frontend"]
 run = "cd frontend && pnpm exec tsc"
 
 [tasks."test:frontend"]
+description = "Type-check the frontend and run its tests"
 depends = ["tsc"]
 run = "cd frontend && pnpm test"
 
 [tasks."test:gems"]
+description = "Run unit tests for all shared Ruby gems"
 depends = ["dependencies:gems"]
 run = "scripts/mise/test_gems.sh"
 
 [tasks."test"]
+description = "Run all project test suites and frontend type checking"
 depends = ["test:*"]
 
 #
@@ -203,57 +241,70 @@ depends = ["test:*"]
 #
 
 [tasks."deploy"]
+description = "Deploy origin/master to production; follow runbooks/deploy.md"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_deploy.log"
 
 [tasks."deploy:quick"]
+description = "Update production code, secrets, and app services without full provisioning"
 alias = ["quick"]
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby quick.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_quick.log"
 
 [tasks."deploy:patch"]
+description = "Apply a named deployment patch to production"
 depends = ["dependencies:deploy"]
 usage = 'arg "<name>" help="Patch to apply (e.g., nginx)"'
 run = 'set -a && source .env.production && cd deploy && ruby patch.rb "$usage_name" 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_patch.log'
 
 [tasks."deploy:destroy"]
+description = "Destroy the production server instance"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby destroy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_destroy.log"
 
 [tasks."deploy:log"]
+description = "Follow the production api service journal indefinitely; interactive tool for humans"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby log.rb"
 
 [tasks."deploy:ssh"]
+description = "Open an interactive SSH session on the production host"
 alias = ["ssh"]
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby ssh.rb"
 
 [tasks."deploy:cmd"]
+description = "Run a command on the production host, including api and job journal queries; can modify live state"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby cmd.rb"
 
 [tasks."deploy:htop"]
+description = "Open an interactive production host process monitor"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby htop.rb"
 
 [tasks."deploy:backup"]
+description = "Back up the production PostgreSQL database to object storage"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby backup.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_backup.log"
 
 [tasks."deploy:restore"]
+description = "Restore a backup into the production PostgreSQL database, replacing current data"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby restore.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_restore.log"
 
 [tasks."deploy:pry"]
+description = "Open an interactive local Pry session with deployment tooling loaded"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby pry.rb"
 
 [tasks."deploy:reboot"]
+description = "Power cycle the production server instance"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby reboot.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_reboot.log"
 
 [tasks."deploy:status"]
+description = "Show production reachability, services, resources, jobs, database, HTTP health, deployed commit, and recent api/job journal warnings"
 alias = ["status"]
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby status.rb"
@@ -263,37 +314,45 @@ run = "set -a && source .env.production && cd deploy && ruby status.rb"
 #
 
 [tasks.keychain]
+description = "Restore macOS keychain settings after signing; --repair resets the login keychain"
 depends = ["dependencies:publish"]
 usage = 'flag "--repair" help="Reset the login keychain, default keychain, and search list"'
 run = "cd publish && ruby keychain.rb ${usage_repair:+--repair}"
 
 [tasks.publish]
+description = "Build and publish configured Apple apps and releases; follow runbooks/publish.md"
 depends = ["dependencies:publish", "keychain"]
 usage = 'arg "[mode]" help="Where to stop publishing" choices "stop_before_prepare" "stop_before_submit"'
 run = 'set -a && source .env.production && cd publish && ruby publish.rb ${usage_mode:-} 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_publish.log'
 
 [tasks."publish:stop_before_prepare"]
+description = "Upload Apple builds for TestFlight without preparing App Store versions or submitting review"
 depends = ["publish stop_before_prepare"]
 
 [tasks."publish:stop_before_submit"]
+description = "Prepare Apple App Store versions and builds without submitting them for review"
 depends = ["publish stop_before_submit"]
 
 [tasks."publish:approved_version"]
+description = "Print the latest approved App Store version across configured Apple targets"
 depends = ["dependencies:publish"]
 run = "set -a && source .env.production && cd publish && ruby approved_version.rb"
 
 [tasks."publish:set_version"]
+description = "Set the configured semantic version and update Apple app version files"
 depends = ["dependencies:publish"]
 usage = 'arg "<version>" help="Semantic version (e.g., 1.1.1)"'
 run = 'cd publish && ruby set_version.rb "$usage_version"'
 
 [tasks."publish:simulate"]
+description = "Build and launch an Apple app for the selected simulator or macOS target"
 alias = ["simulate"]
 depends = ["dependencies:publish"]
 usage = 'arg "<target>" help="Device to launch" choices "iphone" "phone" "ipad" "tablet" "mac" "macos" "osx" "tv" "tvos"'
 run = 'cd publish && ruby simulate.rb "$usage_target"'
 
 [tasks."publish:xcode"]
+description = "Open the Apple app project in Xcode"
 alias = ["xcode"]
 run = "open apps/apple/App.xcodeproj"
 
@@ -302,12 +361,14 @@ run = "open apps/apple/App.xcodeproj"
 #
 
 [tasks."manager:spawn"]
+description = "Create a sibling Code Moto app checkout for the given domain"
 alias = ["spawn"]
 depends = ["dependencies:manager"]
 usage = 'arg "<domain>" help="Website domain (e.g., example.com)"'
 run = 'cd manager && bundle exec ruby spawn.rb "$usage_domain"'
 
 [tasks."manager:merge"]
+description = "Merge Code Moto history into a downstream branch; follow Mr. Moto's runbooks/merge.md"
 alias = ["merge"]
 usage = 'arg "[branch]" help="Branch to merge into, created from origin/master" default="codemoto-merge"'
 run = "scripts/mise/manager_merge.sh"

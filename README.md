@@ -14,7 +14,7 @@ Scamp Micro Deck is a native macOS music player for local folders of audio files
 </p>
 <!-- markdownlint-enable MD033 -->
 
-This repository is based on Code Moto. It keeps its own Git history and configuration, and merges foundation updates with the merge skill. Code Moto brings a Rails API, a React website, native Apple apps, and project tooling into one checkout so projects can share the same development, testing, deployment, and release workflow.
+This repository is based on Code Moto. It keeps its own Git history and configuration, and merges foundation updates with Mr. Moto's [merge runbook](https://github.com/grahamotte/MrMoto/blob/master/runbooks/merge.md). Code Moto brings a Rails API, a React website, native Apple apps, and project tooling into one checkout so projects can share the same development, testing, deployment, and release workflow.
 
 ## What's included
 
@@ -50,7 +50,7 @@ Non-secret project settings live in `config.json`, including the domain, GitHub 
 
 `mise publish` uses the App Store Connect, signing certificate, and GitHub credentials in the ignored `.env.production` file.
 
-Deployment, basis merges, and publishing use the project-specific instructions in [.agents/skills](.agents/skills). Mr. Moto owns card tracking, enqueueing, and the review workflow.
+Deployment and publishing use the project-specific instructions in [runbooks](runbooks). Mr. Moto owns card tracking, enqueueing, the review workflow, and the Code Moto merge rollout.
 
 ## Repository guide
 
@@ -63,6 +63,7 @@ Deployment, basis merges, and publishing use the project-specific instructions i
 | `deploy/` | Infrastructure and deployment tooling |
 | `publish/` | App versioning, simulation, and publishing |
 | `manager/` | Project creation and Code Moto merges |
+| `runbooks/` | Deployment and publishing instructions |
 | `scripts/` | Scripts behind mise tasks |
 
 See [manager](docs/manager.md) for how Code Moto works with Mr. Moto, [Apple credentials](docs/apple-credentials.md) for publishing setup, [logging](docs/logging.md) for Grafana logs, and [AGENTS.md](AGENTS.md) for contribution rules.
