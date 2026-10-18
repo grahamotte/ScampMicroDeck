@@ -15,7 +15,7 @@ After a Code Moto merge, verify the main checkout: confirm master or main, pull 
 
 ## macOS agent task execution
 
-Run root `mise` tasks with the card's worktree root as the working directory and a non-login shell. Before running tasks in a newly opened worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout as required by `AGENTS.md`. The manager already copies these files when opening a card worktree.
+Run root `mise` tasks with the card's worktree root as the working directory and a non-login shell. Before running tasks in a newly opened worktree, copy `.env.development` and `.env.production` from the main checkout as required by `AGENTS.md`. The manager already copies these files when opening a card worktree.
 
 For Codex's `exec_command`, set `login: false` explicitly on every call that invokes `mise`; the option applies to that call only. This also applies when `exec_command` is called through an orchestration wrapper. For example:
 
