@@ -54,8 +54,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 
 ## File Structure
 
-- `.agents/skills/` - Project-specific agent skills.
-- `.claude/skills` - Symlink to `.agents/skills/` for Claude Code.
+- `runbooks/` - Project operation instructions for deployment and publishing.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, and the file follows the `.env.default` layout with extra keys at the end.
 - `apps/` - Mobile apps for iOS and Android.
@@ -71,8 +70,17 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
 - `mise.toml` - Project tooling and task definitions.
 
+## Runbooks
+
+Read the relevant runbook when asked to perform an operation:
+
+- [Deploy](runbooks/deploy.md) - Deploy `origin/master` to production.
+- [Publish](runbooks/publish.md) - Version and publish configured Apple apps.
+
+Run `mise tasks` to discover available tasks and their descriptions, including development and production debugging tools.
+
 ## Repo Specific
 
 ### Deployment
 
-This repository is not deployed. Do not run `mise deploy` or the `deploy` skill. The `deploy/` tooling is inherited from Code Moto and unused.
+This repository is not deployed. Do not run `mise deploy` or the [deploy runbook](runbooks/deploy.md). The `deploy/` tooling is inherited from Code Moto and unused.

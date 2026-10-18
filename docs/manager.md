@@ -5,19 +5,13 @@ The launch prompt supplies the session workflow, and Mr. Moto's `mr` CLI, run fr
 Code Moto's `manager/` keeps the per-repository tasks. Mr. Moto owns credentials and refreshes each project's `.env.*` files from 1Password with its `secrets` command; `.env.default` controls their layout.
 
 - `mise manager:spawn <domain>` clones Code Moto into a new app. The task creates the app checkout and configuration; registration and scheduling are separate Mr. Moto operations.
-- `mise manager:merge <branch>` merges the latest Code Moto into a downstream repository.
+- `mise manager:merge <branch>` merges the latest Code Moto into a downstream repository. Mr. Moto's `runbooks/merge.md` runs the rollout across every downstream.
 
 ## Code Moto merge verification
 
 Code Moto merges that require local env-file cleanup must target `.env.development` and `.env.production` in the main checkout, where the post-merge `git pull --ff-only` runs. The card worktree contains temporary copies that disappear when it is removed.
 
 After a Code Moto merge, verify the main checkout: confirm master or main, pull the merged changes, refresh its env files with `mr secrets`, and verify the refreshed files against the merged `.env.default`. Code Moto keys must appear once in template order and grouping before the separator line, with downstream-only keys afterward. Apply cleanup to the corresponding 1Password item fields so regeneration preserves it. Report a failed refresh or layout check as a blocker.
-
-## Repository discovery for all-repository skills
-
-For Code Moto rollouts, obtain registered repository metadata using the inventory command named in `mr --help`. Do not read manager configuration files. Locate the Code Moto main checkout and each project’s main checkout with `git worktree list --porcelain`; deduplicate by Git common directory and exclude linked worktrees. Confirm downstream membership using a `codemoto` remote (or legacy `upstream`), shared Code Moto Git ancestry, and the repository’s `AGENTS.md`. Exclude Mr. Moto and non-Code Moto repositories from basis merges. Also check Code Moto’s sibling directories for downstreams missing from the registry and report gaps rather than silently scheduling an incomplete rollout.
-
-Use each entry’s explicit workspace, team, path, and `origin` workflow remote when enqueueing a merge, running `mr` from that entry's path. Missing checkouts or ambiguous membership are blockers. Fetch origin and use its actual default branch; do not assume local master is current. Report the inventory, exclusions, and rollout concerns on the supplied tracking card. Create cards with `mr card create` and hand off with `mr handoff`.
 
 ## macOS agent task execution
 

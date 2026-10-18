@@ -55,14 +55,11 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal [
       "opencode",
       "run",
+      "--standalone",
       "--format",
       "json",
       "--model",
-      "openrouter/anthropic/claude-sonnet-4",
-      "--variant",
-      "high",
-      "--dir",
-      dir,
+      "openrouter/anthropic/claude-sonnet-4#high",
     ], FakeAgent.captured_command
     assert_equal({ "OPENROUTER_API_KEY" => "test-token", "TMPDIR" => dir, "PWD" => dir }, FakeAgent.captured_environment)
     assert_equal "Answer this prompt", FakeAgent.captured_options.fetch(:stdin_data)
@@ -92,7 +89,7 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal 1, dirs.uniq.size
     assert_equal dirs.first, FakeAgent.captured_options.fetch(:chdir)
     assert_equal dirs.first, FakeAgent.captured_environment.fetch("PWD")
-    assert_equal dirs.first, FakeAgent.captured_command[FakeAgent.captured_command.index("--dir") + 1]
+    refute_includes FakeAgent.captured_command, "--dir"
     refute File.exist?(dirs.first)
   end
 
@@ -106,7 +103,7 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal "test-token", FakeAgent.captured_environment.fetch("OPENROUTER_API_KEY")
     assert_equal dir, FakeAgent.captured_environment.fetch("TMPDIR")
     assert_equal dir, FakeAgent.captured_environment.fetch("PWD")
-    assert_equal dir, FakeAgent.captured_command[FakeAgent.captured_command.index("--dir") + 1]
+    refute_includes FakeAgent.captured_command, dir
     refute_includes FakeAgent.captured_environment, "DB_NAME"
     refute_includes FakeAgent.captured_environment, "RAILS_ENV"
   end
@@ -116,7 +113,7 @@ class AgentTest < ActiveSupport::TestCase
 
     FakeAgent.call(model: "deepseek/deepseek-v4-flash", effort: "high", prompt: "Prompt")
 
-    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash"
+    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash#high"
   end
 
   def test_call_keeps_openrouter_prefix
@@ -124,7 +121,7 @@ class AgentTest < ActiveSupport::TestCase
 
     FakeAgent.call(model: "openrouter/deepseek/deepseek-v4-flash", effort: "high", prompt: "Prompt")
 
-    assert_equal "openrouter/deepseek/deepseek-v4-flash", FakeAgent.captured_command[FakeAgent.captured_command.index("--model") + 1]
+    assert_equal "openrouter/deepseek/deepseek-v4-flash#high", FakeAgent.captured_command[FakeAgent.captured_command.index("--model") + 1]
   end
 
   def test_call_with_defaults
@@ -132,8 +129,17 @@ class AgentTest < ActiveSupport::TestCase
 
     FakeAgent.call(prompt: "Prompt")
 
-    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash"
-    assert_includes FakeAgent.captured_command, "high"
+    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash#high"
+    assert_includes FakeAgent.captured_command, "--standalone"
+    refute_includes FakeAgent.captured_command, "--variant"
+  end
+
+  def test_call_without_effort
+    FakeAgent.result = [ "", "", status(success: true) ]
+
+    FakeAgent.call(model: "provider/model", effort: nil, prompt: "Prompt")
+
+    assert_equal "openrouter/provider/model", FakeAgent.captured_command[FakeAgent.captured_command.index("--model") + 1]
   end
 
   def test_call_with_no_responses
@@ -150,6 +156,44 @@ class AgentTest < ActiveSupport::TestCase
     end
 
     assert_equal "Agent failed: Provider unavailable", error.message
+  end
+
+  def test_call_with_error_events
+    FakeAgent.result = [
+      [
+        JSON.generate(type: "text", part: { type: "text", text: "Partial" }),
+        JSON.generate(type: "error", sessionID: "ses_1", error: { type: "unknown", message: "Model not found" }),
+        JSON.generate(type: "error", sessionID: "ses_1", error: { type: "aborted", message: "Session interrupted: error" }),
+      ].join("\n"),
+      "Ignored stderr\n",
+      status(success: false),
+    ]
+
+    error = assert_raises(RuntimeError) do
+      FakeAgent.call(model: "provider/model", effort: "low", prompt: "Prompt")
+    end
+
+    assert_equal "Agent failed: Model not found\nSession interrupted: error", error.message
+  end
+
+  def test_call_with_failed_process_and_unstructured_stdout
+    FakeAgent.result = [ "not json\n[1]\n", "", status(success: false) ]
+
+    error = assert_raises(RuntimeError) do
+      FakeAgent.call(model: "provider/model", effort: "low", prompt: "Prompt")
+    end
+
+    assert_equal "Agent failed: not json\n[1]", error.message
+  end
+
+  def test_call_with_failed_process_and_no_output
+    FakeAgent.result = [ "", "", status(success: false) ]
+
+    error = assert_raises(RuntimeError) do
+      FakeAgent.call(model: "provider/model", effort: "low", prompt: "Prompt")
+    end
+
+    assert_equal "Agent failed: unknown error", error.message
   end
 
   def test_call_with_invalid_json

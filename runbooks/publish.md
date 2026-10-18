@@ -1,8 +1,3 @@
----
-name: publish
-description: Version and publish Code Moto across its configured Apple targets, repository releases, and App Store Connect. Use only when the user explicitly invokes `$publish`, asks to use the publish skill by name, or a Linear card says to run the publish skill.
----
-
 # Publish
 
 The version branch is the card branch when running for a card, otherwise `publish-<version>`.
@@ -39,6 +34,6 @@ Report the version PR and release result. When blocked, report the failure, its 
 
 ## Finishing
 
-Every card that runs this skill finishes with the comment, push, move, and untag steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
+Every card that runs this runbook finishes with the comment, push, and move steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
 
 Record results on the invoking card when present. In a work session, move successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, report what is needed and move the card to Planned.

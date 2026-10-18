@@ -23,7 +23,7 @@ class Agent
 
   def call
     stdout, stderr, status = capture
-    raise "Agent failed: #{stderr.strip.presence || stdout.strip.presence || "unknown error"}" unless status.success?
+    raise "Agent failed: #{error_messages(stdout).join("\n").presence || stderr.strip.presence || stdout.strip.presence || "unknown error"}" unless status.success?
 
     stdout.each_line.filter_map do |line|
       event = JSON.parse(line)
@@ -32,6 +32,15 @@ class Agent
   end
 
   private
+
+  def error_messages(stdout)
+    stdout.each_line.filter_map do |line|
+      event = JSON.parse(line)
+      event.dig("error", "message") if event.is_a?(Hash) && event["type"] == "error"
+    rescue JSON::ParserError
+      nil
+    end
+  end
 
   def capture
     Open3.capture3(environment, *command, **options)
@@ -45,14 +54,11 @@ class Agent
     [
       "opencode",
       "run",
+      "--standalone",
       "--format",
       "json",
       "--model",
-      @model,
-      "--variant",
-      @effort,
-      "--dir",
-      @dir,
+      [ @model, @effort.presence ].compact.join("#"),
     ]
   end
 end
