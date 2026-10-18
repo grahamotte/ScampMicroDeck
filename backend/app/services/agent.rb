@@ -36,7 +36,7 @@ class Agent
   def error_messages(stdout)
     stdout.each_line.filter_map do |line|
       event = JSON.parse(line)
-      event.dig("error", "message") if event.is_a?(Hash) && event["type"] == "error"
+      event.dig("error", "data", "message").presence || event.dig("error", "name") if event.is_a?(Hash) && event["type"] == "error"
     rescue JSON::ParserError
       nil
     end
@@ -54,11 +54,14 @@ class Agent
     [
       "opencode",
       "run",
-      "--standalone",
       "--format",
       "json",
       "--model",
-      [ @model, @effort.presence ].compact.join("#"),
+      @model,
+      "--variant",
+      @effort,
+      "--dir",
+      @dir,
     ]
   end
 end

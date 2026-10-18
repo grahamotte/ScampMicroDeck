@@ -25,12 +25,10 @@ node_modules/
 /tmp
 /yarn-error.log
 config/sidekiq.yml
-db/schema.rb
 public/KTBdA2Rbi8b6M
 public/screenshots
 rclone_remote.conf
 rclone.conf
-schema.rb
 secrets
 secrets.yml
 yarn-debug.log*

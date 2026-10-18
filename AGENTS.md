@@ -16,7 +16,7 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 4. Lint, type-check, and test code changes using the tasks defined in the root `mise.toml`.
 5. Use root `mise` tasks instead of invoking underlying tools directly when an applicable task exists.
 6. Do not create a canvas or visualization unless the user specifically requests one.
-7. When opening a git worktree, copy `.env.development`, `.env.production`, and `backend/db/schema.rb` from the main checkout into the worktree before running tests or mise tasks.
+7. When opening a git worktree, copy `.env.development` and `.env.production` from the main checkout into the worktree before running tests or mise tasks.
 8. All code changes and other changes to tracked repository files need a PR, pushed with `mr push` and opened with `mr pr create`. Operations without tracked repository changes need no PR, empty commit, or branch. Never commit to or push `master`, and never make repository changes outside the PR flow.
 9. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
 10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`CodeMoto` / MOTO), report it with enough detail for Mr. Moto to track the basis-repository follow-up. Keep app-specific issues separate.
