@@ -13,7 +13,7 @@
 /log/*
 **/log/**
 /metabase
-/node_modules
+node_modules/
 /public/assets
 /public/packs
 /public/packs-test

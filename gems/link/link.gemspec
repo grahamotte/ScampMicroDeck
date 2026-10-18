@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "addressable", "2.9.0"
   spec.add_dependency "path", "0.0.0"
-  spec.add_dependency "uri", "1.1.1"
+  spec.add_dependency "uri", "1.1.2"
 
   spec.add_development_dependency "minitest", "6.0.6"
 end
