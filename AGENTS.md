@@ -15,12 +15,14 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 3. Do not add comments to code. Preserve existing comments unless they are incorrect or obsolete.
 4. Lint, type-check, and test code changes using the tasks defined in the root `mise.toml`.
 5. Use root `mise` tasks instead of invoking underlying tools directly when an applicable task exists.
-6. Do not create a canvas or visualization unless the user specifically requests one.
-7. When opening a git worktree, copy `.env.development` and `.env.production` from the main checkout into the worktree before running tests or mise tasks.
-8. All code changes and other changes to tracked repository files need a PR, pushed with `mr push` and opened with `mr pr create`. Operations without tracked repository changes need no PR, empty commit, or branch. Never commit to or push `master`, and never make repository changes outside the PR flow.
-9. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
-10. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`CodeMoto` / MOTO), report it with enough detail for Mr. Moto to track the basis-repository follow-up. Keep app-specific issues separate.
-11. On macOS, run root `mise` tasks from the worktree root in a non-login shell. For Codex `exec_command`, set `login: false` explicitly on each call that runs `mise`, including through wrappers. If Bundler reports system Ruby or a missing Bundler version, check tool resolution and retry the same root task this way before changing dependencies. See [macOS agent task execution](docs/manager.md#macos-agent-task-execution).
+6. Give every task in the root `mise.toml` a `description` so `mise tasks` lists what it does.
+7. Do not create a canvas or visualization unless the user specifically requests one.
+8. When opening a git worktree, copy `.env.development` and `.env.production` from the main checkout into the worktree before running tests or mise tasks.
+9. All code changes and other changes to tracked repository files need a PR, pushed with `mr push` and opened with `mr pr create`. Operations without tracked repository changes need no PR, empty commit, or branch. Never commit to or push `master`, and never make repository changes outside the PR flow.
+10. Work from `origin/master`: start branches from it, and do not rely on local `master` being current.
+11. If you spend significant time unnecessarily or the instructions misdirect you, and the issue could be backported to Code Moto (`CodeMoto` / MOTO), report it with enough detail for Mr. Moto to track the basis-repository follow-up. Keep app-specific issues separate.
+12. On macOS, run root `mise` tasks from the worktree root in a non-login shell. For Codex `exec_command`, set `login: false` explicitly on each call that runs `mise`, including through wrappers. If Bundler reports system Ruby or a missing Bundler version, check tool resolution and retry the same root task this way before changing dependencies. Confirm the pinned tools with `mise which ruby` and `mise which bundle`; do not install gems into system Ruby, change lockfiles, or downgrade pinned versions to fix a shell-resolution failure.
+13. `AGENTS.md` is the only agent-instruction file. Do not add `.agents/`, `.claude/`, `.codex/`, or `CLAUDE.md`; put repeatable operations in `runbooks/`.
 
 ## Ruby
 
@@ -54,7 +56,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 
 ## File Structure
 
-- `runbooks/` - Project operation instructions for deployment and publishing.
+- `runbooks/` - Project operation instructions, such as deployment and publishing.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, and the file follows the `.env.default` layout with extra keys at the end.
 - `apps/` - Mobile apps for iOS and Android.

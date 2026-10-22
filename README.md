@@ -66,7 +66,7 @@ Deployment and publishing use the project-specific instructions in [runbooks](ru
 | `runbooks/` | Deployment and publishing instructions |
 | `scripts/` | Scripts behind mise tasks |
 
-See [manager](docs/manager.md) for how Code Moto works with Mr. Moto, [Apple credentials](docs/apple-credentials.md) for publishing setup, [logging](docs/logging.md) for Grafana logs, and [AGENTS.md](AGENTS.md) for contribution rules.
+See [Apple credentials](docs/apple-credentials.md) for publishing setup and [AGENTS.md](AGENTS.md) for contribution rules.
 
 ## Contributing
 
