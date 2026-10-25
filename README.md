@@ -57,4 +57,4 @@ Issues welcome.
 
 ## License
 
-MIT
+[MIT](LICENSE)
