@@ -19,6 +19,15 @@ class ConstantsTest < Minitest::Test
     assert_equal "app_production", Constants.db_name
   end
 
+  def test_domain_is_required
+    File.write(Constants.config_path, JSON.generate(domain: ""))
+    Constants.instance_variable_set(:@config, nil)
+
+    error = assert_raises(RuntimeError) { Constants.domain }
+
+    assert_equal "config.json domain is required to deploy", error.message
+  end
+
   def test_default_config_path
     Constants.config_path = nil
 

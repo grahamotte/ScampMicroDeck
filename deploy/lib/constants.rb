@@ -14,7 +14,12 @@ class Constants
     def ssh_key_fingerprint = ENV.fetch("DEPLOY_SSH_KEY_FINGERPRINT")
     def digital_ocean_token = ENV.fetch("DIGITAL_OCEAN_TOKEN")
     def cloudflare_token = ENV.fetch("CLOUDFLARE_TOKEN")
-    def domain = config.fetch(:domain)
+    def domain
+      domain = config.fetch(:domain)
+      raise "config.json domain is required to deploy" if domain.blank?
+
+      domain
+    end
     def instance_region = config.dig(:instance, :region)
     def instance_size = config.dig(:instance, :size)
     def remote_env_path = File.join(remote_root, ".env")

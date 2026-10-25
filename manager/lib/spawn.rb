@@ -105,13 +105,16 @@ class Spawner
     @output.puts "Cloning #{source_repo} to #{target_dir}..."
     @shell.run("git", "clone", source_repo, target_dir)
     create_environment_files(target_dir)
-    repo = write_config(target_dir)
+    codemoto_repo, repo = write_config(target_dir)
     @shell.run("git", "remote", "set-url", "origin", repo, chdir: target_dir)
     @shell.run("git", "config", "remote.origin.gh-resolved", "base", chdir: target_dir)
+    @shell.run("git", "remote", "add", "codemoto", codemoto_repo, chdir: target_dir)
+    @shell.run("git", "config", "remote.codemoto.tagOpt", "--no-tags", chdir: target_dir)
 
     @output.puts "New app created at #{target_dir}"
     @output.puts "Create #{repo} on GitHub, then run 'git push -u origin master' there."
     @output.puts "Run 'mise merge' there to merge updates from Code Moto."
+    @output.puts "Set domain in its config.json before deploying it."
     @output.puts "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
     target_dir
   end
@@ -119,12 +122,9 @@ class Spawner
   private
 
   def validate_app_name
-    labels = @app_name.split(".")
-    valid_labels = labels.all? { |label| label.match?(/\A[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\z/) }
-    valid_tld = labels.length > 1 && labels.last.match?(/\A[a-zA-Z]{2,63}\z/)
-    return if valid_labels && valid_tld && @app_name.length <= 253
+    return if @app_name.match?(/\A[A-Z][a-zA-Z0-9]*\z/) && @app_name.length <= 63
 
-    raise "App name must be a website domain ending in a TLD, such as example.com"
+    raise "App name must be a PascalCase safe name, such as Sundial"
   end
 
   def create_environment_files(target_dir)
@@ -146,15 +146,16 @@ class Spawner
   def write_config(target_dir)
     path = File.join(target_dir, "config.json")
     config = JSON.parse(File.read(path))
-    repo = transformed_repo(config.fetch("githubRepo"))
+    codemoto_repo = config.fetch("githubRepo")
+    repo = transformed_repo(codemoto_repo)
     config.merge!(
-      "domain" => @app_name,
+      "domain" => "",
       "githubRepo" => repo,
       "database" => database_name,
     )
     File.write(path, "#{JSON.pretty_generate(config)}\n")
     @output.puts "Updated #{path}"
-    repo
+    [ codemoto_repo, repo ]
   end
 
   def transformed_repo(repo)
@@ -162,7 +163,7 @@ class Spawner
   end
 
   def database_name
-    @app_name.split(".").first.downcase.gsub(/[^a-z0-9]+/, "_").gsub(/\A_+|_+\z/, "")
+    @app_name.downcase
   end
 
   def render(template, overrides)

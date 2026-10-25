@@ -8,6 +8,7 @@ class SettingsTest < ActiveSupport::TestCase
 
   def teardown
     ENV["LOCAL_DOMAIN"] = @local_domain
+    Settings.instance_variable_set(:@all, nil)
   end
 
   def test_reads_root_config
@@ -17,6 +18,12 @@ class SettingsTest < ActiveSupport::TestCase
 
   def test_development_url_uses_domain_label
     assert_equal "https://#{Settings.all.fetch(:domain).split(".").first}.localhost", Settings.development_url
+  end
+
+  def test_development_url_uses_database_without_domain
+    Settings.instance_variable_set(:@all, { domain: "", database: "sundial" })
+
+    assert_equal "https://sundial.localhost", Settings.development_url
   end
 
   def test_development_url_prefers_local_domain

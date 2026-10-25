@@ -6,7 +6,7 @@
 !/tmp/pids/.keep
 .byebug_history
 .yarn-integrity
-/.bundle
+.bundle/
 /app/assets/builds/*
 /config/master.key
 /config/credentials.yml.enc

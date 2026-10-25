@@ -6,7 +6,7 @@ class Settings
     def all = @all ||= JSON.parse(File.read(path), symbolize_names: true)
 
     def development_url
-      "https://#{ENV["LOCAL_DOMAIN"].presence || all.fetch(:domain).split(".").first}.localhost"
+      "https://#{ENV["LOCAL_DOMAIN"].presence || all.fetch(:domain).split(".").first.presence || all.fetch(:database)}.localhost"
     end
   end
 end
