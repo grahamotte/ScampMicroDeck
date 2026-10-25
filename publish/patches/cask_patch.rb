@@ -26,7 +26,7 @@ module Apps
           "  url \"#{url}\"",
           "  name #{Apps.config.fetch(:name).to_json}",
           "  desc #{homebrew.fetch(:desc).to_json}",
-          "  homepage #{Apps.config.fetch(:marketingUrl).to_json}",
+          "  homepage #{homepage.to_json}",
           "",
           "  livecheck do",
           "    url :url",
@@ -37,8 +37,11 @@ module Apps
           "",
           "  app #{"#{Apps.config.fetch(:name)}.app".to_json}",
         ]
-        zap = homebrew.fetch(:zap, [])
-        if zap.present?
+        zap = homebrew.fetch(:zap, []).sort
+        if zap.one?
+          lines << ""
+          lines << "  zap trash: #{zap.first.to_json}"
+        elsif zap.present?
           lines << ""
           lines << "  zap trash: ["
           zap.each { |item| lines << "    #{item.to_json}," }
@@ -51,6 +54,11 @@ module Apps
       def target = Apps.targets.find { |item| item.fetch(:platform) == "MAC_OS" }
 
       def token = Apps.config.fetch(:name).downcase.gsub(/[^a-z0-9]+/, "-").sub(/\A-/, "").sub(/-\z/, "")
+
+      def homepage
+        url = Apps.config.fetch(:marketingUrl)
+        URI.parse(url).path.blank? ? "#{url}/" : url
+      end
 
       def path = File.join(Apps.tmp_root, Apps.version, "cask", "#{token}.rb")
 

@@ -26,7 +26,7 @@ class AppsCaskPatchTest < Minitest::Test
         url "https://github.com/example/app/releases/download/v#{version}/App-macos-#{version}.zip"
         name "App"
         desc "Does things"
-        homepage "https://example.com"
+        homepage "https://example.com/"
 
         livecheck do
           url :url
@@ -37,9 +37,7 @@ class AppsCaskPatchTest < Minitest::Test
 
         app "App.app"
 
-        zap trash: [
-          "~/Library/Application Support/App",
-        ]
+        zap trash: "~/Library/Application Support/App"
       end
     CASK
     assert_equal expected.sub("%s", Digest::SHA256.hexdigest("signed-app")), published
@@ -62,6 +60,28 @@ class AppsCaskPatchTest < Minitest::Test
 
     refute_includes published, "zap"
     assert published.end_with?("  app \"App.app\"\nend\n")
+  end
+
+  def test_follows_homebrew_style_for_bare_homepages_and_zap_paths
+    target = macos_target
+    Apps.config[:marketingUrl] = "https://example.com"
+    configure_homebrew(zap: [ "~/Library/Preferences/org.example.app.plist" ])
+    FileUtils.mkdir_p(File.dirname(Apps.revision_path(target)))
+    File.write(Apps.revision_path(target), "signed-app")
+    published = []
+    Cmd.stubs(:local).with do |command|
+      arguments = Shellwords.split(command)
+      published << File.read(arguments.fetch(arguments.index("--file") + 1))
+      true
+    end.returns("")
+
+    Apps::CaskPatch.apply
+    configure_homebrew(zap: [ "~/Library/Containers/org.example.app", "~/Library/Application Scripts/org.example.app" ])
+    Apps::CaskPatch.apply
+
+    assert_includes published.first, "  homepage \"https://example.com/\"\n"
+    assert_includes published.first, "  zap trash: \"~/Library/Preferences/org.example.app.plist\"\nend\n"
+    assert_includes published.last, "  zap trash: [\n    \"~/Library/Application Scripts/org.example.app\",\n    \"~/Library/Containers/org.example.app\",\n  ]\n"
   end
 
   def test_not_needed_without_homebrew_configuration_or_macos_target
