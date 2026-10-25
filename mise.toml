@@ -368,7 +368,7 @@ usage = 'arg "<name>" help="PascalCase project name (e.g., Sundial)"'
 run = 'cd manager && bundle exec ruby spawn.rb "$usage_name"'
 
 [tasks."manager:merge"]
-description = "Merge Code Moto history into a downstream branch; follow Mr. Moto's runbooks/merge.md"
+description = "Merge Code Moto history into a downstream branch; follow Mr. Moto's runbooks/merge_codemoto_into_downstream.md"
 alias = ["merge"]
 usage = 'arg "[branch]" help="Branch to merge into, created from origin/master" default="codemoto-merge"'
 run = "scripts/mise/manager_merge.sh"
