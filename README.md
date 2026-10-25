@@ -1,22 +1,20 @@
 # Scamp Micro Deck
 
-Scamp Micro Deck is a native macOS music player for local folders of audio files, designed to mimic the tedious charm of a real vinyl record player.
-
 <!-- markdownlint-disable MD033 -->
 <p align="center">
   <img src="assets/screenshot-2.png" alt="Scamp Micro Deck screenshot">
 </p>
-
-<p align="center">
-  <a href="https://apps.apple.com/us/app/scamp-micro-deck/id6761630397?mt=12">
-    <img src="https://tools.applemediaservices.com/api/badges/download-on-the-mac-app-store/black/en-us?size=250x83&releaseDate=1775001600" alt="Download on the Mac App Store" height="40">
-  </a>
-</p>
 <!-- markdownlint-enable MD033 -->
 
-This repository is based on Code Moto. It keeps its own Git history and configuration, and merges foundation updates with Mr. Moto's [merge runbook](https://github.com/grahamotte/MrMoto/blob/master/runbooks/merge.md). Code Moto brings a Rails API, a React website, native Apple apps, and project tooling into one checkout so projects can share the same development, testing, deployment, and release workflow.
+Scamp Micro Deck is a native macOS music player for local folders of audio files, designed to mimic the tedious charm of a real vinyl record player.
 
 ## Install
+
+<!-- markdownlint-disable MD033 -->
+<a href="https://apps.apple.com/us/app/scamp-micro-deck/id6761630397?mt=12">
+  <img src="https://tools.applemediaservices.com/api/badges/download-on-the-mac-app-store/black/en-us?size=250x83&releaseDate=1775001600" alt="Download on the Mac App Store" height="40">
+</a>
+<!-- markdownlint-enable MD033 -->
 
 Or install with Homebrew:
 
@@ -24,63 +22,38 @@ Or install with Homebrew:
 brew install grahamotte/tap/scamp-micro-deck
 ```
 
-Update with `brew upgrade`. Each release also attaches the signed, notarized app to [GitHub Releases](https://github.com/grahamotte/ScampMicroDeck/releases).
+Each release is also available from [GitHub Releases](https://github.com/grahamotte/ScampMicroDeck/releases).
 
-## What's included
+## Using Scamp Micro Deck
 
-- **App:** A Swift macOS player for local audio folders, with simulator and Mac App Store publishing tools.
-- **Backend:** Ruby on Rails with PostgreSQL and GoodJob background jobs.
-- **Frontend:** React, TypeScript, Vite, and Tailwind CSS, with separate sites for configured subdomains.
-- **Operations:** Server provisioning and deployment, backups, and shared Ruby gems.
+An album is a folder. Scamp Micro Deck plays every audio file in the folder as one record, in filename order, and shows an image from the folder as the cover.
 
-## Local development
+- **Library:** Click the eject button to open or close your record shelf. The first time, choose your music folder, organized as Artist › Album › songs and cover art. On the shelf, images named `cover`, `folder`, `front`, or `album` are preferred as covers. Click a cover to load it. The shelf stays open so switching records is quick.
+- **Load a single album:** Drag an album folder into the window, or choose **Library > Open Album Folder…** (⌘O).
+- **Try it out:** **Help > Load Demo Album** loads a bundled sample record.
+- **Play and pause:** The platter spins up when you press play and spins down before pausing, and the music speeds up and slows down with it. Playback stops at the end of the record.
+- **Tonearm:** Drag the tonearm across the record to move through the album. Hold Shift or Command while dragging to snap to the start of the nearest track.
+- **Hold the record:** Press and hold on the record to slow it to half speed. Let go to bring it back up to speed.
+- **Switching records:** Choosing a different cover while music is playing swaps albums and starts the new record from the beginning.
+- **Media keys:** Play, pause, next, and previous track work from the keyboard media keys and Control Center.
 
-Install mise and PostgreSQL, and have PostgreSQL running locally. Apple app development and tests also require macOS with Xcode.
+When you reopen the app, it reloads the last record at the track and position where you left off.
 
-1. Run `mise install` to install the tool versions pinned in `mise.toml`.
-2. Create `.env.development` and `.env.production` from `.env.default` and fill in the required values. Projects registered in Mr. Moto with 1Password references can generate them by running Mr. Moto's `mr secrets` in the checkout instead.
-3. Run `mise dependencies` to install project dependencies.
-4. Run `mise db:migrate` to prepare the development database.
-5. Run `mise start` to start the API, background jobs, and frontend sites. It prints the local URLs; the API runs at `http://localhost:3000`.
+### Library menu
 
-Non-secret project settings live in `config.json`, including the domain, GitHub repository, database name, subdomains, and app release details. Application credentials live in the gitignored `.env.*` files. Linear, GitHub/Forgejo PR operations, and macOS release uploads use Mr. Moto's central commands; repository-local tokens are not supported.
+- **Choose Music Folder…** / **Change Music Folder…** sets the folder the shelf is built from.
+- **Sort** orders the shelf by **Artist, Then Album**, **Album**, **Most Played**, or **Recently Added**.
+- **Clear Library and Stats** forgets the music folder and resets play counts and history.
 
-## Common commands
+### Themes
 
-| Command | Purpose |
-| --- | --- |
-| `mise test` | Run all test suites, including frontend type checking |
-| `mise tsc` | Type-check the frontend |
-| `mise console` | Open the Rails development console |
-| `mise simulate macos` | Build and launch the macOS app |
-| `mise xcode` | Open the Apple app project |
-| `mise publish:set_version 1.5.0` | Update release and Xcode versions |
-| `mise publish` | Archive, upload, submit, notarize, and publish a release |
-| `mise keychain` | Restore keychain settings left by an interrupted signing run; `--repair` resets the login keychain |
+The **Theme** menu sets the table (Walnut, Wood, Frosted Glass, Rainbow, White Marble, Black Marble), the record (Black, Yellow, Red, Pink Splatter, Blue Splatter), and the controls (Silver, Black, Gold). **Randomize Themes** picks one of each.
 
-`mise publish` uses the App Store Connect, signing certificate, and GitHub credentials in the ignored `.env.production` file.
-
-Deployment and publishing use the project-specific instructions in [runbooks](runbooks). Mr. Moto owns card tracking, enqueueing, the review workflow, and the Code Moto merge rollout.
-
-## Repository guide
-
-| Directory | Contents |
-| --- | --- |
-| `apps/` | Native macOS app and screenshots |
-| `backend/` | Rails API and background jobs |
-| `frontend/` | React sites and shared frontend code |
-| `gems/` | Shared Ruby libraries |
-| `deploy/` | Infrastructure and deployment tooling |
-| `publish/` | App versioning, simulation, and publishing |
-| `manager/` | Project creation and Code Moto merges |
-| `runbooks/` | Deployment and publishing instructions |
-| `scripts/` | Scripts behind mise tasks |
-
-See [Apple credentials](docs/apple-credentials.md) for publishing setup and [AGENTS.md](AGENTS.md) for contribution rules.
+The how-to-use guide is in **Help > Scamp Micro Deck Help** (⇧⌘/). Scamp Micro Deck does not collect any personal information or telemetry.
 
 ## Contributing
 
-Issues and PRs welcome.
+Issues welcome.
 
 ## License
 
