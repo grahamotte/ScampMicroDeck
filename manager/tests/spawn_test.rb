@@ -103,7 +103,7 @@ class SpawnerTest < Minitest::Test
 
   def test_spawns_repo_with_app_origin_and_creates_distinct_environment_files
     target_dir = Spawner.new(
-      "new-app.net",
+      "NewApp",
       shell: @shell,
       credentials: @credentials,
       output: @output,
@@ -120,9 +120,10 @@ class SpawnerTest < Minitest::Test
     assert_equal "production", production.fetch("RAILS_ENV")
     assert_equal "development", development.fetch("NODE_ENV")
     assert_equal "production", production.fetch("NODE_ENV")
-    assert_equal "git@github.com:grahamotte/new-app.net.git", config.fetch("githubRepo")
-    assert_equal "new-app.net", config.fetch("domain")
-    assert_equal "new_app", config.fetch("database")
+    assert_equal File.join(@directory, "NewApp"), target_dir
+    assert_equal "git@github.com:grahamotte/NewApp.git", config.fetch("githubRepo")
+    assert_equal "", config.fetch("domain")
+    assert_equal "newapp", config.fetch("database")
     refute config.key?("secrets")
     assert_equal source_config.fetch("instance"), config.fetch("instance")
     assert_equal source_config.fetch("subdomains"), config.fetch("subdomains")
@@ -135,24 +136,27 @@ class SpawnerTest < Minitest::Test
     assert_equal "fingerprint-2", production.fetch("DEPLOY_SSH_KEY_FINGERPRINT")
     assert_equal "deploy", production.fetch("DEPLOY_USER")
     refute config.key?("deploy")
-    assert_includes @shell.commands, [ %w[git remote set-url origin git@github.com:grahamotte/new-app.net.git], target_dir ]
+    assert_includes @shell.commands, [ %w[git remote set-url origin git@github.com:grahamotte/NewApp.git], target_dir ]
     assert_includes @shell.commands, [ %w[git config remote.origin.gh-resolved base], target_dir ]
-    assert_includes @output.string, "Create git@github.com:grahamotte/new-app.net.git on GitHub, then run 'git push -u origin master' there."
+    assert_includes @shell.commands, [ [ "git", "remote", "add", "codemoto", source_config.fetch("githubRepo") ], target_dir ]
+    assert_includes @shell.commands, [ %w[git config remote.codemoto.tagOpt --no-tags], target_dir ]
+    assert_includes @output.string, "Create git@github.com:grahamotte/NewApp.git on GitHub, then run 'git push -u origin master' there."
     assert_includes @output.string, "Run 'mise merge' there to merge updates from Code Moto."
+    assert_includes @output.string, "Set domain in its config.json before deploying it."
     assert_includes @output.string, "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
     assert_equal 0600, File.stat(File.join(target_dir, ".env.production")).mode & 0777
   end
 
-  def test_rejects_an_app_name_without_a_tld
-    error = assert_raises(RuntimeError) { Spawner.new("new-app", shell: @shell, credentials: @credentials, output: @output).call }
+  def test_rejects_a_name_that_is_not_pascal_case
+    error = assert_raises(RuntimeError) { Spawner.new("sundial", shell: @shell, credentials: @credentials, output: @output).call }
 
-    assert_match(/ending in a TLD/, error.message)
+    assert_match(/PascalCase/, error.message)
     assert_empty @shell.commands
   end
 
-  def test_rejects_an_invalid_domain
-    %w[../bad example. -example.com example-.com example.c].each do |domain|
-      assert_raises(RuntimeError) { Spawner.new(domain, shell: @shell, credentials: @credentials, output: @output).call }
+  def test_rejects_an_unsafe_name
+    [ "../Bad", "Sun-dial", "Sun dial", "Sundial.com", "1Sundial", "", "A#{"b" * 63}" ].each do |name|
+      assert_raises(RuntimeError) { Spawner.new(name, shell: @shell, credentials: @credentials, output: @output).call }
     end
 
     assert_empty @shell.commands

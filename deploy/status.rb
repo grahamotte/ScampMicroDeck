@@ -160,19 +160,21 @@ if Instance.running?
     row("", "#{entry["job_class"]}: #{entry["count"]} locked / performing #{age(entry["oldest_performed_at"])}")
   end
 
-  running = query(<<~SQL).first
-    SELECT count(*) AS running, min(started_at) AS oldest_started_at
-    FROM jobs
-    WHERE status = 'running'
-  SQL
-  running_seconds = running["oldest_started_at"].present? ? seconds_since(running["oldest_started_at"]) : 0
-  row(
-    "App running jobs:",
-    health(
-      running_seconds <= RUNNING_AFTER,
-      "#{running["running"]} running / oldest #{age(running["oldest_started_at"])}",
-    ),
-  )
+  if query("SELECT to_regclass('public.jobs') AS jobs").first["jobs"].present?
+    running = query(<<~SQL).first
+      SELECT count(*) AS running, min(started_at) AS oldest_started_at
+      FROM jobs
+      WHERE status = 'running'
+    SQL
+    running_seconds = running["oldest_started_at"].present? ? seconds_since(running["oldest_started_at"]) : 0
+    row(
+      "App running jobs:",
+      health(
+        running_seconds <= RUNNING_AFTER,
+        "#{running["running"]} running / oldest #{age(running["oldest_started_at"])}",
+      ),
+    )
+  end
 
   blocked = query(<<~SQL)
     SELECT job_class, count(*) AS count, min(scheduled_at) AS oldest_scheduled_at
