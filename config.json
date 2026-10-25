@@ -46,6 +46,14 @@
     "demoAccountPassword": "",
     "demoAccountRequired": false,
     "description": "Scamp is a native macOS music player meant to emulate all the tedious, crappy charm of a real vinyl record player.",
+    "homebrew": {
+      "desc": "Music player with the tedious charm of a real vinyl record player",
+      "macos": "tahoe",
+      "zap": [
+        "~/Library/Application Scripts/com.grahamotte.scamp",
+        "~/Library/Containers/com.grahamotte.scamp"
+      ]
+    },
     "keywords": "music, vinyl, record, mp3, flac, audio",
     "marketingUrl": "https://github.com/grahamotte/ScampMicroDeck",
     "name": "Scamp Micro Deck",

@@ -16,6 +16,16 @@ Scamp Micro Deck is a native macOS music player for local folders of audio files
 
 This repository is based on Code Moto. It keeps its own Git history and configuration, and merges foundation updates with Mr. Moto's [merge runbook](https://github.com/grahamotte/MrMoto/blob/master/runbooks/merge.md). Code Moto brings a Rails API, a React website, native Apple apps, and project tooling into one checkout so projects can share the same development, testing, deployment, and release workflow.
 
+## Install
+
+Or install with Homebrew:
+
+```sh
+brew install grahamotte/tap/scamp-micro-deck
+```
+
+Update with `brew upgrade`. Each release also attaches the signed, notarized app to [GitHub Releases](https://github.com/grahamotte/ScampMicroDeck/releases).
+
 ## What's included
 
 - **App:** A Swift macOS player for local audio folders, with simulator and Mac App Store publishing tools.
