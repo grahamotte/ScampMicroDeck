@@ -14,6 +14,7 @@ module Apps
     def version = config.fetch(:version)
     def build = config.fetch(:build)
     def skip_app_stores? = config.fetch(:skip_app_stores, false)
+    def homebrew = config[:homebrew]
     def prepare_for_review? = @prepare_for_review != false
     def submit_for_review? = prepare_for_review? && @submit_for_review != false
     def export_options_path = File.join(root, "apple", "App", "Config", "ExportOptions.plist")
@@ -50,6 +51,13 @@ module Apps
       raise "Cannot locate the main checkout from #{git}" if gitdir.blank?
 
       File.dirname(File.expand_path(gitdir, root).sub(%r{/worktrees/[^/]+/?\z}, ""))
+    end
+
+    def github_repository
+      repository = Constants.config[:githubRepo].to_s[%r{\A(?:git@github\.com:|https://github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?\z}, 1]
+      raise "Set githubRepo in config.json to a github.com repository" if repository.blank?
+
+      repository
     end
 
     def mr_installed? = ENV["PATH"].to_s.split(File::PATH_SEPARATOR).any? { |directory| File.executable?(File.join(directory, "mr")) }

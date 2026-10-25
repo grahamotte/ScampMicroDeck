@@ -9,5 +9,6 @@ Apps.submit_for_review = false if mode.present?
 Apps::ValidationPatch.call
 Apps::BuildPatch.call
 Apps::RevisionPatch.call
+Apps::CaskPatch.call
 Apps::UploadPatch.call
 Apps::SubmitPatch.call

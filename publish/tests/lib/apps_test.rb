@@ -34,6 +34,25 @@ class AppsTest < Minitest::Test
     assert_includes error.message, "Cannot locate the main checkout"
   end
 
+  def test_github_repository_reads_ssh_and_https_urls
+    assert_equal "example/app", Apps.github_repository
+
+    [ "https://github.com/example/app.git", "https://github.com/example/app" ].each do |url|
+      File.write(Constants.config_path, JSON.generate(JSON.parse(File.read(Constants.config_path)).merge("githubRepo" => url)))
+      Constants.instance_variable_set(:@config, nil)
+
+      assert_equal "example/app", Apps.github_repository
+    end
+  end
+
+  def test_loads_homebrew_configuration
+    assert_nil Apps.homebrew
+
+    Apps.config[:homebrew] = { desc: "Does things" }
+
+    assert_equal({ desc: "Does things" }, Apps.homebrew)
+  end
+
   def test_mr_installed_checks_path
     assert Apps.mr_installed?
     ENV["PATH"] = File.join(@publish_test_dir, "missing")

@@ -7,6 +7,7 @@ module Apps
         validate_environment
         validate_release
         validate_targets
+        validate_homebrew
         Apps.private_key
       end
 
@@ -88,6 +89,19 @@ module Apps
         %i[demoAccountName demoAccountPassword].each do |field|
           raise "Missing #{field} in app configuration" if Apps.config[field].blank?
         end
+      end
+
+      def validate_homebrew
+        return if Apps.homebrew.blank?
+
+        raise "Missing macOS target for Homebrew cask" if Apps.targets.none? { |target| target.fetch(:platform) == "MAC_OS" }
+        raise "Missing marketingUrl in app configuration" if Apps.config[:marketingUrl].blank?
+        %i[desc macos].each do |field|
+          raise "Missing #{field} in Homebrew configuration" if Apps.homebrew[field].blank?
+        end
+        raise "Homebrew macos must be a Homebrew macOS name such as tahoe" unless Apps.homebrew.fetch(:macos).to_s.match?(/\A[a-z_]+\z/)
+
+        Apps.github_repository
       end
 
       def validate_targets

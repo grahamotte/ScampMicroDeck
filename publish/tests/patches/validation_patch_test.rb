@@ -44,6 +44,42 @@ class AppsValidationPatchTest < Minitest::Test
     assert_equal "Missing description in app configuration", error.message
   end
 
+  def test_validates_homebrew_configuration
+    Apps.targets.fetch(0)[:platform] = "MAC_OS"
+    Cmd.stubs(:local).with("xcodebuild -version").returns("Xcode")
+    [
+      [ {}, "Missing desc in Homebrew configuration" ],
+      [ { desc: "Does things" }, "Missing macos in Homebrew configuration" ],
+      [ { desc: "Does things", macos: ">= :tahoe" }, "Homebrew macos must be a Homebrew macOS name such as tahoe" ],
+    ].each do |homebrew, message|
+      Apps.config[:homebrew] = homebrew.present? ? homebrew : { zap: [] }
+
+      error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+      assert_equal message, error.message
+    end
+    Apps.config[:homebrew] = { desc: "Does things", macos: "tahoe" }
+
+    Apps::ValidationPatch.apply
+  end
+
+  def test_homebrew_requires_a_macos_target_and_github_repository
+    Apps.config[:homebrew] = { desc: "Does things", macos: "tahoe" }
+    Cmd.stubs(:local).with("xcodebuild -version").returns("Xcode")
+
+    error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+    assert_equal "Missing macOS target for Homebrew cask", error.message
+
+    Apps.targets.fetch(0)[:platform] = "MAC_OS"
+    File.write(Constants.config_path, JSON.generate(JSON.parse(File.read(Constants.config_path)).merge("githubRepo" => "git@forge.test:example/app.git")))
+    Constants.instance_variable_set(:@config, nil)
+
+    error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+    assert_equal "Set githubRepo in config.json to a github.com repository", error.message
+  end
+
   def test_rejects_invalid_skip_app_stores
     Apps.config[:skip_app_stores] = "true"
     Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")

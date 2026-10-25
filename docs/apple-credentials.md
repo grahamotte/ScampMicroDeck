@@ -8,6 +8,24 @@ Set `"skip_app_stores": true` in the `apps` section of `config.json` to publish 
 
 Repository-only releases do not require the Apple Distribution or Mac Installer Distribution certificate variables. The Apple Development and Developer ID certificate variables, App Store Connect API key variables, Apple team ID, and GitHub credentials remain required for archiving, provisioning, notarization, and release uploads.
 
+## Homebrew casks
+
+Add an optional `homebrew` object to the `apps` section of `config.json` to publish the macOS release as a Homebrew cask:
+
+```json
+{
+  "apps": {
+    "homebrew": {
+      "desc": "Short description without the app name or platform",
+      "macos": "tahoe",
+      "zap": ["~/Library/Application Support/App"]
+    }
+  }
+}
+```
+
+After the macOS release is uploaded, `mise publish` writes a cask named after the app (`App Name` becomes `app-name`), with the release version, the uploaded zip's SHA-256, its GitHub release download URL from `githubRepo`, `marketingUrl` as the homepage, `macos` as the minimum Homebrew macOS name, and the optional `zap` paths. Mr. Moto's `mr cask` commits it to `Casks/` in the workspace tap, `grahamotte/homebrew-tap`, only when it changed, so users install with `brew install grahamotte/tap/app-name` and update with `brew upgrade`. The cask never points at a version before its release is published.
+
 ## App Review attachments
 
 Add an optional `reviewAttachments` array to the `apps` section of `config.json` when App Review needs sample files, documentation, or videos to test the app:
