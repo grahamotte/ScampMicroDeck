@@ -71,6 +71,7 @@ module Apps
             notes
             promotionalText
             releaseType
+            subtitle
             supportUrl
           ])
         end
@@ -79,6 +80,7 @@ module Apps
         end
         return if Apps.skip_app_stores?
 
+        raise "subtitle must be at most 30 characters in app configuration" if Apps.config.fetch(:subtitle).length > 30
         Apps.config.fetch(:reviewAttachments, []).each do |attachment|
           raise "Missing review attachment path in app configuration" if attachment[:path].blank?
           raise "Missing #{attachment.fetch(:path)}" unless File.file?(Apps.review_attachment_path(attachment))

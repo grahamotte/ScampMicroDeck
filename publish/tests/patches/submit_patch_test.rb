@@ -86,6 +86,12 @@ class AppsSubmitPatchTest < Minitest::Test
       data: [ { id: "localization", attributes: { locale: "en-US" } } ],
     )
     expect_request(:patch, "/v1/appStoreVersionLocalizations/localization").returns({})
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [ { id: "info", attributes: { state: "PREPARE_FOR_SUBMISSION" } } ],
+    )
+    expect_request(:get, "/v1/appInfos/info/appInfoLocalizations").returns(
+      data: [ { id: "info-localization", attributes: { locale: "en-US", subtitle: "Subtitle" } } ],
+    )
     expect_request(:get, "/v1/appStoreVersionLocalizations/localization/appScreenshotSets").returns(
       data: [ { id: "set", attributes: { screenshotDisplayType: "APP_IPHONE_65" } } ],
     )

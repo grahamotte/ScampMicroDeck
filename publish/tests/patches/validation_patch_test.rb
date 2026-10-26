@@ -89,6 +89,15 @@ class AppsValidationPatchTest < Minitest::Test
     assert_equal "skip_app_stores must be true or false in app configuration", error.message
   end
 
+  def test_rejects_a_subtitle_longer_than_the_app_store_limit
+    Apps.config[:subtitle] = "a" * 31
+    Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
+
+    error = assert_raises(RuntimeError) { Apps::ValidationPatch.apply }
+
+    assert_equal "subtitle must be at most 30 characters in app configuration", error.message
+  end
+
   def test_requires_demo_credentials_when_sign_in_is_required
     Apps.config[:demoAccountName] = ""
     Cmd.expects(:local).with("xcodebuild -version").returns("Xcode")
