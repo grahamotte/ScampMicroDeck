@@ -61,6 +61,7 @@
     "primaryLocale": "en-US",
     "promotionalText": "Rediscover your music library with the tedious, crappy charm of a real vinyl record player.",
     "releaseType": "AFTER_APPROVAL",
+    "subtitle": "Vinyl Record Music Player",
     "supportUrl": "https://github.com/grahamotte/ScampMicroDeck",
     "targets": {
       "apple": {

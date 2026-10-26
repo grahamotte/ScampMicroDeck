@@ -114,6 +114,7 @@ module PublishTestIsolation
           primaryLocale: "en-US",
           promotionalText: "Promotional text",
           releaseType: "AFTER_APPROVAL",
+          subtitle: "Subtitle",
           supportUrl: "https://example.com/support",
           targets: {
             apple: {

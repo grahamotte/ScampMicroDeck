@@ -22,12 +22,14 @@ class AppsAppStoreConnectTest < Minitest::Test
     times = [ 0, 0, 1_200 ]
     client = Apps::AppStoreConnect.new(clock: -> { times.shift })
     target = Apps.targets.fetch(0)
-    Req.expects(:call).times(10).returns(
+    Req.expects(:call).times(12).returns(
       { data: [ { id: "app" } ] },
       { data: [ { id: "version", attributes: { versionString: "1.2.3" } } ] },
       {},
       { data: [ { id: "localization", attributes: { locale: "en-US" } } ] },
       {},
+      app_infos,
+      app_info_localizations,
       screenshot_sets,
       screenshots,
       { data: nil },
@@ -87,12 +89,14 @@ class AppsAppStoreConnectTest < Minitest::Test
     Apps.submit_for_review = false
     target = Apps.targets.fetch(0)
     requests = []
-    Req.expects(:call).times(14).with { |request| requests << request }.returns(
+    Req.expects(:call).times(16).with { |request| requests << request }.returns(
       { data: [ { id: "app" } ] },
       { data: [ { id: "version", attributes: { versionString: "1.2.3" } } ] },
       {},
       { data: [ { id: "localization", attributes: { locale: "en-US" } } ] },
       {},
+      app_infos,
+      app_info_localizations,
       screenshot_sets,
       screenshots,
       { data: nil },
@@ -115,11 +119,14 @@ class AppsAppStoreConnectTest < Minitest::Test
   def test_prepares_codemoto_without_submitting
     target = Apps.targets.fetch(0).merge(bundleIdentifier: "com.grahamotte.codemoto")
     requests = []
-    Req.expects(:call).times(14).with { |request| requests << request }.returns(
+    Req.expects(:call).times(17).with { |request| requests << request }.returns(
       { data: [ { id: "app" } ] },
       { data: [ { id: "version", attributes: { versionString: "1.2.3" } } ] },
       {},
       { data: [ { id: "localization", attributes: { locale: "en-US" } } ] },
+      {},
+      app_infos,
+      app_info_localizations(subtitle: nil),
       {},
       screenshot_sets,
       screenshots,
@@ -146,6 +153,9 @@ class AppsAppStoreConnectTest < Minitest::Test
       assert_equal "Promotional text", attributes.fetch(:promotionalText)
       assert_equal "https://example.com/support", attributes.fetch(:supportUrl)
       refute attributes.key?(:whatsNew)
+    end
+    assert_request(requests, :patch, "/v1/appInfoLocalizations/info-localization") do |attributes|
+      assert_equal({ subtitle: "Subtitle" }, attributes)
     end
     assert_request(requests, :post, "/v1/appStoreReviewDetails") do |attributes|
       assert_equal "login", attributes.fetch(:demoAccountName)
@@ -254,6 +264,74 @@ class AppsAppStoreConnectTest < Minitest::Test
     client.send(:update_localization, version.fetch(:id))
 
     assert_equal "Changes", request.dig(:payload, :data, :attributes, :whatsNew)
+  end
+
+  def test_updates_the_subtitle_on_the_app_info_awaiting_release
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [
+        { id: "live", attributes: { state: "READY_FOR_DISTRIBUTION" } },
+        { id: "info", attributes: { state: "PREPARE_FOR_SUBMISSION" } },
+      ],
+    )
+    expect_request(:get, "/v1/appInfos/info/appInfoLocalizations").returns(
+      data: [
+        { id: "other", attributes: { locale: "fr-FR", subtitle: nil } },
+        { id: "info-localization", attributes: { locale: "en-US", subtitle: "Old subtitle" } },
+      ],
+    )
+    request = nil
+    Req.expects(:call).with do |item|
+      request = item
+      item[:method] == :patch &&
+        item[:url] == "#{Apps::AppStoreConnect::BASE_URL}/v1/appInfoLocalizations/info-localization"
+    end.returns({})
+
+    Apps::AppStoreConnect.new.send(:update_app_info, "app")
+
+    assert_equal({ subtitle: "Subtitle" }, request.dig(:payload, :data, :attributes))
+  end
+
+  def test_skips_an_unchanged_subtitle_while_app_info_is_in_review
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [ { id: "info", attributes: { state: "WAITING_FOR_REVIEW" } } ],
+    )
+    expect_request(:get, "/v1/appInfos/info/appInfoLocalizations").returns(app_info_localizations)
+
+    assert_nil Apps::AppStoreConnect.new.send(:update_app_info, "app")
+  end
+
+  def test_rejects_a_changed_subtitle_while_app_info_is_in_review
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [ { id: "info", attributes: { appStoreState: "IN_REVIEW" } } ],
+    )
+    expect_request(:get, "/v1/appInfos/info/appInfoLocalizations").returns(app_info_localizations(subtitle: nil))
+
+    error = assert_raises(RuntimeError) { Apps::AppStoreConnect.new.send(:update_app_info, "app") }
+
+    assert_equal "Cannot update the App Store subtitle while app info is IN_REVIEW", error.message
+  end
+
+  def test_rejects_an_app_without_app_info_awaiting_release
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [ { id: "live", attributes: { state: "READY_FOR_DISTRIBUTION" } } ],
+    )
+
+    error = assert_raises(RuntimeError) { Apps::AppStoreConnect.new.send(:update_app_info, "app") }
+
+    assert_equal "Expected an App Store app info awaiting release", error.message
+  end
+
+  def test_rejects_app_info_without_the_primary_locale
+    expect_request(:get, "/v1/apps/app/appInfos").returns(
+      data: [ { id: "info", attributes: { state: "PREPARE_FOR_SUBMISSION" } } ],
+    )
+    expect_request(:get, "/v1/appInfos/info/appInfoLocalizations").returns(
+      data: [ { id: "other", attributes: { locale: "fr-FR" } } ],
+    )
+
+    error = assert_raises(RuntimeError) { Apps::AppStoreConnect.new.send(:update_app_info, "app") }
+
+    assert_equal "Missing en-US App Store app info localization", error.message
   end
 
   def test_omits_demo_credentials_when_not_required
@@ -563,6 +641,14 @@ class AppsAppStoreConnectTest < Minitest::Test
     end
     assert request, "Missing #{method.upcase} #{path}"
     yield request.dig(:payload, :data, :attributes) if block_given?
+  end
+
+  def app_infos
+    { data: [ { id: "info", attributes: { state: "PREPARE_FOR_SUBMISSION" } } ] }
+  end
+
+  def app_info_localizations(subtitle: "Subtitle")
+    { data: [ { id: "info-localization", attributes: { locale: "en-US", subtitle: } } ] }
   end
 
   def screenshot_sets

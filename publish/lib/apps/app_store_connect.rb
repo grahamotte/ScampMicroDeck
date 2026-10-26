@@ -31,6 +31,10 @@ module Apps
       REMOVED_FROM_SALE
       REPLACED_WITH_NEW_VERSION
     ].freeze
+    LIVE_APP_INFO_STATES = %w[
+      READY_FOR_DISTRIBUTION
+      READY_FOR_SALE
+    ].freeze
 
     def initialize(
       clock: CLOCK,
@@ -50,6 +54,7 @@ module Apps
       version = store_version(app.fetch(:id), target)
       update_version(version.fetch(:id))
       localization = update_localization(version.fetch(:id))
+      update_app_info(app.fetch(:id))
       update_screenshots(localization.fetch(:id), target)
       update_review_details(version.fetch(:id))
       build = wait_for_processed_build(app.fetch(:id), target)
@@ -206,6 +211,33 @@ module Apps
         ).fetch(:data)
       end
       localization
+    end
+
+    def update_app_info(app_id)
+      app_info = get("/v1/apps/#{app_id}/appInfos").fetch(:data)
+        .find { |item| !LIVE_APP_INFO_STATES.include?(app_info_state(item)) }
+      raise "Expected an App Store app info awaiting release" if app_info.blank?
+
+      localization = get("/v1/appInfos/#{app_info.fetch(:id)}/appInfoLocalizations").fetch(:data)
+        .find { |item| item.dig(:attributes, :locale) == Apps.config.fetch(:primaryLocale) }
+      raise "Missing #{Apps.config.fetch(:primaryLocale)} App Store app info localization" if localization.blank?
+      return if localization.dig(:attributes, :subtitle) == Apps.config.fetch(:subtitle)
+      unless EDITABLE_VERSION_STATES.include?(app_info_state(app_info))
+        raise "Cannot update the App Store subtitle while app info is #{app_info_state(app_info)}"
+      end
+
+      patch(
+        "/v1/appInfoLocalizations/#{localization.fetch(:id)}",
+        data: {
+          type: "appInfoLocalizations",
+          id: localization.fetch(:id),
+          attributes: { subtitle: Apps.config.fetch(:subtitle) },
+        },
+      )
+    end
+
+    def app_info_state(app_info)
+      app_info.dig(:attributes, :state) || app_info.dig(:attributes, :appStoreState)
     end
 
     def update_screenshots(localization_id, target)
