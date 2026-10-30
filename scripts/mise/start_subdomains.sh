@@ -5,7 +5,7 @@ node -e '
   const fs = require("fs");
   const config = JSON.parse(fs.readFileSync("config.json"));
   const base = process.env.LOCAL_DOMAIN || config.domain.split(".")[0] || config.database;
-  for (const subdomain of config.subdomains.filter(({ backend }) => backend)) {
+  for (const subdomain of config.subdomains.filter(({ source }) => source === "backend")) {
     const prefix = subdomain.subdomains.includes("") ? "" : `${subdomain.subdomains[0]}.`;
     console.log(`${prefix}${base}`, 3000);
   }
@@ -14,7 +14,7 @@ node -e '
   const fs = require("fs");
   const config = JSON.parse(fs.readFileSync("config.json"));
   const base = process.env.LOCAL_DOMAIN || config.domain.split(".")[0] || config.database;
-  for (const subdomain of config.subdomains.filter(({ directory }) => directory)) {
+  for (const subdomain of config.subdomains.filter(({ source }) => source === "frontend")) {
     const prefix = subdomain.subdomains.includes("") ? "" : `${subdomain.subdomains[0]}.`;
     console.log(subdomain.name, `${prefix}${base}`);
   }

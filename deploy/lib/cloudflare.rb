@@ -5,6 +5,7 @@ class Cloudflare
         .call(
           url: "https://api.cloudflare.com/client/v4/zones",
           headers: headers,
+          params: { name: Constants.domain },
           quiet: true,
         )
         .dig(:result)
@@ -13,6 +14,19 @@ class Cloudflare
     rescue StandardError => e
       puts e.message
       nil
+    end
+
+    def account_id
+      @account_id ||= Req
+        .call(
+          url: "https://api.cloudflare.com/client/v4/zones",
+          headers: headers,
+          params: { name: Constants.domain },
+          quiet: true,
+        )
+        .dig(:result)
+        .find { |x| x[:name] == Constants.domain }
+        .dig(:account, :id)
     end
 
     def current_dns_records
@@ -28,6 +42,14 @@ class Cloudflare
     rescue StandardError => e
       puts e.message
       []
+    end
+
+    def droplet_dns_records
+      current_dns_records.reject { |x| website_record?(x) }
+    end
+
+    def website_record?(record)
+      Subdomains.website_domains.include?(record[:name]) && !%w[MX TXT].include?(record[:type])
     end
 
     def headers
@@ -56,6 +78,16 @@ class Cloudflare
       )
     end
 
+    def enable_always_use_https
+      Req.call(
+        method: :patch,
+        url: "https://api.cloudflare.com/client/v4/zones/#{zone_id}/settings/always_use_https",
+        headers: headers,
+        quiet: true,
+        payload: { value: "on" },
+      )
+    end
+
     def create_zone
       Req.call(
         method: :post,
@@ -69,7 +101,7 @@ class Cloudflare
     def current_records_are_desired?
       return false if zone_id.blank?
 
-      current_dns_records.map { |x| fingerprint(x) }.sort == desired_dns_records.map { |x| fingerprint(x) }.sort
+      droplet_dns_records.map { |x| fingerprint(x) }.sort == desired_dns_records.map { |x| fingerprint(x) }.sort
     end
 
     def desired_dns_records

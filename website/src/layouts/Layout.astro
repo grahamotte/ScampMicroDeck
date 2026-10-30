@@ -1,0 +1,27 @@
+---
+import config from "../../../config.json";
+import "../styles.css";
+
+const { title } = Astro.props as { title?: string };
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title ? `${title} · ${config.site.title}` : config.site.title}</title>
+    <meta name="description" content={config.site.description} />
+    <meta name="theme-color" content={config.site.themeColor} />
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+  <body class="m-0 flex min-h-dvh flex-col">
+    <main class="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+      <slot />
+    </main>
+    <footer class="flex justify-center gap-6 p-8 text-sm text-neutral-400">
+      <a href="/">{config.site.title}</a>
+      <a href="/privacy">Privacy</a>
+    </footer>
+  </body>
+</html>

@@ -15,7 +15,7 @@ const Hc = () => {
   useEffect(() => {
     const fetchData = () => {
       req({
-        url: "/api/noop/hc",
+        url: "/noop/hc",
         params: { frontendTime: new Date().toISOString() },
         schema: z.object({
           frontendTime: z.string(),
@@ -45,7 +45,7 @@ const Hc = () => {
   const triggerBackendError = () => {
     void req({
       method: "post",
-      url: "/api/noop/error",
+      url: "/noop/error",
       schema: z.any(),
     }).catch(() => undefined);
   };

@@ -10,7 +10,7 @@ class DnsPatch < BasePatch
         Cloudflare.create_zone
       end
 
-      Cloudflare.current_dns_records.each do |record|
+      Cloudflare.droplet_dns_records.each do |record|
         Cloudflare.delete_dns_record(record[:id])
       end
 

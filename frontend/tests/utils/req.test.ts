@@ -18,12 +18,14 @@ beforeEach(() => {
   storage.clear();
   vi.stubGlobal("localStorage", storage);
   vi.stubGlobal("window", { location: { origin: "https://example.com" } });
+  vi.stubEnv("VITE_API_URL", "https://api.example.com");
   vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("parsedToken", () => {
@@ -59,7 +61,7 @@ describe("req", () => {
     await expect(
       req({
         method: "post",
-        url: "/api/items",
+        url: "/items",
         params: { pageNumber: 2, ignored: null },
         data: { itemName: "Example" },
         schema: z.object({ itemId: z.number() }),
@@ -67,7 +69,7 @@ describe("req", () => {
     ).resolves.toEqual({ itemId: 4 });
 
     const [ url, request ] = fetchMock.mock.calls[0]!;
-    expect(url.toString()).toBe("https://example.com/api/items?page_number=2");
+    expect(url.toString()).toBe("https://api.example.com/items?page_number=2");
     expect(request?.method).toBe("post");
     expect(request?.body).toBe('{"item_name":"Example"}');
     expect(new Headers(request?.headers).get("Authorization")).toBe("Bearer token");
@@ -78,12 +80,22 @@ describe("req", () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(""));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(req({ url: "/api/empty", schema: z.null() })).resolves.toBeNull();
+    await expect(req({ url: "/empty", schema: z.null() })).resolves.toBeNull();
 
     const [ , request ] = fetchMock.mock.calls[0]!;
     expect(request?.method).toBe("get");
     expect(request?.body).toBeUndefined();
     expect(new Headers(request?.headers).has("Content-Type")).toBe(false);
+  });
+
+  test("falls back to the page origin without an API URL", async () => {
+    vi.stubEnv("VITE_API_URL", "");
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(""));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await req({ url: "/empty", schema: z.null() });
+
+    expect(fetchMock.mock.calls[0]![0].toString()).toBe("https://example.com/empty");
   });
 
   test("throws for failed requests and logs out after unauthorized responses", async () => {
@@ -94,7 +106,7 @@ describe("req", () => {
       .mockResolvedValueOnce(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(req({ url: "/api/private", schema: z.any() })).rejects.toThrow(
+    await expect(req({ url: "/private", schema: z.any() })).rejects.toThrow(
       "Request failed with status code 401",
     );
     expect(localStorage.getItem("jwt")).toBeNull();
@@ -124,6 +136,6 @@ describe("authentication", () => {
     await logout();
 
     expect(localStorage.getItem("jwt")).toBeNull();
-    expect(fetchMock.mock.calls[0]![0].toString()).toBe("https://example.com/api/users/logout");
+    expect(fetchMock.mock.calls[0]![0].toString()).toBe("https://api.example.com/users/logout");
   });
 });
