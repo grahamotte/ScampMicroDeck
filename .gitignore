@@ -8,8 +8,9 @@
 .yarn-integrity
 .bundle/
 /app/assets/builds/*
-/config/master.key
-/config/credentials.yml.enc
+/backend/config/master.key
+/backend/config/credentials.yml.enc
+xcuserdata/
 /log/*
 **/log/**
 /metabase
