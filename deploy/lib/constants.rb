@@ -20,6 +20,7 @@ class Constants
 
       domain
     end
+    def deploy_ref = ENV["DEPLOY_REF"].blank? ? "origin/master" : ENV["DEPLOY_REF"]
     def instance_region = config.dig(:instance, :region)
     def instance_size = config.dig(:instance, :size)
     def remote_env_path = File.join(remote_root, ".env")

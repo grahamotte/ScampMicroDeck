@@ -6,7 +6,7 @@ class AppPatchTest < Minitest::Test
     services = []
     Cmd.stubs(:ssh).with { |command, *| commands << command; true }.returns("")
     Cmd.stubs(:ssh_write).with { |path, definition, **| services << [ path, definition ]; true }
-    Req.expects(:call).with(method: :get, url: "https://example.com/api/noop/ping")
+    Req.expects(:call).with(method: :get, url: "https://api.example.com/noop/ping")
 
     AppPatch.always
 
@@ -18,7 +18,7 @@ class AppPatchTest < Minitest::Test
     assert_includes commands, "sudo systemctl stop job.service"
     assert_includes commands, "sudo systemctl start api.service"
     assert_includes commands, "sudo systemctl start job.service"
-    assert commands.any? { |command| command.include?("VITE_SUBDOMAIN=www") }
+    assert commands.any? { |command| command.include?("VITE_SUBDOMAIN=app") }
     assert commands.any? { |command| command.include?("VITE_SUBDOMAIN=hc") }
     assert services.any? { |path, definition| path.end_with?("api.service") && definition.include?("Description=Api") }
     assert services.any? { |path, definition| path.end_with?("api.service") && definition.include?("bin/rails server --binding 127.0.0.1 --port 3000") }

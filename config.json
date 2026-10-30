@@ -9,26 +9,40 @@
   },
   "subdomains": [
     {
-      "name": "www",
+      "name": "website",
       "subdomains": [
         "",
         "www"
       ],
-      "directory": "frontend/subdomains/www"
+      "source": "website"
+    },
+    {
+      "name": "app",
+      "subdomains": [
+        "app"
+      ],
+      "source": "frontend"
     },
     {
       "name": "hc",
       "subdomains": [
         "hc"
       ],
-      "directory": "frontend/subdomains/hc"
+      "source": "frontend"
+    },
+    {
+      "name": "api",
+      "subdomains": [
+        "api"
+      ],
+      "source": "backend"
     },
     {
       "name": "jobs",
       "subdomains": [
         "jobs"
       ],
-      "backend": true
+      "source": "backend"
     }
   ],
   "instance": {

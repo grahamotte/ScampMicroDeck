@@ -49,6 +49,7 @@ module DeployTestIsolation
     Constants.instance_variable_set(:@ssh_key_path, File.join(@deploy_test_dir, "id_rsa"))
     Instance.clear
     Cloudflare.instance_variable_set(:@zone_id, nil)
+    Cloudflare.instance_variable_set(:@account_id, nil)
     Subdomains.instance_variable_set(:@all, nil)
     DependenciesPatch.instance_variable_set(:@current_versions, nil)
     CertPatch.instance_variable_set(:@certificate, nil)
@@ -78,9 +79,11 @@ module DeployTestIsolation
         database: "app",
         instance: { region: "test-region", size: "test-size" },
         subdomains: [
-          { name: "www", subdomains: [ "", "www" ], directory: "frontend/subdomains/www" },
-          { name: "hc", subdomains: [ "hc" ], directory: "frontend/subdomains/hc" },
-          { name: "jobs", subdomains: [ "jobs" ], backend: true },
+          { name: "website", subdomains: [ "", "www" ], source: "website" },
+          { name: "app", subdomains: [ "app" ], source: "frontend" },
+          { name: "hc", subdomains: [ "hc" ], source: "frontend" },
+          { name: "api", subdomains: [ "api" ], source: "backend" },
+          { name: "jobs", subdomains: [ "jobs" ], source: "backend" },
         ],
       ),
     )

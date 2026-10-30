@@ -34,7 +34,7 @@ export const req = async <T extends z.ZodSchema<any>>({
   let responseData;
   params ||= {};
   try {
-    const requestUrl = new URL(url, window.location.origin);
+    const requestUrl = new URL(url, import.meta.env.VITE_API_URL || window.location.origin);
     Object.entries(
       changeKeys.snakeCase({ ...params }, 999) as Record<string, unknown>,
     ).forEach(
@@ -87,7 +87,7 @@ export const login = ({
 }) => {
   return req({
     method: "post",
-    url: "/api/users/jwt",
+    url: "/users/jwt",
     data: { handle: handle, password: password },
     schema: z.any(),
   }).then((data) => {
@@ -98,7 +98,7 @@ export const login = ({
 export const logout = () => {
   return new Promise((r: any) => {
     localStorage.removeItem("jwt");
-    void req({ url: "/api/users/logout", schema: z.any() });
+    void req({ url: "/users/logout", schema: z.any() });
     r();
   });
 };

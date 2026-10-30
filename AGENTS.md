@@ -62,11 +62,12 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
-- `config.json` - Non-secret configuration, including mobile app release (`apps`) and website subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`.
+- `config.json` - Non-secret configuration, including mobile app release (`apps`) and subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`. Each subdomain entry has a required `source`: `website` (the Astro site on Cloudflare Workers), `frontend` (a React site in `frontend/subdomains/<name>` served from the droplet), or `backend` (Rails on the droplet). The default layout puts the website at the apex and `www`, the React app at `app`, and the Rails API at `api`. A config with only `website` entries needs no droplet.
 - `deploy/` - Backend and frontend deployment tooling.
 - `docs/` - Project documentation in Markdown.
-- `frontend/` - React website.
+- `frontend/` - React frontend sites served from the droplet.
 - `gems/` - Shared Ruby gems.
+- `website/` - Astro marketing website, deployed to Cloudflare Workers by `mise deploy`.
 - `manager/` - Project tooling for spawning new apps and Code Moto merges.
 - `publish/` - Mobile app versioning, simulators, and App Store publishing. `mise keychain` restores the user keychain search list after a killed signing run and runs before `mise publish`; `mise keychain --repair` resets the login keychain, default keychain, and search list.
 - `scripts/` - General-purpose scripts. `scripts/mise/` holds the scripts behind multi-line `mise.toml` tasks.
@@ -76,7 +77,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 
 Read the relevant runbook when asked to perform an operation:
 
-- [Deploy](runbooks/deploy.md) - Deploy `origin/master` to production.
+- [Deploy](runbooks/deploy.md) - Deploy `origin/master` to production and the website.
 - [Publish](runbooks/publish.md) - Version and publish configured Apple apps.
 
 Run `mise tasks` to discover available tasks and their descriptions, including development and production debugging tools.

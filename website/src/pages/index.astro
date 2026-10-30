@@ -1,0 +1,9 @@
+---
+import config from "../../../config.json";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+  <h1 class="text-3xl">{config.site.title}</h1>
+  <p class="max-w-xl text-neutral-400">{config.site.description}</p>
+</Layout>

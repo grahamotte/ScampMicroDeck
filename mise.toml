@@ -28,6 +28,10 @@ run = "cd backend && mkdir -p log && bundle install"
 description = "Install frontend packages with pnpm"
 run = "cd frontend && mkdir -p log && pnpm install"
 
+[tasks."dependencies:website"]
+description = "Install Astro website packages with pnpm"
+run = "cd website && mkdir -p log && pnpm install"
+
 [tasks."dependencies:deploy"]
 description = "Install deployment tooling Ruby dependencies"
 run = "cd deploy && mkdir -p log && bundle install"
@@ -85,8 +89,15 @@ run = [
   "cd frontend && pnpm install",
 ]
 
+[tasks."reset:website"]
+description = "Remove website builds, caches, and node_modules, then reinstall packages"
+run = [
+  "cd website && rm -rf dist .astro .wrangler node_modules",
+  "cd website && pnpm install",
+]
+
 [tasks.reset]
-description = "Reset development database, frontend dependencies and caches, and old logs"
+description = "Reset development database, frontend and website dependencies and caches, and old logs"
 depends = ["reset:*"]
 
 #
@@ -141,18 +152,19 @@ description = "Register backend aliases and start frontend sites for configured 
 depends = ["dependencies:frontend", "start:details"]
 run = "scripts/mise/start_subdomains.sh"
 
+[tasks."start:website"]
+description = "Start the Astro website dev server for the website subdomain"
+depends = ["dependencies:website", "start:details"]
+run = "scripts/mise/start_website.sh"
+
 [tasks."start:details"]
 description = "Print configured development site and API URLs"
 depends = ["start:portless"]
 run = "scripts/mise/start_details.js"
 
 [tasks.start]
-description = "Start the development API, job workers, HTTPS proxy, and frontend sites"
-depends = [
-  "start:backend",
-  "start:jobs",
-  "start:subdomains",
-]
+description = "Start the development API, job workers, HTTPS proxy, frontend sites, and website configured in config.json"
+run = "scripts/mise/start.sh"
 
 #
 # Debug
@@ -227,6 +239,11 @@ description = "Type-check the frontend and run its tests"
 depends = ["tsc"]
 run = "cd frontend && pnpm test"
 
+[tasks."test:website"]
+description = "Type-check the Astro website"
+depends = ["dependencies:website"]
+run = "cd website && pnpm exec astro check"
+
 [tasks."test:gems"]
 description = "Run unit tests for all shared Ruby gems"
 depends = ["dependencies:gems"]
@@ -241,15 +258,9 @@ depends = ["test:*"]
 #
 
 [tasks."deploy"]
-description = "Deploy origin/master to production; follow runbooks/deploy.md"
-depends = ["dependencies:deploy"]
+description = "Deploy origin/master to the droplet and the Cloudflare website configured in config.json; follow runbooks/deploy.md"
+depends = ["dependencies:deploy", "dependencies:website"]
 run = "set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_deploy.log"
-
-[tasks."deploy:quick"]
-description = "Update production code, secrets, and app services without full provisioning"
-alias = ["quick"]
-depends = ["dependencies:deploy"]
-run = "set -a && source .env.production && cd deploy && ruby quick.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_quick.log"
 
 [tasks."deploy:patch"]
 description = "Apply a named deployment patch to production"

@@ -1,0 +1,4 @@
+blockExoticSubdeps: true
+allowBuilds:
+  esbuild: true
+  workerd: true

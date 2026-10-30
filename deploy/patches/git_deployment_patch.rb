@@ -21,8 +21,8 @@ class GitDeploymentPatch < BasePatch
       Cmd.local("GIT_SSH_COMMAND=\"ssh -i #{Constants.ssh_key_path}\" git remote add deployment #{Constants.deploy_user}@#{Instance.ip}:#{Constants.remote_git_dir}")
 
       Cmd.local("git fetch origin master")
-      sha = Cmd.local("git rev-parse origin/master").strip
-      puts "deploying origin/master #{sha}"
+      sha = Cmd.local("git rev-parse #{Shellwords.escape(Constants.deploy_ref)}").strip
+      puts "deploying #{Constants.deploy_ref} #{sha}"
       Cmd.local("GIT_SSH_COMMAND=\"ssh -i #{Constants.ssh_key_path}\" git push --force deployment #{sha}:refs/heads/master")
 
       Cmd.ssh("sudo mkdir -p #{Constants.remote_root}")

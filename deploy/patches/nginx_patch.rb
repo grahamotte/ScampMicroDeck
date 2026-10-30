@@ -52,7 +52,7 @@ class NginxPatch < BasePatch
     end
 
     def subdomain_servers
-      Subdomains.all.map do |subdomain|
+      Subdomains.droplet.map do |subdomain|
         <<~TEXT
           server {
             server_name #{Subdomains.domains(subdomain).join(" ")};
@@ -64,40 +64,10 @@ class NginxPatch < BasePatch
             ssl_stapling on;
             ssl_stapling_verify on;
 
-            #{subdomain[:backend].present? ? proxy_location("/") : frontend_locations(subdomain)}
+            #{Subdomains.source(subdomain).locations(subdomain)}
           }
         TEXT
       end.join("\n")
-    end
-
-    def frontend_locations(subdomain)
-      <<~TEXT
-        root #{Subdomains.dist(subdomain)};
-        index index.html;
-
-        location / {
-          try_files $uri /index.html;
-        }
-
-        location /assets/ {
-          expires max;
-          add_header Cache-Control "public, max-age=31536000, immutable";
-        }
-
-        #{proxy_location("/api/")}
-      TEXT
-    end
-
-    def proxy_location(path)
-      <<~TEXT
-        location #{path} {
-          proxy_pass http://127.0.0.1:3000;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        }
-      TEXT
     end
   end
 end

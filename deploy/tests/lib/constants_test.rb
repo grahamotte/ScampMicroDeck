@@ -19,6 +19,19 @@ class ConstantsTest < Minitest::Test
     assert_equal "app_production", Constants.db_name
   end
 
+  def test_deploy_ref
+    previous = ENV.delete("DEPLOY_REF")
+    assert_equal "origin/master", Constants.deploy_ref
+
+    ENV["DEPLOY_REF"] = ""
+    assert_equal "origin/master", Constants.deploy_ref
+
+    ENV["DEPLOY_REF"] = "HEAD"
+    assert_equal "HEAD", Constants.deploy_ref
+  ensure
+    ENV["DEPLOY_REF"] = previous
+  end
+
   def test_domain_is_required
     File.write(Constants.config_path, JSON.generate(domain: ""))
     Constants.instance_variable_set(:@config, nil)

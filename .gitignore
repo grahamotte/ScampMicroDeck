@@ -40,3 +40,7 @@ frontend/dist
 .ruby-lsp
 /*/tmp
 /*/tmp/*
+website/dist
+website/.astro
+website/.wrangler
+website/wrangler.json

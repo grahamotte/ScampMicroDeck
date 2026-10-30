@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+:root {
+  font-family: ui-monospace, monospace;
+  color: #fafafa;
+  background: #0a0a0a;
+}

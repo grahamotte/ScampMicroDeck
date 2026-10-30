@@ -1,7 +1,7 @@
 Rails.application.routes.draw do
   constraints(host: /\Ajobs\./) { mount GoodJob::Engine => "/" }
 
-  namespace :api do
+  namespace :api, path: "" do
     resources :noop, only: [] do
       collection do
         get :ping

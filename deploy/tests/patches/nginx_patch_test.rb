@@ -4,12 +4,14 @@ class NginxPatchTest < Minitest::Test
   def test_nginx_config
     config = NginxPatch.send(:nginx_config)
 
-    assert_includes config, "server_name example.com www.example.com hc.example.com jobs.example.com"
-    assert_includes config, "root /var/www/example.com/frontend/dist/www"
+    assert_includes config, "server_name app.example.com hc.example.com api.example.com jobs.example.com;"
+    assert_includes config, "root /var/www/example.com/frontend/dist/app"
     assert_includes config, "root /var/www/example.com/frontend/dist/hc"
-    assert_includes config, "location /api/"
-    assert_includes config, "server_name jobs.example.com"
-    assert_equal [ "http://127.0.0.1:3000" ] * 3, config.scan(/proxy_pass ([^;]+);/).flatten
+    refute_includes config, "location /api/"
+    refute_match(/\s(www\.)?example\.com[\s;]/, config)
+    assert_includes config, "server_name api.example.com;"
+    assert_includes config, "server_name jobs.example.com;"
+    assert_equal [ "http://127.0.0.1:3000" ] * 2, config.scan(/proxy_pass ([^;]+);/).flatten
   end
 
   def test_always
@@ -30,7 +32,7 @@ class NginxPatchTest < Minitest::Test
     NginxPatch.always
 
     assert_includes definition, "worker_processes 2"
-    assert_equal [ "http://127.0.0.1:3000" ] * 3, definition.scan(/proxy_pass ([^;]+);/).flatten
+    assert_equal [ "http://127.0.0.1:3000" ] * 2, definition.scan(/proxy_pass ([^;]+);/).flatten
     assert_includes commands, "sudo systemctl stop nginx.service"
     assert_includes commands, "sudo systemctl start nginx.service"
   end

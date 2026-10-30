@@ -203,7 +203,7 @@ if Instance.running?
   puts ""
   puts "HTTP".magenta
   http = Cmd
-    .ssh("curl --silent --show-error --output /dev/null --write-out '%{http_code} %{time_total}' https://#{Constants.domain}/api/noop/ping", quiet: true)
+    .ssh("curl --silent --show-error --output /dev/null --write-out '%{http_code} %{time_total}' #{Subdomains.url("api")}/noop/ping", quiet: true)
     .strip
     .split
   row("Ping:", health(http.first == "200", "#{http.first} / #{(http[1].to_f * 1000).round}ms"))

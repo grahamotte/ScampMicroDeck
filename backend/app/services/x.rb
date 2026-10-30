@@ -25,7 +25,7 @@ class X
     end
 
     def host
-      dev? ? ENV.fetch("TUNNEL_URL", Settings.development_url) : "https://#{Settings.all.fetch(:domain)}"
+      dev? ? ENV.fetch("TUNNEL_URL", Settings.development_url("api")) : Settings.url("api")
     end
 
     def wait(min = 0.5, max = 3.0)
