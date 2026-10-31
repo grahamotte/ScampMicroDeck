@@ -122,7 +122,11 @@ class AppsSimulatorTest < Minitest::Test
 
     assert commands.any? { |command| command.include?("platform\\=macOS") }
     assert removed_before_build
-    assert commands.any? { |command| command == "pkill -x App-macOS" }
+    assert commands.any? { |command| command == Shellwords.join([ "pkill", "-f", File.join(app_path, "Contents", "MacOS", "") ]) }
+    refute commands.any? { |command| command.include?("pkill -x") }
+    build_command = Shellwords.split(commands.find { |command| command.include?("xcodebuild") })
+    assert_includes build_command, "PRODUCT_BUNDLE_IDENTIFIER=org.example.app.debug"
+    assert_includes build_command, "INFOPLIST_KEY_CFBundleDisplayName=#{Apps.config.fetch(:name)} Debug"
     assert commands.any? { |command| command.include?("open") && command.include?("App-macOS.app") }
     refute commands.any? { |command| command.include?("simctl") }
   end

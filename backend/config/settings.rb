@@ -28,7 +28,6 @@ class Settings
     def development_origins
       [
         %r{\Ahttps://([a-z0-9-]+\.)*#{Regexp.escape(local_domain)}\z},
-        %r{\Ahttps://[a-z0-9-]+\.trycloudflare\.com\z},
       ]
     end
 

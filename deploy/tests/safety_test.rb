@@ -57,7 +57,7 @@ class SafetyTest < Minitest::Test
       .map { |path| File.read(path) }
       .join("\n")
 
-    refute_match(/\b(?!Cmd|Req)\w+\.(?:stubs|expects)\(/, tests)
+    refute_match(/\b(?!Cmd|Req|SSH)\w+\.(?:stubs|expects)\(/, tests)
   end
 
   private

@@ -26,7 +26,6 @@ export default defineConfig(({ command }) => ({
     },
   },
   server: {
-    allowedHosts: [".trycloudflare.com"],
     host: "127.0.0.1",
     strictPort: true,
   },

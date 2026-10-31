@@ -1,6 +1,12 @@
 require_relative "lib/require"
 
-client = Apps::AppStoreConnect.new
-versions = Apps.targets.filter_map { |target| client.latest_approved_version(target) }
+version = if Apps.skip_app_stores?
+  Apps.latest_released_version
+else
+  client = Apps::AppStoreConnect.new
+  Apps.targets
+    .filter_map { |target| client.latest_approved_version(target) }
+    .max_by { |version| Gem::Version.new(version) }
+end
 
-puts versions.max_by { |version| Gem::Version.new(version) } || "none"
+puts version || "none"

@@ -16,6 +16,10 @@
 
 The website deploy (`WebsitePatch`) uses `CLOUDFLARE_TOKEN`, which needs Zone DNS Edit, Workers Scripts Edit, and Workers Routes Edit permissions. The domain's zone must be active on Cloudflare; if the deploy creates the zone, the registrar's nameservers must be pointed at Cloudflare before the custom domains work. It removes unproxied A, AAAA, and CNAME records on the website hosts so Workers custom domains can claim them, and `DnsPatch` leaves those hosts alone.
 
+## New Hostnames
+
+Do not look up a hostname before the deploy that creates it. Resolvers, including macOS's, cache the miss, and checks after the deploy keep failing until it expires; flushing the macOS cache needs a password agents do not have. After the deploy, check every configured subdomain, including `www`, against the zone's own nameservers, which never cache: find one with `dig +short NS DOMAIN`, then run `dig @NAMESERVER HOST`, and check the site with `curl --resolve HOST:443:IP https://HOST` using an address it returned.
+
 ## Results
 
 Report the deployed SHA and any fix PRs. When blocked, report the failure and what is needed to unblock it.

@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name = "path"
   spec.version = "0.0.0"
   spec.authors = [ "Graham Otte" ]
-  spec.summary = "Simple path utility for graham.lol"
+  spec.summary = "Simple path utility"
   spec.files = Dir["lib/**/*.rb"]
   spec.require_paths = [ "lib" ]
 

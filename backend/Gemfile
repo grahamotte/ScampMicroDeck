@@ -1,10 +1,12 @@
 source "https://rubygems.org"
 
 gem "rails", "8.1.4"
+gem "bcrypt", "3.1.22"
 gem "pg", "1.7.0"
 gem "puma", "8.0.2"
 gem "rack-cors", "3.0.0"
 gem "good_job", "4.22.1"
+gem "jwt", "3.3.0"
 gem "bootsnap", "1.26.0"
 gem "ostruct", "0.6.3"
 gem "timeout", "0.6.1"

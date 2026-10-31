@@ -8,6 +8,7 @@ class NginxPatchTest < Minitest::Test
     assert_includes config, "root /var/www/example.com/frontend/dist/app"
     assert_includes config, "root /var/www/example.com/frontend/dist/hc"
     refute_includes config, "location /api/"
+    assert_includes config, 'location ~ ^/(apple-touch-icon[^/]*\\.png|favicon[^/]*\\.(ico|png))$'
     refute_match(/\s(www\.)?example\.com[\s;]/, config)
     assert_includes config, "server_name api.example.com;"
     assert_includes config, "server_name jobs.example.com;"

@@ -12,7 +12,7 @@ module Apps
       def call(name)
         target, device = simulator(name)
         derived_data_path = File.join(Apps.tmp_root, "simulate", target.fetch(:name).to_s)
-        stop(target)
+        stop(target, derived_data_path)
         build(target, derived_data_path)
         launch(target, device, derived_data_path)
       end
@@ -29,11 +29,11 @@ module Apps
         raise "Unknown simulator: #{name}. Choose #{choices}"
       end
 
-      def stop(target)
+      def stop(target, derived_data_path)
         return unless target.fetch(:platform) == "MAC_OS"
 
-        process = File.basename(target.fetch(:simulatorProduct), ".app")
-        Cmd.local(Shellwords.join([ "pkill", "-x", process ])) rescue nil
+        executables = File.join(product_path(target, derived_data_path), "Contents", "MacOS", "")
+        Cmd.local(Shellwords.join([ "pkill", "-f", executables ])) rescue nil
       end
 
       def build(target, derived_data_path)
@@ -51,8 +51,18 @@ module Apps
           "-derivedDataPath",
           derived_data_path,
           "build",
-          "#{target.fetch(:bundleIdentifierBuildSetting, "PRODUCT_BUNDLE_IDENTIFIER")}=#{target.fetch(:bundleIdentifier)}",
+          *build_settings(target),
         ]))
+      end
+
+      def build_settings(target)
+        setting = target.fetch(:bundleIdentifierBuildSetting, "PRODUCT_BUNDLE_IDENTIFIER")
+        return [ "#{setting}=#{target.fetch(:bundleIdentifier)}" ] unless target.fetch(:platform) == "MAC_OS"
+
+        [
+          "#{setting}=#{target.fetch(:bundleIdentifier)}.debug",
+          "INFOPLIST_KEY_CFBundleDisplayName=#{Apps.config.fetch(:name)} Debug",
+        ]
       end
 
       def launch(target, device, derived_data_path)

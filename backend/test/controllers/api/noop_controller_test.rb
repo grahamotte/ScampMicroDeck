@@ -27,7 +27,8 @@ module Api
     end
 
     def test_lock
-      @request.headers["Authorization"] = "Bearer valid"
+      user = User.create!(email: "user@example.com", password: "password123")
+      @request.headers["Authorization"] = "Bearer #{Token.generate_for_user(user)}"
 
       get :lock
 

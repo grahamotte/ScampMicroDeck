@@ -10,5 +10,11 @@ Rails.application.routes.draw do
         post :error
       end
     end
+
+    resources :users, only: [] do
+      collection do
+        post :jwt
+      end
+    end
   end
 end

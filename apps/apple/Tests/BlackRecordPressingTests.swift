@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ScampMicroDeckCore
 
 final class BlackRecordPressingTests: XCTestCase {
     func testTrackBandsPreserveAlbumBoundariesInPlaybackOrder() {

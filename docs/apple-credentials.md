@@ -143,7 +143,7 @@ Repeat this preparation for Apple Development, Apple Distribution, or Developer 
 
 10. Update the matching `*_CERTIFICATE_BASE64` and `*_CERTIFICATE_PASSWORD` values together.
 
-The publish workflow imports this identity into an isolated temporary keychain under `publish/tmp/apps` and passes it to signing with `--keychain`. Leaving the identity installed in the login keychain should not change which identity the workflow uses.
+The publish workflow imports this identity into an isolated temporary keychain under `publish/tmp/apps.noindex` and passes it to signing with `--keychain`. Leaving the identity installed in the login keychain should not change which identity the workflow uses.
 
 While signing, the temporary keychain is added to the front of the user's search list. The default keychain and the rest of the search list are left unchanged. The `keychain` gem snapshots those settings first and restores them when signing finishes, fails, or is interrupted. If the process is killed, the next `mise keychain` or `mise publish` restores the snapshot and drops the deleted temporary keychain from the search list.
 

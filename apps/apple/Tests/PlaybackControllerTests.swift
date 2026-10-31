@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ScampMicroDeckCore
 
 @MainActor
 final class PlaybackControllerTests: XCTestCase {

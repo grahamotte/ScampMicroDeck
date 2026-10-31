@@ -2,17 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "App",
+    name: "ScampMicroDeck",
     platforms: [.macOS(.v15)],
     targets: [
         .target(
-            name: "App",
+            name: "ScampMicroDeckCore",
             path: "App",
             exclude: [
                 "AppLayout.swift",
                 "Assets.xcassets",
                 "Config",
                 "ContentView.swift",
+                "DebugHooks.swift",
                 "LibraryCommands.swift",
                 "Resources",
                 "ScampMicroDeckApp.swift",
@@ -20,6 +21,7 @@ let package = Package(
                 "UI",
             ],
             sources: [
+                "DebugCommand.swift",
                 "Playback/AudioPlayerEngine.swift",
                 "Playback/AlbumLibrary.swift",
                 "Playback/PlaybackController.swift",
@@ -28,8 +30,14 @@ let package = Package(
                 "Playback/PlaylistLoader.swift",
                 "Rendering/BlackRecordPressing.swift",
             ],
+            swiftSettings: [.define("APP_DEV"), .swiftLanguageMode(.v5)],
+        ),
+        .testTarget(
+            name: "ScampMicroDeckCoreTests",
+            dependencies: ["ScampMicroDeckCore"],
+            path: "Tests",
+            exclude: ["Package.swift"],
             swiftSettings: [.swiftLanguageMode(.v5)],
         ),
-        .testTarget(name: "AppTests", dependencies: ["App"], path: "Tests", exclude: ["Package.swift"]),
     ]
 )

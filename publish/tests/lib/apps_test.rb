@@ -88,6 +88,23 @@ class AppsTest < Minitest::Test
     assert_equal File.join(Constants.local_root, "apps/review/sample.zip"), Apps.review_attachment_path(attachment)
   end
 
+  def test_latest_released_version_reads_the_newest_version_tag_from_origin
+    Cmd.expects(:local).with("git ls-remote --tags --refs origin 'v*'").returns(<<~TAGS)
+      abc\trefs/tags/v1.9.0
+      def\trefs/tags/v1.10.0
+      ghi\trefs/tags/v1.2.3
+      jkl\trefs/tags/vnext
+    TAGS
+
+    assert_equal "1.10.0", Apps.latest_released_version
+  end
+
+  def test_latest_released_version_is_nil_without_version_tags
+    Cmd.expects(:local).with("git ls-remote --tags --refs origin 'v*'").returns("")
+
+    assert_nil Apps.latest_released_version
+  end
+
   def test_builds_authentication_arguments
     arguments = Apps.authentication_arguments
 

@@ -34,7 +34,7 @@ run = "cd website && mkdir -p log && pnpm install"
 
 [tasks."dependencies:deploy"]
 description = "Install deployment tooling Ruby dependencies"
-run = "cd deploy && mkdir -p log && bundle install"
+run = "cd deploy && mkdir -p log && bundle install >&2"
 
 [tasks."dependencies:manager"]
 description = "Install project creation and merge Ruby dependencies"
@@ -345,7 +345,7 @@ description = "Prepare Apple App Store versions and builds without submitting th
 depends = ["publish stop_before_submit"]
 
 [tasks."publish:approved_version"]
-description = "Print the latest approved App Store version across configured Apple targets"
+description = "Print the latest approved App Store version across configured Apple targets, or the latest repository release when skipping App Stores"
 depends = ["dependencies:publish"]
 run = "set -a && source .env.production && cd publish && ruby approved_version.rb"
 
@@ -361,6 +361,11 @@ alias = ["simulate"]
 depends = ["dependencies:publish"]
 usage = 'arg "<target>" help="Device to launch" choices "iphone" "phone" "ipad" "tablet" "mac" "macos" "osx" "tv" "tvos"'
 run = 'cd publish && ruby simulate.rb "$usage_target"'
+
+[tasks."app:debug"]
+description = "Send a DebugHooks command to the running Debug macOS app, such as snap|/tmp/app.png (snap|PATH|TITLE for another window), frame|W|H, action|selector:, key|CODE|MODS|CHARS (modifiers c/s/o/t), type|TEXT, or an app-specific command, and wait for it to finish, exiting nonzero with the app's error on failure"
+usage = 'arg "<command>" help="Debug command for DebugHooks"'
+run = 'swift scripts/mise/app_debug.swift "$usage_command"'
 
 [tasks."publish:xcode"]
 description = "Open the Apple app project in Xcode"
