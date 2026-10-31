@@ -19,6 +19,17 @@ class ConstantsTest < Minitest::Test
     assert_equal "app_production", Constants.db_name
   end
 
+  def test_redirect_and_mail_domains
+    assert_equal [], Constants.redirect_domains
+    assert_equal [ "example.com" ], Constants.mail_domains
+
+    File.write(Constants.config_path, JSON.generate(domain: "example.com", redirectDomains: [ "example.net" ]))
+    Constants.instance_variable_set(:@config, nil)
+
+    assert_equal [ "example.net" ], Constants.redirect_domains
+    assert_equal [ "example.com", "example.net" ], Constants.mail_domains
+  end
+
   def test_deploy_ref
     previous = ENV.delete("DEPLOY_REF")
     assert_equal "origin/master", Constants.deploy_ref

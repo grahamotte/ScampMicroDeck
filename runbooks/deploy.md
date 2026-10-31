@@ -1,6 +1,6 @@
 # Deploy
 
-`mise deploy` fetches `origin` and deploys `origin/master`, whatever is checked out locally. It provisions and updates the droplet when `config.json` has `frontend` or `backend` subdomains, and builds the Astro website and deploys it to Cloudflare Workers when it has `website` subdomains. Only merged changes are deployed.
+`mise deploy` fetches `origin` and deploys `origin/master`, whatever is checked out locally. It provisions and updates the droplet when `config.json` has `frontend` or `backend` subdomains, builds the Astro website and deploys it to Cloudflare Workers when it has `website` subdomains, and sets up Cloudflare redirects for any `redirectDomains`. It adds Fastmail mail records to the domain and each redirect domain on every deploy. Only merged changes are deployed.
 
 1. Read the Repo Specific section of this repository's `AGENTS.md`. Continue only if it states that the repository is deployed. If it states that the repository is not deployed, or says nothing about deployment, do not run `mise deploy`: hand off Planned (or Review with "deploy not applicable" when the card only asked for a conditional deploy) and say the repository does not deploy. When `config.json` has `frontend` or `backend` subdomains, a missing or placeholder `DIGITAL_OCEAN_TOKEN` means the repository is not deployed; it is not an expired token.
 2. Run `mise deploy`. It takes several minutes. It prints `deploying origin/master <sha>`; record the SHA. With `website` subdomains it also prints `deploying website origin/master <sha>`.
