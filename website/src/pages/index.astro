@@ -1,9 +1,213 @@
 ---
 import config from "../../../config.json";
+import InstallCommand from "../components/InstallCommand.astro";
 import Layout from "../layouts/Layout.astro";
+import { appStoreUrl, install } from "../site";
+
+const sides = [
+  {
+    name: "Side A",
+    title: "Putting on a record",
+    tracks: [
+      {
+        title: "An album is a folder",
+        text: "Point Scamp at a folder of songs and it plays them in filename order as one record, with the cover art from the same folder on the label.",
+        keys: [],
+      },
+      {
+        title: "Spin up, spin down",
+        text: "The platter takes a moment to get going when you press play, and the music winds up with it. Pause, and it winds back down.",
+        keys: [],
+      },
+      {
+        title: "Drop the needle",
+        text: "Drag the tonearm across the grooves to move through the album. Hold Shift or Command to land at the start of a track.",
+        keys: ["⇧", "⌘"],
+      },
+      {
+        title: "Hold the record",
+        text: "Press and hold on the record to slow it to half speed. Let go and it comes back up to speed.",
+        keys: [],
+      },
+      {
+        title: "The end of the side",
+        text: "When the last song finishes, the record stops. Get up and choose another one.",
+        keys: [],
+      },
+    ],
+  },
+  {
+    name: "Side B",
+    title: "Living with it",
+    tracks: [
+      {
+        title: "A shelf for your records",
+        text: "Press eject to open the shelf, and click a cover to put it on. Sort by artist, album, most played, or recently added.",
+        keys: [],
+      },
+      {
+        title: "Right where you left it",
+        text: "Quit and come back later. The last record is still on the platter, at the same track and the same spot.",
+        keys: [],
+      },
+      {
+        title: "Media keys work",
+        text: "Play, pause, and skip from your keyboard or Control Center, like any other player.",
+        keys: [],
+      },
+      {
+        title: "Nothing leaves your Mac",
+        text: "No account, no streaming, no subscription, no telemetry. Just the music you already have.",
+        keys: [],
+      },
+    ],
+  },
+];
+
+const themes = [
+  { label: "Tables", options: ["Walnut", "Wood", "Frosted Glass", "Rainbow", "White Marble", "Black Marble"] },
+  { label: "Records", options: ["Black", "Yellow", "Red", "Pink Splatter", "Blue Splatter"] },
+  { label: "Controls", options: ["Silver", "Black", "Gold"] },
+];
 ---
 
 <Layout>
-  <h1 class="text-3xl">{config.site.title}</h1>
-  <p class="max-w-xl text-neutral-400">{config.site.description}</p>
+  <section class="mx-auto w-full max-w-3xl px-6 pt-14 text-center sm:px-8 sm:pt-20">
+    <img src="/icon.png" alt="" width="88" height="88" class="mx-auto size-[88px] shadow-[0_8px_24px_-12px_rgb(0_0_0/0.45)] rounded-[20px]" />
+    <h1 class="mt-8 font-serif text-[2.5rem] leading-[1.1] tracking-[-0.015em] text-balance sm:text-[3.25rem]">
+      A record player for the music on your Mac.
+    </h1>
+    <p class="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-pretty text-ink-2">
+      Scamp Micro Deck plays your albums the slow way. The platter spins up, the tonearm rides the grooves, and the record
+      stops when it's over. It's a little tedious. That's the charm.
+    </p>
+    <div class="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+      <a href={appStoreUrl} class="inline-block shrink-0 rounded-[10px]">
+        <img src="/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="156" height="40" class="h-12 w-auto" />
+      </a>
+      <InstallCommand command={install} class="bg-card" />
+    </div>
+    <p class="mt-5 text-sm text-ink-2">Free. Version {config.apps.version}, for macOS 26.2 or later.</p>
+  </section>
+
+  <section class="mx-auto mt-12 w-full max-w-5xl px-3 sm:mt-16 sm:px-6">
+    <img
+      src="/turntable-1.webp"
+      width="2000"
+      height="1250"
+      alt="Scamp Micro Deck on a Mac desktop: a walnut turntable with a black record, a silver tonearm, and a portrait of a cat in a plumed helmet on the label."
+      class="h-auto w-full rounded-[14px]"
+      fetchpriority="high"
+    />
+  </section>
+
+  <section class="mx-auto w-full max-w-5xl px-6 py-20 sm:px-8 md:py-28">
+    <div class="grid gap-14 md:grid-cols-2 md:gap-16">
+      {
+        sides.map((side) => (
+          <div>
+            <p class="font-mono text-xs tracking-[0.18em] text-accent uppercase">{side.name}</p>
+            <h2 class="mt-2 font-serif text-[1.75rem] leading-tight">{side.title}</h2>
+            <ol class="mt-6 border-t border-line">
+              {side.tracks.map((track, index) => (
+                <li class="flex gap-4 border-b border-line py-5">
+                  <span class="w-6 shrink-0 pt-px font-mono text-sm text-ink-3">
+                    {`${side.name.slice(-1)}${index + 1}`}
+                  </span>
+                  <div>
+                    <h3 class="flex flex-wrap items-center gap-2 font-semibold">
+                      {track.title}
+                      {track.keys.map((key) => (
+                        <kbd>{key}</kbd>
+                      ))}
+                    </h3>
+                    <p class="mt-1.5 leading-relaxed text-ink-2">{track.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="bg-sleeve">
+    <div class="mx-auto w-full max-w-5xl px-6 py-20 sm:px-8 md:py-28">
+      <div class="grid gap-10 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-center md:gap-14">
+        <div>
+          <h2 class="font-serif text-[1.75rem] leading-tight text-balance">Your shelf, your records</h2>
+          <p class="mt-4 leading-relaxed text-ink-2">
+            Choose your music folder once, organized as artist, then album. Every album becomes a sleeve on the shelf, and the
+            shelf stays open beside the turntable so switching records is quick.
+          </p>
+          <p class="mt-4 leading-relaxed text-ink-2">
+            Want to try it before pointing it at your library? Choose <span class="text-ink">Help › Load Demo Album</span> and a
+            sample record goes right on.
+          </p>
+        </div>
+        <img
+          src="/shelf.webp"
+          width="1600"
+          height="1225"
+          alt="The turntable in front of a wooden shelf of album covers."
+          class="h-auto w-full rounded-[12px]"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto w-full max-w-5xl px-6 py-20 sm:px-8 md:py-28">
+    <div class="max-w-xl">
+      <h2 class="font-serif text-[1.75rem] leading-tight text-balance">Set the table</h2>
+      <p class="mt-4 leading-relaxed text-ink-2">
+        Pick the table, the record, and the controls from the Theme menu, or let Randomize Themes choose for you.
+      </p>
+    </div>
+    <div class="mt-10 grid gap-5 sm:grid-cols-2">
+      <img
+        src="/turntable-2.webp"
+        width="1200"
+        height="750"
+        alt="A walnut turntable with black controls and a black tonearm."
+        class="h-auto w-full rounded-[12px]"
+        loading="lazy"
+      />
+      <img
+        src="/turntable-3.webp"
+        width="1200"
+        height="750"
+        alt="A frosted glass turntable with a yellow record and silver controls."
+        class="h-auto w-full rounded-[12px]"
+        loading="lazy"
+      />
+    </div>
+    <dl class="mt-10 grid gap-6 sm:grid-cols-3">
+      {
+        themes.map((theme) => (
+          <div class="border-t border-line pt-4">
+            <dt class="font-mono text-xs tracking-[0.18em] text-ink-3 uppercase">{theme.label}</dt>
+            <dd class="mt-2 leading-relaxed text-ink-2">{theme.options.join(", ")}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="mx-auto w-full max-w-5xl px-6 pb-24 sm:px-8 md:pb-32">
+    <div class="flex flex-col items-center gap-6 rounded-[14px] border border-line bg-card px-5 py-10 text-center sm:px-10 sm:py-12">
+      <img src="/icon.png" alt="" width="64" height="64" class="size-16 rounded-[14px]" loading="lazy" />
+      <div>
+        <h2 class="font-serif text-[1.625rem]">Put on a record</h2>
+        <p class="mt-1 text-ink-2">From the Mac App Store, or with Homebrew.</p>
+      </div>
+      <div class="flex max-w-full flex-col items-center gap-3 sm:flex-row">
+        <a href={appStoreUrl} class="inline-block shrink-0 rounded-[10px]">
+          <img src="/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="156" height="40" class="h-12 w-auto" loading="lazy" />
+        </a>
+        <InstallCommand command={install} class="bg-page" />
+      </div>
+    </div>
+  </section>
 </Layout>

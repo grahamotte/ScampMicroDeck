@@ -3,6 +3,7 @@ import config from "../../../config.json";
 import "../styles.css";
 
 const { title } = Astro.props as { title?: string };
+const repoUrl = config.apps.marketingUrl;
 ---
 
 <!doctype html>
@@ -10,18 +11,35 @@ const { title } = Astro.props as { title?: string };
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title ? `${title} · ${config.site.title}` : config.site.title}</title>
+    <title>{title ? `${title} · ${config.site.title}` : `${config.site.title}: ${config.apps.subtitle} for Mac`}</title>
     <meta name="description" content={config.site.description} />
-    <meta name="theme-color" content={config.site.themeColor} />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f1e8" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191512" />
+    <meta property="og:title" content={config.site.title} />
+    <meta property="og:description" content={config.site.description} />
+    <meta property="og:image" content={new URL("/og.jpg", Astro.site)} />
     <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body class="m-0 flex min-h-dvh flex-col">
-    <main class="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+    <header class="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5 sm:px-8">
+      <a href="/" class="flex items-center gap-2.5 font-semibold no-underline">
+        <img src="/icon.png" alt="" width="28" height="28" class="size-7" />
+        {config.site.title}
+      </a>
+      <a href={repoUrl} class="text-[0.9375rem] text-ink-2 no-underline hover:text-ink">GitHub</a>
+    </header>
+    <main class="flex flex-1 flex-col">
       <slot />
     </main>
-    <footer class="flex justify-center gap-6 p-8 text-sm text-neutral-400">
-      <a href="/">{config.site.title}</a>
-      <a href="/privacy">Privacy</a>
+    <footer class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-8 text-sm text-ink-2 sm:px-8">
+      <span>Made by {config.apps.copyright}. Free and open source under the MIT license.</span>
+      <nav class="flex gap-6">
+        <a href={repoUrl} class="no-underline hover:text-ink">Source</a>
+        <a href={`${repoUrl}/releases`} class="no-underline hover:text-ink">Releases</a>
+        <a href={`${repoUrl}/issues`} class="no-underline hover:text-ink">Issues</a>
+        <a href="/privacy" class="no-underline hover:text-ink">Privacy</a>
+      </nav>
     </footer>
   </body>
 </html>
