@@ -24,7 +24,18 @@ module Sources
             expires max;
             add_header Cache-Control "public, max-age=31536000, immutable";
           }
+
+          location ~ ^/(apple-touch-icon[^/]*\\.png|favicon[^/]*\\.(ico|png))$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            try_files $uri =404;
+          }
+
+          #{backend_locations(subdomain)}
         TEXT
+      end
+
+      def backend_locations(subdomain)
+        subdomain.fetch(:backendPaths, []).map { |path| Sources::Backend.proxy_location(path) }.join("\n")
       end
     end
   end

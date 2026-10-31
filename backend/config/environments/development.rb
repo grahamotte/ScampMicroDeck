@@ -4,7 +4,6 @@ require "uri"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
   config.hosts << /.*\.localhost/
-  config.hosts << ".trycloudflare.com"
 
   # Make code changes take effect immediately without server restart.
   config.enable_reloading = true
@@ -38,7 +37,7 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
-  app_url = ENV.fetch("TUNNEL_URL", Settings.development_url("api"))
+  app_url = Settings.development_url("api")
   if app_url.present?
     app_url = URI.parse(app_url)
     config.action_mailer.default_url_options = {

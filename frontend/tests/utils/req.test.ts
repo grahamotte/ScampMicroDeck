@@ -1,4 +1,12 @@
-import { loggedIn, login, logout, parsedToken, req, token } from "@/utils/req";
+import {
+  currentUser,
+  loggedIn,
+  login,
+  logout,
+  parsedToken,
+  req,
+  token,
+} from "@/utils/req";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
@@ -45,6 +53,27 @@ describe("parsedToken", () => {
     localStorage.setItem("jwt", "invalid");
     expect(parsedToken()).toBeNull();
     expect(loggedIn()).toBe(false);
+  });
+});
+
+describe("currentUser", () => {
+  test("returns the signed-in user from the token", () => {
+    const payload = {
+      exp: Math.floor(Date.now() / 1000) + 60,
+      user_id: "u1",
+      email: "user@example.com",
+    };
+    localStorage.setItem("jwt", `header.${btoa(JSON.stringify(payload))}.signature`);
+
+    expect(currentUser()).toEqual({ id: "u1", email: "user@example.com" });
+  });
+
+  test("returns null without a user", () => {
+    expect(currentUser()).toBeNull();
+
+    const payload = { exp: Math.floor(Date.now() / 1000) + 60 };
+    localStorage.setItem("jwt", `header.${btoa(JSON.stringify(payload))}.signature`);
+    expect(currentUser()).toBeNull();
   });
 });
 
@@ -102,15 +131,14 @@ describe("req", () => {
     localStorage.setItem("jwt", "token");
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
-      .mockResolvedValueOnce(new Response("{}"));
+      .mockResolvedValue(new Response("{}", { status: 401 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(req({ url: "/private", schema: z.any() })).rejects.toThrow(
       "Request failed with status code 401",
     );
     expect(localStorage.getItem("jwt")).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
 
@@ -121,14 +149,16 @@ describe("authentication", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await login({ handle: "user", password: "password" });
+    await login({ email: "user@example.com", password: "password" });
 
     expect(localStorage.getItem("jwt")).toBe("new-token");
     expect(fetchMock.mock.calls[0]![1]?.method).toBe("post");
-    expect(fetchMock.mock.calls[0]![1]?.body).toBe('{"handle":"user","password":"password"}');
+    expect(fetchMock.mock.calls[0]![1]?.body).toBe(
+      '{"email":"user@example.com","password":"password"}',
+    );
   });
 
-  test("logout removes the token and requests logout", async () => {
+  test("logout removes the token without a request", async () => {
     localStorage.setItem("jwt", "token");
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
@@ -136,6 +166,6 @@ describe("authentication", () => {
     await logout();
 
     expect(localStorage.getItem("jwt")).toBeNull();
-    expect(fetchMock.mock.calls[0]![0].toString()).toBe("https://api.example.com/users/logout");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -35,13 +35,20 @@ class Cloudflare
     def current_dns_records(domain = Constants.domain)
       return [] if zone_id(domain).blank?
 
-      Req
-        .call(
+      records = []
+      page = 1
+      loop do
+        response = Req.call(
           url: "https://api.cloudflare.com/client/v4/zones/#{zone_id(domain)}/dns_records",
           headers: headers,
+          params: { page: page, per_page: 100 },
           quiet: true,
         )
-        .fetch(:result)
+        records.concat(response.fetch(:result))
+        return records if page >= response.dig(:result_info, :total_pages).to_i
+
+        page += 1
+      end
     rescue StandardError => e
       puts e.message
       []

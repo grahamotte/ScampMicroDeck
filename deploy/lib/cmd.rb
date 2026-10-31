@@ -1,4 +1,13 @@
 class Cmd
+  class SshError < RuntimeError
+    attr_reader :output
+
+    def initialize(message, output:)
+      @output = output
+      super(message)
+    end
+  end
+
   class << self
     def local(command, *opts)
       command = command.split("?").zip(opts.map { |x| Shellwords.escape(x) }).flatten.join if opts.present?
@@ -19,7 +28,7 @@ class Cmd
 
       puts "SSH #{command}".green unless quiet
 
-      text = ""
+      text = +""
       code = 0
 
       Net::SSH.start(Instance.ip, user, keys: [ Constants.ssh_key_path ], keys_only: true) do |s|
@@ -33,7 +42,8 @@ class Cmd
         s.loop
       end
 
-      raise "SSH command failed: #{command}" if code != 0
+      text = text.force_encoding(Encoding::UTF_8)
+      raise SshError.new("SSH command failed: #{command}", output: text) if code != 0
 
       text
     end

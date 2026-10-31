@@ -15,6 +15,13 @@ export const parsedToken = () => {
   }
 };
 
+export const currentUser = () => {
+  const t = parsedToken();
+  if (!t?.user_id) return null;
+
+  return { id: t.user_id as string, email: t.email as string };
+};
+
 export const req = async <T extends z.ZodSchema<any>>({
   method,
   url,
@@ -79,26 +86,23 @@ export const req = async <T extends z.ZodSchema<any>>({
 };
 
 export const login = ({
-  handle,
+  email,
   password,
 }: {
-  handle: string;
+  email: string;
   password: string;
 }) => {
   return req({
     method: "post",
     url: "/users/jwt",
-    data: { handle: handle, password: password },
-    schema: z.any(),
+    data: { email, password },
+    schema: z.object({ token: z.string() }),
   }).then((data) => {
     localStorage.setItem("jwt", data.token);
   });
 };
 
 export const logout = () => {
-  return new Promise((r: any) => {
-    localStorage.removeItem("jwt");
-    void req({ url: "/users/logout", schema: z.any() });
-    r();
-  });
+  localStorage.removeItem("jwt");
+  return Promise.resolve();
 };

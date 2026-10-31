@@ -55,6 +55,21 @@ class CloudflareTest < Minitest::Test
     assert_equal "account", Cloudflare.account_id
   end
 
+  def test_dns_record_lookup_follows_pages
+    Req.expects(:call).with(has_entry(:url, "https://api.cloudflare.com/client/v4/zones"))
+      .returns(result: [ { name: "example.com", id: "zone" } ])
+    Req.expects(:call).with(has_entries(
+      url: "https://api.cloudflare.com/client/v4/zones/zone/dns_records",
+      params: { page: 1, per_page: 100 },
+    )).returns(result: [ { id: "one" } ], result_info: { page: 1, total_pages: 2 })
+    Req.expects(:call).with(has_entries(
+      url: "https://api.cloudflare.com/client/v4/zones/zone/dns_records",
+      params: { page: 2, per_page: 100 },
+    )).returns(result: [ { id: "two" } ], result_info: { page: 2, total_pages: 2 })
+
+    assert_equal [ { id: "one" }, { id: "two" } ], Cloudflare.current_dns_records
+  end
+
   def test_droplet_dns_records_skip_website_hosts
     Req.expects(:call).with(has_entry(:url, "https://api.cloudflare.com/client/v4/zones"))
       .returns(result: [ { name: "example.com", id: "zone" } ])

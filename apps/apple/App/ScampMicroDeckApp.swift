@@ -11,6 +11,12 @@ struct ScampMicroDeckApp: App {
     @State private var showsHowToUse = false
     @State private var showsLibrary = false
 
+    init() {
+        #if APP_DEV
+        DebugHooks.install()
+        #endif
+    }
+
     private var selectedTableTheme: Binding<TableTheme> {
         Binding(
             get: { TableTheme(rawValue: selectedTableThemeRawValue) ?? .walnut },

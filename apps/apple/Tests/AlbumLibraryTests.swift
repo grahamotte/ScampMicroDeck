@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import App
+@testable import ScampMicroDeckCore
 
 final class AlbumLibraryTests: XCTestCase {
     func testAssignsShelfEasterEggsByArtist() {

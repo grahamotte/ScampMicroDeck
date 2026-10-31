@@ -9,7 +9,7 @@ module Apps
     attr_writer :root, :prepare_for_review, :submit_for_review, :tmp_root, :host_keychain_home
 
     def root = @root || File.join(Constants.local_root, "apps")
-    def tmp_root = @tmp_root || File.join(Constants.local_root, "publish", "tmp", "apps")
+    def tmp_root = @tmp_root || File.join(Constants.local_root, "publish", "tmp", "apps.noindex")
     def config = @config ||= read_json(Constants.config_path).fetch(:apps)
     def version = config.fetch(:version)
     def build = config.fetch(:build)
@@ -58,6 +58,14 @@ module Apps
       raise "Set githubRepo in config.json to a github.com repository" if repository.blank?
 
       repository
+    end
+
+    def latest_released_version
+      Cmd.local("git ls-remote --tags --refs origin 'v*'")
+        .lines(chomp: true)
+        .filter_map { |line| line[%r{\trefs/tags/v(\S+)\z}, 1] }
+        .select { |version| Gem::Version.correct?(version) }
+        .max_by { |version| Gem::Version.new(version) }
     end
 
     def mr_installed? = ENV["PATH"].to_s.split(File::PATH_SEPARATOR).any? { |directory| File.executable?(File.join(directory, "mr")) }

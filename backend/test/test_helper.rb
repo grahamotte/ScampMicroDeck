@@ -5,13 +5,8 @@ require "rails/test_help"
 require "mocha/minitest"
 require "webmock/minitest"
 
-class Token
-  def self.verify(token)
-    token == "valid"
-  end
-end unless defined?(Token)
-
 ENV["CRYPT_KEY"] = "test_key_123"
+ENV["JWT_SECRET"] = "test_jwt_secret"
 
 module ActiveSupport
   class TestCase
