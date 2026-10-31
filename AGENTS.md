@@ -62,7 +62,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
-- `config.json` - Non-secret configuration, including mobile app release (`apps`) and subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`. Each subdomain entry has a required `source`: `website` (the Astro site on Cloudflare Workers), `frontend` (a React site in `frontend/subdomains/<name>` served from the droplet), or `backend` (Rails on the droplet). The default layout puts the website at the apex and `www`, the React app at `app`, and the Rails API at `api`. A config with only `website` entries needs no droplet.
+- `config.json` - Non-secret configuration, including mobile app release (`apps`) and subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`. Each subdomain entry has a required `source`: `website` (the Astro site on Cloudflare Workers), `frontend` (a React site in `frontend/subdomains/<name>` served from the droplet), or `backend` (Rails on the droplet). The default layout puts the website at the apex and `www`, the React app at `app`, and the Rails API at `api`. A config with only `website` entries needs no droplet. Optional `redirectDomains` lists other domains that `mise deploy` 301-redirects to `domain` through Cloudflare, keeping the path and query; deploy replaces each redirect zone's Single Redirect rules. Deploy adds Fastmail MX, DKIM, and SPF records to `domain` and every redirect domain.
 - `deploy/` - Backend and frontend deployment tooling.
 - `docs/` - Project documentation in Markdown.
 - `frontend/` - React frontend sites served from the droplet.

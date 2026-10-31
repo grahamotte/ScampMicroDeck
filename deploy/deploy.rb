@@ -16,4 +16,6 @@ if Subdomains.droplet?
   AppPatch.call
 end
 
+MailDnsPatch.call
+RedirectPatch.call
 WebsitePatch.call

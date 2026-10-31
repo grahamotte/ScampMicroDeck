@@ -48,7 +48,7 @@ module DeployTestIsolation
     configure_config_fixture
     Constants.instance_variable_set(:@ssh_key_path, File.join(@deploy_test_dir, "id_rsa"))
     Instance.clear
-    Cloudflare.instance_variable_set(:@zone_id, nil)
+    Cloudflare.instance_variable_set(:@zone_ids, nil)
     Cloudflare.instance_variable_set(:@account_id, nil)
     Subdomains.instance_variable_set(:@all, nil)
     DependenciesPatch.instance_variable_set(:@current_versions, nil)

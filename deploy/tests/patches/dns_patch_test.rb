@@ -31,7 +31,7 @@ class DnsPatchTest < Minitest::Test
     Req.expects(:call).with(has_entry(:url, "https://api.digitalocean.com/v2/droplets"))
       .returns(droplets: [ active_instance ])
     Req.expects(:call).with(has_entries(method: :post, url: "https://api.cloudflare.com/client/v4/zones/zone/dns_records"))
-      .times(10)
+      .times(4)
 
     DnsPatch.apply
   end
