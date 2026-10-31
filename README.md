@@ -8,6 +8,8 @@
 
 Scamp Micro Deck is a native macOS music player for local folders of audio files, designed to mimic the tedious charm of a real vinyl record player.
 
+Learn more at [scampmicrodeck.com](https://scampmicrodeck.com).
+
 ## Install
 
 <!-- markdownlint-disable MD033 -->
