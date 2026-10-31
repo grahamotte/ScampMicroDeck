@@ -1,0 +1,32 @@
+---
+const { command, class: className } = Astro.props as { command: string; class?: string };
+---
+
+<div class:list={["flex h-12 max-w-full min-w-0 items-center gap-1 rounded-[10px] border border-line pr-1 pl-3 font-mono text-xs sm:pr-1.5 sm:pl-4 sm:text-[0.9375rem]", className]}>
+  <span class="hidden text-ink-3 select-none sm:inline" aria-hidden="true">$</span>
+  <code class="min-w-0 truncate sm:pl-1.5">{command}</code>
+  <button
+    type="button"
+    data-copy={command}
+    aria-label="Copy install command"
+    class="ml-1 flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 sm:px-2.5 font-sans text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-wash hover:text-ink"
+  >
+    <svg viewBox="0 0 16 16" class="size-4" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.75"></rect>
+      <path d="M10.5 3.5v-.25A1.75 1.75 0 0 0 8.75 1.5h-5.5A1.75 1.75 0 0 0 1.5 3.25v5.5c0 .97.78 1.75 1.75 1.75h.25"></path>
+    </svg>
+    <span data-copy-label class="hidden sm:inline">Copy</span>
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
+    const label = button.querySelector("[data-copy-label]");
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(button.dataset.copy ?? "");
+      if (!label) return;
+      label.textContent = "Copied";
+      setTimeout(() => (label.textContent = "Copy"), 1600);
+    });
+  });
+</script>

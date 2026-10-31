@@ -1,0 +1,28 @@
+# Scamp Micro Deck
+
+> Scamp Micro Deck is a native macOS music player for local folders of audio files, designed to mimic the tedious charm of a real vinyl record player. It is free, open source (MIT), and requires macOS 26.2 or later. It has no accounts, streaming, subscriptions, or telemetry.
+
+Install from the Mac App Store (https://apps.apple.com/us/app/scamp-micro-deck/id6761630397?mt=12) or with Homebrew: `brew install grahamotte/tap/scamp-micro-deck`. Each release is also available from GitHub Releases.
+
+Features:
+
+- An album is a folder. Every audio file in the folder plays as one record, in filename order, with an image from the folder as the cover.
+- The platter spins up when you press play and spins down before pausing, and the music speeds up and slows down with it. Playback stops at the end of the record.
+- Drag the tonearm to move through the album. Hold Shift or Command while dragging to snap to the start of the nearest track.
+- Press and hold the record to slow it to half speed.
+- A record shelf built from a music folder organized as Artist › Album, sortable by artist, album, most played, or recently added.
+- Reopening the app reloads the last record at the same track and position.
+- Media keys and Control Center work for play, pause, next, and previous track.
+- Themes for the table (Walnut, Wood, Frosted Glass, Rainbow, White Marble, Black Marble), the record (Black, Yellow, Red, Pink Splatter, Blue Splatter), and the controls (Silver, Black, Gold).
+- Help > Load Demo Album loads a bundled sample record.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/grahamotte/ScampMicroDeck/master/README.md): Installation and usage.
+- [Privacy Policy](https://scampmicrodeck.com/privacy): Scamp Micro Deck collects no personal information.
+
+## Optional
+
+- [Source code](https://github.com/grahamotte/ScampMicroDeck): The Scamp Micro Deck repository on GitHub.
+- [Releases](https://github.com/grahamotte/ScampMicroDeck/releases): Downloads and release notes.
+- [Issues](https://github.com/grahamotte/ScampMicroDeck/issues): Bug reports and questions.
