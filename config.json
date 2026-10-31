@@ -15,34 +15,6 @@
         "www"
       ],
       "source": "website"
-    },
-    {
-      "name": "app",
-      "subdomains": [
-        "app"
-      ],
-      "source": "frontend"
-    },
-    {
-      "name": "hc",
-      "subdomains": [
-        "hc"
-      ],
-      "source": "frontend"
-    },
-    {
-      "name": "api",
-      "subdomains": [
-        "api"
-      ],
-      "source": "backend"
-    },
-    {
-      "name": "jobs",
-      "subdomains": [
-        "jobs"
-      ],
-      "source": "backend"
     }
   ],
   "instance": {

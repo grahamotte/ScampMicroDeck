@@ -56,6 +56,13 @@ class SettingsTest < ActiveSupport::TestCase
     assert_equal "https://example.localhost", Settings.development_url("website")
   end
 
+  def test_urls_are_nil_without_subdomain
+    configure
+
+    assert_nil Settings.url("missing")
+    assert_nil Settings.development_url("missing")
+  end
+
   def test_origins_exclude_backend_subdomains
     configure
 

@@ -1,11 +1,24 @@
 require "test_helper"
 
 class XTest < ActiveSupport::TestCase
+  def teardown
+    Settings.instance_variable_set(:@all, nil)
+  end
+
   def test_environment
+    Settings.instance_variable_set(
+      :@all,
+      {
+        domain: "example.com",
+        database: "scampmicrodeck",
+        subdomains: [ { name: "api", subdomains: [ "api" ], source: "backend" } ],
+      },
+    )
+
     refute X.prod?
     refute X.dev?
     assert X.test?
-    assert_equal "https://api.#{Settings.all.fetch(:domain)}", X.host
+    assert_equal "https://api.example.com", X.host
   end
 
   def test_wait_and_timeout

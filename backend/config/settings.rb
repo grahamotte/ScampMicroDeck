@@ -10,11 +10,11 @@ class Settings
     end
 
     def url(name)
-      "https://#{host(name, all.fetch(:domain))}"
+      host(name, all.fetch(:domain))&.then { |x| "https://#{x}" }
     end
 
     def development_url(name)
-      "https://#{host(name, local_domain)}"
+      host(name, local_domain)&.then { |x| "https://#{x}" }
     end
 
     def origins
@@ -35,12 +35,10 @@ class Settings
     private
 
     def host(name, domain)
-      all
-        .fetch(:subdomains)
-        .find { |x| x.fetch(:name) == name }
-        .fetch(:subdomains)
-        .first
-        .then { |x| [ x.presence, domain ].compact.join(".") }
+      subdomain = all.fetch(:subdomains).find { |x| x.fetch(:name) == name }
+      return if subdomain.blank?
+
+      [ subdomain.fetch(:subdomains).first.presence, domain ].compact.join(".")
     end
   end
 end
