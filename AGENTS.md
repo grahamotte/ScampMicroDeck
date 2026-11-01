@@ -48,6 +48,10 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 - After every code change, run the whole suite with `mise test`.
 - Do not write integration tests.
 
+## Production Logs
+
+The droplet keeps its own logs and resource history; nothing is shipped elsewhere. Every service logs to the systemd journal at its real priority, so `journalctl -p err` finds errors: Rails as `api` and `job`, nginx errors as `nginx`, nginx access as `nginx_access` (one JSON object per request), and Postgres as `postgres`. Each error reported through `Rails.error`, including unhandled request and job exceptions, is one entry whose message holds `RAILS_ERROR ` followed by a JSON object with `type`, `message`, `fingerprint`, `severity`, `handled`, `source`, `request_id`, `job_class`, `job_id`, and `backtrace`. `sar` keeps 28 days of per-minute CPU, load, memory, disk, and network history. Query both read-only with `mise deploy:cmd`.
+
 ## Apple Workflow
 
 - `mise test` runs the Apple app package tests in `apps/apple/Tests`, which compile the non-UI files listed in `Tests/Package.swift` into the `<Name>Core` target (`AppCore` in Code Moto), tested by `<Name>CoreTests` in Swift 5 language mode. Add new business-logic files to its `sources` and app-only files to its `exclude`.

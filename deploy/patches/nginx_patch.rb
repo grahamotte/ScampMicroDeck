@@ -11,6 +11,7 @@ class NginxPatch < BasePatch
     def nginx_config
       <<~TEXT
         worker_processes 2;
+        error_log syslog:server=unix:/dev/log,tag=nginx warn;
 
         events {
           worker_connections 1024;
@@ -26,6 +27,8 @@ class NginxPatch < BasePatch
           gzip on;
           gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
           gzip_vary on;
+          log_format journal escape=json '{"status":$status,"method":"$request_method","host":"$host","path":"$uri","ip":"$remote_addr","ua":"$http_user_agent","bytes":$body_bytes_sent,"duration":$request_time,"request_id":"$request_id"}';
+          access_log syslog:server=unix:/dev/log,tag=nginx_access,severity=info journal;
 
           server {
             listen 127.0.0.1:80;

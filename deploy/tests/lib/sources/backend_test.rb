@@ -11,6 +11,7 @@ class Sources::BackendTest < Minitest::Test
     assert_includes locations, "location / {"
     assert_includes locations, "proxy_pass http://127.0.0.1:3000;"
     assert_includes locations, "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+    assert_includes locations, "proxy_set_header X-Request-Id $request_id;"
   end
 
   def test_proxy_location

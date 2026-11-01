@@ -285,7 +285,7 @@ depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby ssh.rb"
 
 [tasks."deploy:cmd"]
-description = "Run a command on the production host, including api and job journal queries; can modify live state"
+description = "Run a command on the production host, including journalctl and sar queries; can modify live state"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby cmd.rb"
 

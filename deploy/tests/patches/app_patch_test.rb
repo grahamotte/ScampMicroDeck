@@ -29,6 +29,8 @@ class AppPatchTest < Minitest::Test
     assert_includes AppPatch.send(:api_service), "User=deploy"
     assert_includes AppPatch.send(:api_service), "rails server --binding 127.0.0.1 --port 3000"
     assert_includes AppPatch.send(:job_service), "GOOD_JOB_ENABLE_CRON=true"
+    assert_includes AppPatch.send(:api_service), "SyslogIdentifier=api"
+    assert_includes AppPatch.send(:job_service), "SyslogIdentifier=job"
     assert_includes AppPatch.send(:job_service), "good_job start"
   end
 end

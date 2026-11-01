@@ -1,5 +1,4 @@
 Rails.application.config.after_initialize do
-  ActiveSupport::LogSubscriber.prepend(Telemetry::LogSubscriber)
-  Telemetry.start
+  JournalFormatter.install(Rails.logger) if ENV["JOURNAL_STREAM"].present?
   Rails.error.subscribe(ErrorLogger.new)
 end

@@ -64,8 +64,19 @@ def journal(service)
     .lines
     .map(&:strip)
     .reject(&:blank?)
+    .map { |line| summarize(line) }
 
   [ count, lines ]
+end
+
+def summarize(line)
+  prefix, payload = line.split("RAILS_ERROR ", 2)
+  return line if payload.blank?
+
+  error = JSON.parse(payload)
+  "#{prefix}#{error["type"]}: #{error["message"].to_s.gsub(/\s+/, " ").truncate(200)} (#{error["fingerprint"]})"
+rescue JSON::ParserError
+  line
 end
 
 puts ""
