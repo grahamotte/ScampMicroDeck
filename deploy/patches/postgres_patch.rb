@@ -4,6 +4,7 @@ class PostgresPatch < BasePatch
       return true if Instance.not_installed?("psql")
       return true if !user_exists?
       return true if !db_exists?
+      return true if !journal_conf_current?
 
       false
     end
@@ -25,6 +26,7 @@ class PostgresPatch < BasePatch
       end
 
       Cmd.ssh_write(pg_hba_conf_path, pg_hba_conf, sudo: true)
+      Cmd.ssh_write(journal_conf_path, journal_conf, sudo: true)
 
       Cmd.ssh("sudo -u postgres createuser -s #{Constants.deploy_user}") unless user_exists?
 
@@ -46,6 +48,17 @@ class PostgresPatch < BasePatch
       host    replication     all             127.0.0.1/32            trust
       host    replication     all             ::1/128                 trust
     TEXT
+
+    def journal_conf_path = "/etc/postgresql/18/main/conf.d/journal.conf"
+
+    def journal_conf = <<~TEXT
+      log_destination = 'syslog'
+      syslog_ident = 'postgres'
+    TEXT
+
+    def journal_conf_current?
+      Cmd.ssh("sudo cat #{journal_conf_path} 2>/dev/null || true") == journal_conf
+    end
 
     def user_exists?
       Cmd

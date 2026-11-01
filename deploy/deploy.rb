@@ -4,7 +4,7 @@ if Subdomains.droplet?
   InstanceCreatePatch.call
   DeployUserPatch.call
   SwapPatch.call
-  MetricsPatch.call
+  HistoryPatch.call
   UpdatePatch.call
   GitDeploymentPatch.call
   DependenciesPatch.call

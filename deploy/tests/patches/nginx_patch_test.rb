@@ -13,6 +13,19 @@ class NginxPatchTest < Minitest::Test
     assert_includes config, "server_name api.example.com;"
     assert_includes config, "server_name jobs.example.com;"
     assert_equal [ "http://127.0.0.1:3000" ] * 2, config.scan(/proxy_pass ([^;]+);/).flatten
+    assert_equal [ "proxy_set_header X-Request-Id $request_id;" ] * 2, config.scan(/proxy_set_header X-Request-Id [^;]+;/)
+  end
+
+  def test_logs_to_journal
+    config = NginxPatch.send(:nginx_config)
+
+    assert_includes config, "error_log syslog:server=unix:/dev/log,tag=nginx warn;"
+    assert_includes config, "access_log syslog:server=unix:/dev/log,tag=nginx_access,severity=info journal;"
+    assert_includes config, '"status":$status,"method":"$request_method","host":"$host","path":"$uri"'
+    assert_includes config, '"ip":"$remote_addr","ua":"$http_user_agent","bytes":$body_bytes_sent,"duration":$request_time,"request_id":"$request_id"'
+    assert_includes config, "log_format journal escape=json"
+    refute_includes config, "/var/log/nginx"
+    assert_match(/location \/nginx_status \{\s+stub_status on;\s+access_log off;/, config)
   end
 
   def test_always

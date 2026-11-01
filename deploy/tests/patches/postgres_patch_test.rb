@@ -3,6 +3,8 @@ require_relative "../test_helper"
 class PostgresPatchTest < Minitest::Test
   USER_CHECK = "sudo -u postgres psql -c \"SELECT 'asstits' FROM pg_roles WHERE rolname = 'deploy'\""
   DB_CHECK = "sudo -u postgres psql -l | grep app_production"
+  JOURNAL_CHECK = "sudo cat /etc/postgresql/18/main/conf.d/journal.conf 2>/dev/null || true"
+  JOURNAL_CONF = "log_destination = 'syslog'\nsyslog_ident = 'postgres'\n"
 
   def test_needed
     Cmd.expects(:ssh).with("which psql").returns("")
@@ -11,7 +13,14 @@ class PostgresPatchTest < Minitest::Test
     Cmd.expects(:ssh).with("which psql").returns("/usr/bin/psql")
     Cmd.expects(:ssh).with(USER_CHECK).returns("asstits")
     Cmd.expects(:ssh).with(DB_CHECK).returns("app_production")
+    Cmd.expects(:ssh).with(JOURNAL_CHECK).returns(JOURNAL_CONF)
     refute PostgresPatch.needed?
+
+    Cmd.expects(:ssh).with("which psql").returns("/usr/bin/psql")
+    Cmd.expects(:ssh).with(USER_CHECK).returns("asstits")
+    Cmd.expects(:ssh).with(DB_CHECK).returns("app_production")
+    Cmd.expects(:ssh).with(JOURNAL_CHECK).returns("")
+    assert PostgresPatch.needed?
   end
 
   def test_apply_existing_postgres
@@ -27,6 +36,8 @@ class PostgresPatchTest < Minitest::Test
       .returns("LoadState=loaded\nActiveState=active\nFreezerState=running\n")
     Cmd.expects(:ssh_write)
       .with("/etc/postgresql/18/main/pg_hba.conf", includes("127.0.0.1/32"), sudo: true)
+    Cmd.expects(:ssh_write)
+      .with("/etc/postgresql/18/main/conf.d/journal.conf", JOURNAL_CONF, sudo: true)
 
     PostgresPatch.apply
 
@@ -47,7 +58,7 @@ class PostgresPatchTest < Minitest::Test
     Cmd.expects(:ssh).with(DB_CHECK).returns("")
     Cmd.expects(:ssh).with(regexp_matches(/\Asystemctl show/)).twice
       .returns("LoadState=loaded\nActiveState=active\nFreezerState=running\n")
-    Cmd.expects(:ssh_write)
+    Cmd.expects(:ssh_write).twice
 
     PostgresPatch.apply
 

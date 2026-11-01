@@ -52,6 +52,7 @@ class AppPatch < BasePatch
       Restart=always
       TimeoutStopSec=5
       MemoryMax=1200M
+      SyslogIdentifier=api
 
       [Install]
       WantedBy=default.target
@@ -72,6 +73,7 @@ class AppPatch < BasePatch
       TimeoutStopSec=5
       MemoryHigh=384M
       MemoryMax=4096M
+      SyslogIdentifier=job
 
       [Install]
       WantedBy=default.target
