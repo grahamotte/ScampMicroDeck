@@ -16,6 +16,74 @@ class SettingsTest < ActiveSupport::TestCase
     assert_equal JSON.parse(File.read(Settings.path), symbolize_names: true), Settings.all
   end
 
+  def test_root
+    assert_equal File.expand_path("../../..", __dir__), Settings.root
+  end
+
+  def test_test_database_for_main_checkout
+    configure
+
+    Dir.mktmpdir do |dir|
+      Dir.mkdir(File.join(dir, ".git"))
+
+      assert_equal "sundial_test", Settings.test_database(dir)
+    end
+  end
+
+  def test_test_database_for_worktree
+    configure
+
+    Dir.mktmpdir do |dir|
+      checkout = File.join(dir, "Sundial-moto.175")
+      Dir.mkdir(checkout)
+      File.write(File.join(checkout, ".git"), "gitdir: /tmp/x")
+
+      assert_equal "sundial_test_sundial_moto_175", Settings.test_database(checkout)
+    end
+  end
+
+  def test_test_database_fits_parallel_worker_suffix
+    configure
+
+    Dir.mktmpdir do |dir|
+      checkout = File.join(dir, "a" * 80)
+      Dir.mkdir(checkout)
+      File.write(File.join(checkout, ".git"), "gitdir: /tmp/x")
+
+      assert_equal "sundial_test_#{"a" * 43}", Settings.test_database(checkout)
+    end
+  end
+
+  def test_stale_test_databases
+    configure
+
+    Dir.mktmpdir do |dir|
+      main = File.join(dir, "Sundial")
+      live = File.join(dir, "Sundial-live-1")
+      Dir.mkdir(main)
+      Dir.mkdir(File.join(main, ".git"))
+      Dir.mkdir(live)
+      File.write(File.join(live, ".git"), "gitdir: /tmp/x")
+      databases = [
+        "postgres",
+        "sundial_development",
+        "sundial_test",
+        "sundial_test_0",
+        "sundial_test_sundial_live_1",
+        "sundial_test_sundial_live_1_2",
+        "sundial_test_sundial_live",
+        "sundial_test_sundial_gone",
+        "sundial_test_sundial_gone_1",
+        "other_test_sundial_gone",
+      ]
+
+      assert_equal(
+        [ "sundial_test_sundial_live", "sundial_test_sundial_gone", "sundial_test_sundial_gone_1" ],
+        Settings.stale_test_databases(databases, [ main, live ]),
+      )
+    end
+  end
+
   def test_local_domain_uses_domain_label
     configure
 
