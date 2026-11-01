@@ -19,8 +19,8 @@ class NginxPatchTest < Minitest::Test
   def test_logs_to_journal
     config = NginxPatch.send(:nginx_config)
 
-    assert_includes config, "error_log syslog:server=unix:/dev/log,tag=nginx warn;"
-    assert_includes config, "access_log syslog:server=unix:/dev/log,tag=nginx_access,severity=info journal;"
+    assert_includes config, "error_log syslog:server=unix:/dev/log,tag=nginx,nohostname warn;"
+    assert_includes config, "access_log syslog:server=unix:/dev/log,tag=nginx_access,severity=info,nohostname journal;"
     assert_includes config, '"status":$status,"method":"$request_method","host":"$host","path":"$uri"'
     assert_includes config, '"ip":"$remote_addr","ua":"$http_user_agent","bytes":$body_bytes_sent,"duration":$request_time,"request_id":"$request_id"'
     assert_includes config, "log_format journal escape=json"
