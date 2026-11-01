@@ -7,7 +7,7 @@ development:
   database: <%= Settings.all.fetch(:database) %>_development
 test:
   <<: *default
-  database: <%= Settings.all.fetch(:database) %>_test
+  database: <%= Settings.test_database %>
 production:
   <<: *default
   database: <%= Settings.all.fetch(:database) %>_production
