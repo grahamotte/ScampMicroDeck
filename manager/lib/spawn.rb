@@ -115,7 +115,8 @@ class Spawner
     @output.puts "Create #{repo} on GitHub, then run 'git push -u origin master' there."
     @output.puts "Run 'mise merge' there to merge updates from Code Moto."
     @output.puts "Set domain in its config.json before deploying it."
-    @output.puts "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
+    @output.puts "Create the op://Projects/#{display_name} Development and op://Projects/#{display_name} Production items with one concealed field per .env.template key, filled from its .env.development and .env.production."
+    @output.puts "Register it in Mr. Moto's config.json projects with those secrets references."
     target_dir
   end
 
@@ -128,7 +129,7 @@ class Spawner
   end
 
   def create_environment_files(target_dir)
-    template = File.read(File.join(target_dir, ".env.default"))
+    template = File.read(File.join(target_dir, ".env.template"))
 
     ENVIRONMENTS.each do |environment|
       overrides = ENVIRONMENT_KEYS.to_h { |key| [ key, environment ] }.merge(@credentials.call)
@@ -162,59 +163,22 @@ class Spawner
     repo.sub(%r{[^/:]+(?=\.git\z)}, @app_name)
   end
 
+  def display_name
+    @app_name.gsub(/(?<=[a-z0-9])(?=[A-Z])/, " ")
+  end
+
   def database_name
     @app_name.downcase
   end
 
   def render(template, overrides)
-    found = []
-    rendered = records(template).map do |key, _raw_value, record|
-      next record unless overrides.key?(key)
-
-      found << key
-      "#{key}=#{quoted(overrides.fetch(key))}\n"
-    end.join
-    missing_keys = overrides.keys - found
+    keys = template.lines.filter_map { |line| line[/\A([A-Z][A-Z0-9_]*)=/, 1] }
+    missing_keys = overrides.keys - keys
     unless missing_keys.length.zero?
       raise "Template is missing environment values: #{missing_keys.join(", ")}"
     end
 
-    rendered
-  end
-
-  def records(template)
-    lines = template.lines
-    records = []
-    index = 0
-
-    while index < lines.length
-      line = lines[index]
-      match = line.match(/\A([A-Z][A-Z0-9_]*)=(.*)/)
-
-      unless match
-        records << [ nil, nil, line ]
-        index += 1
-        next
-      end
-
-      key = match[1]
-      raw_value = match[2]
-      record = line
-      if raw_value.start_with?("\"") && !raw_value.chomp.end_with?("\"")
-        loop do
-          index += 1
-          raise "Unterminated quoted value for #{key}" if index >= lines.length
-
-          record += lines[index]
-          raw_value += lines[index]
-          break if lines[index].chomp.end_with?("\"")
-        end
-      end
-      records << [ key, raw_value.chomp, record ]
-      index += 1
-    end
-
-    records
+    keys.map { |key| "#{key}=#{quoted(overrides.fetch(key, ""))}\n" }.join
   end
 
   def quoted(value)

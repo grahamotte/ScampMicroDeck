@@ -16,6 +16,16 @@ class SettingsTest < ActiveSupport::TestCase
     assert_equal JSON.parse(File.read(Settings.path), symbolize_names: true), Settings.all
   end
 
+  def test_rails_max_threads_is_optional
+    Settings.instance_variable_set(:@all, { database: "sundial" })
+
+    assert_nil Settings.rails_max_threads
+
+    Settings.instance_variable_set(:@all, { database: "sundial", railsMaxThreads: 8 })
+
+    assert_equal 8, Settings.rails_max_threads
+  end
+
   def test_root
     assert_equal File.expand_path("../../..", __dir__), Settings.root
   end

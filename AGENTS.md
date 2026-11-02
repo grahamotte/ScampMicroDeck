@@ -67,8 +67,8 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 ## File Structure
 
 - `runbooks/` - Project operation instructions, such as deployment and publishing.
-- `.env.default` - Template for the `.env.*` secret files.
-- `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, and the file follows the `.env.default` layout with extra keys at the end.
+- `.env.template` - Template for the `.env.*` secret files: every key they hold across all environments, sorted one per line, each with a single-quoted hint for agents instead of a value.
+- `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, the file lists the item's keys sorted, and the template, the items, and the files hold the same keys, with empty values allowed. Check them with `mr secrets keys`, never by reading the files.
 - `apps/` - Mobile apps for iOS and Android.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.

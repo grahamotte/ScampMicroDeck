@@ -37,7 +37,7 @@ public/compiled
 frontend/dist
 .env
 .env.*
-!.env.default
+!.env.template
 .ruby-lsp
 /*/tmp
 /*/tmp/*

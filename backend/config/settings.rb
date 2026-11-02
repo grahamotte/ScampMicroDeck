@@ -5,6 +5,7 @@ class Settings
     def path = File.expand_path("../../config.json", __dir__)
     def all = @all ||= JSON.parse(File.read(path), symbolize_names: true)
     def root = File.expand_path("../..", __dir__)
+    def rails_max_threads = all[:railsMaxThreads]
 
     def test_database(checkout = root)
       name = "#{all.fetch(:database)}_test"

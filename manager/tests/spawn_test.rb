@@ -90,7 +90,7 @@ class SpawnerTest < Minitest::Test
     @directory = Dir.mktmpdir
     @source_repo = File.join(@directory, "codemoto.org")
     FileUtils.mkdir_p(@source_repo)
-    FileUtils.cp(File.expand_path("../../.env.default", __dir__), @source_repo)
+    FileUtils.cp(File.expand_path("../../.env.template", __dir__), @source_repo)
     FileUtils.cp(File.expand_path("../../config.json", __dir__), @source_repo)
     @shell = SpawnTestShell.new(@source_repo)
     @credentials = SpawnTestCredentials.new
@@ -127,7 +127,11 @@ class SpawnerTest < Minitest::Test
     refute config.key?("secrets")
     assert_equal source_config.fetch("instance"), config.fetch("instance")
     assert_equal source_config.fetch("subdomains"), config.fetch("subdomains")
-    assert_includes File.read(File.join(target_dir, ".env.production")), "OPENROUTER_TOKEN=xxx\n"
+    template_keys = File.read(File.join(@source_repo, ".env.template")).scan(/^([A-Z][A-Z0-9_]*)=/).flatten
+    assert_equal template_keys, development.keys
+    assert_equal template_keys, production.keys
+    assert_includes File.read(File.join(target_dir, ".env.production")), "OPENROUTER_TOKEN=\"\"\n"
+    refute_includes File.read(File.join(target_dir, ".env.production")), "required"
     assert_equal "password-1", development.fetch("DEPLOY_PASSWORD")
     assert_equal "password-2", production.fetch("DEPLOY_PASSWORD")
     assert_equal "private-key-1\nsecond-line", development.fetch("DEPLOY_SSH_KEY")
@@ -143,7 +147,8 @@ class SpawnerTest < Minitest::Test
     assert_includes @output.string, "Create git@github.com:grahamotte/NewApp.git on GitHub, then run 'git push -u origin master' there."
     assert_includes @output.string, "Run 'mise merge' there to merge updates from Code Moto."
     assert_includes @output.string, "Set domain in its config.json before deploying it."
-    assert_includes @output.string, "Register it in Mr. Moto's config.json projects with its 1Password secrets references."
+    assert_includes @output.string, "Create the op://Projects/New App Development and op://Projects/New App Production items with one concealed field per .env.template key, filled from its .env.development and .env.production."
+    assert_includes @output.string, "Register it in Mr. Moto's config.json projects with those secrets references."
     assert_equal 0600, File.stat(File.join(target_dir, ".env.production")).mode & 0777
   end
 
