@@ -34,7 +34,7 @@ class Constants
     def backup_endpoint = ENV.fetch("BACKUP_ENDPOINT")
     def backup_bucket = ENV.fetch("BACKUP_BUCKET")
     def github_repo = config.fetch(:githubRepo, "")
-    def ssh_key = ENV.fetch("DEPLOY_SSH_KEY")
+    def ssh_key = ENV.fetch("DEPLOY_SSH_KEY_BASE64").unpack1("m0")
     def ssh_key_pub = ENV.fetch("DEPLOY_SSH_KEY_PUB")
     def ssh_key_path
       @ssh_key_path ||= begin

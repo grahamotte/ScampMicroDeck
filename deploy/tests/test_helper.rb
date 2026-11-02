@@ -34,7 +34,7 @@ Net::SSH.define_singleton_method(:start) { |*, **| raise UnsafeTestOperation, "N
   "BACKUP_SECRET_ACCESS_KEY" => "secret",
   "CLOUDFLARE_TOKEN" => "cloudflare-token",
   "DEPLOY_PASSWORD" => "password",
-  "DEPLOY_SSH_KEY" => "private-key",
+  "DEPLOY_SSH_KEY_BASE64" => [ "private-key" ].pack("m0"),
   "DEPLOY_SSH_KEY_FINGERPRINT" => "fingerprint",
   "DEPLOY_SSH_KEY_PUB" => "public-key",
   "DEPLOY_USER" => "deploy",
