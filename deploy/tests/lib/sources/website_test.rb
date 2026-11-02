@@ -17,6 +17,10 @@ class Sources::WebsiteTest < Minitest::Test
     assert_equal File.join(Constants.local_root, "deploy", "tmp", "website", "website"), Sources::Website.root
   end
 
+  def test_worker_name
+    assert_equal "example-com", Sources::Website.worker_name
+  end
+
   def test_wrangler_config
     assert_equal(
       {

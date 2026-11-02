@@ -10,9 +10,11 @@ module Sources
       def checkout = @checkout || File.join(Constants.local_root, "deploy", "tmp", "website")
       def root = File.join(checkout, "website")
 
+      def worker_name = Constants.domain.tr(".", "-")
+
       def wrangler_config
         {
-          name: Constants.domain.tr(".", "-"),
+          name: worker_name,
           compatibility_date: COMPATIBILITY_DATE,
           assets: { directory: "./dist", not_found_handling: "404-page" },
           routes: Subdomains.website_domains.map { |domain| { pattern: domain, custom_domain: true } },
