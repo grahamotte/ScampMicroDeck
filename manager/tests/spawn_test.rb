@@ -34,7 +34,7 @@ class SpawnTestCredentials
       "DEPLOY_PASSWORD" => "password-#{@calls}",
       "DEPLOY_SSH_KEY_PUB" => "public-key-#{@calls}",
       "DEPLOY_SSH_KEY_FINGERPRINT" => "fingerprint-#{@calls}",
-      "DEPLOY_SSH_KEY" => "private-key-#{@calls}\nsecond-line",
+      "DEPLOY_SSH_KEY_BASE64" => [ "private-key-#{@calls}\nsecond-line\n" ].pack("m0"),
       "JWT_SECRET" => "jwt-#{@calls}",
       "SECRET_KEY_BASE" => "secret-#{@calls}",
       "CRYPT_KEY" => "crypt-#{@calls}",
@@ -79,7 +79,7 @@ class SpawnCredentialsTest < Minitest::Test
     assert_equal "4" * 128, credentials.fetch("CRYPT_KEY")
     assert_equal "ssh-rsa #{[ "public-key" ].pack("m0")} deploy@test", credentials.fetch("DEPLOY_SSH_KEY_PUB")
     assert_equal Digest::MD5.hexdigest("public-key").scan(/../).join(":"), credentials.fetch("DEPLOY_SSH_KEY_FINGERPRINT")
-    assert_equal "private-key", credentials.fetch("DEPLOY_SSH_KEY")
+    assert_equal "private-key\n", credentials.fetch("DEPLOY_SSH_KEY_BASE64").unpack1("m0")
     assert_includes shell.command, "4096"
     assert_includes shell.command, "PEM"
   end
@@ -134,7 +134,7 @@ class SpawnerTest < Minitest::Test
     refute_includes File.read(File.join(target_dir, ".env.production")), "required"
     assert_equal "password-1", development.fetch("DEPLOY_PASSWORD")
     assert_equal "password-2", production.fetch("DEPLOY_PASSWORD")
-    assert_equal "private-key-1\nsecond-line", development.fetch("DEPLOY_SSH_KEY")
+    assert_equal "private-key-1\nsecond-line\n", development.fetch("DEPLOY_SSH_KEY_BASE64").unpack1("m0")
     refute_equal development.fetch("JWT_SECRET"), production.fetch("JWT_SECRET")
     assert_equal "public-key-2", production.fetch("DEPLOY_SSH_KEY_PUB")
     assert_equal "fingerprint-2", production.fetch("DEPLOY_SSH_KEY_FINGERPRINT")

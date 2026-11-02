@@ -11,6 +11,19 @@ class ConstantsTest < Minitest::Test
     assert_equal "git@github.com:example/app.git", Constants.github_repo
   end
 
+  def test_ssh_key_decodes_its_base64_value
+    previous = ENV["DEPLOY_SSH_KEY_BASE64"]
+    ENV["DEPLOY_SSH_KEY_BASE64"] = [ "-----BEGIN KEY-----\nbody\n-----END KEY-----\n" ].pack("m0")
+
+    assert_equal "-----BEGIN KEY-----\nbody\n-----END KEY-----\n", Constants.ssh_key
+
+    ENV["DEPLOY_SSH_KEY_BASE64"] = "not base64!"
+
+    assert_raises(ArgumentError) { Constants.ssh_key }
+  ensure
+    ENV["DEPLOY_SSH_KEY_BASE64"] = previous
+  end
+
   def test_config_values
     assert_equal File.join(@deploy_test_dir, "config.json"), Constants.config_path
     assert_equal "example.com", Constants.domain

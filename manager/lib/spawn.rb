@@ -56,7 +56,7 @@ class SpawnCredentials
         "DEPLOY_PASSWORD" => @random.hex(16),
         "DEPLOY_SSH_KEY_PUB" => public_key,
         "DEPLOY_SSH_KEY_FINGERPRINT" => fingerprint(public_key),
-        "DEPLOY_SSH_KEY" => File.read(private_key_path).strip,
+        "DEPLOY_SSH_KEY_BASE64" => [ File.read(private_key_path) ].pack("m0"),
         "JWT_SECRET" => @random.hex(64),
         "SECRET_KEY_BASE" => @random.hex(64),
         "CRYPT_KEY" => @random.hex(64),
@@ -80,7 +80,7 @@ class Spawner
     %w[
       CRYPT_KEY
       DEPLOY_PASSWORD
-      DEPLOY_SSH_KEY
+      DEPLOY_SSH_KEY_BASE64
       DEPLOY_SSH_KEY_FINGERPRINT
       DEPLOY_SSH_KEY_PUB
       DEPLOY_USER
