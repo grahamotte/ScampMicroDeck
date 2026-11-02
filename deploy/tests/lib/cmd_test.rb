@@ -57,16 +57,68 @@ class CmdTest < Minitest::Test
     assert_equal "out\nerr\n", result
   end
 
+  def test_ssh_sends_stdin_without_printing_it
+    channel = stub_ssh([ :data, "ok" ], code: 0)
+
+    output, = capture_io { DeployTestMethods::CMD_SSH.call("chpasswd", user: "deploy", stdin: "deploy:hunter2\n") }
+
+    assert_equal "deploy:hunter2\n", channel.stdin
+    assert channel.eof
+    refute_includes output, "hunter2"
+  end
+
+  def test_ssh_without_stdin_sends_nothing
+    channel = stub_ssh([ :data, "ok" ], code: 0)
+
+    capture_io { DeployTestMethods::CMD_SSH.call("ls") }
+
+    assert_equal "", channel.stdin
+    refute channel.eof
+  end
+
+  def test_ssh_write_streams_content_over_stdin_and_skips_unchanged
+    Cmd.expects(:ssh).with("tee ? > /dev/null", "/etc/app.env", user: "deploy", stdin: "SECRET=1\n").once
+
+    capture_io do
+      DeployTestMethods::CMD_SSH_WRITE.call("/etc/app.env", "SECRET=1\n")
+      DeployTestMethods::CMD_SSH_WRITE.call("/etc/app.env", "SECRET=1\n")
+    end
+
+    refute_includes Cache.get("/etc/app.env"), "SECRET"
+  end
+
+  def test_ssh_write_uses_sudo_for_non_root_users
+    Cmd.expects(:ssh).with("sudo tee ? > /dev/null", "/etc/nginx/nginx.conf", user: "deploy", stdin: "conf")
+    Cmd.expects(:ssh).with("tee ? > /dev/null", "/etc/ssh/sshd_config", user: "root", stdin: "sshd")
+
+    capture_io do
+      DeployTestMethods::CMD_SSH_WRITE.call("/etc/nginx/nginx.conf", "conf", sudo: true)
+      DeployTestMethods::CMD_SSH_WRITE.call("/etc/ssh/sshd_config", "sshd", user: "root", sudo: true)
+    end
+  end
+
+  def test_ssh_write_skips_blank_content
+    Cmd.expects(:ssh).never
+
+    capture_io { DeployTestMethods::CMD_SSH_WRITE.call("/etc/app.env", "") }
+  end
+
   private
 
   class FakeChannel
-    attr_reader :command
+    attr_reader :command, :stdin, :eof
 
     def initialize(events, code)
       @events = events
       @code = code
       @handlers = {}
+      @stdin = +""
+      @eof = false
     end
+
+    def send_data(data) = @stdin << data
+
+    def eof! = @eof = true
 
     def exec(command)
       @command = command

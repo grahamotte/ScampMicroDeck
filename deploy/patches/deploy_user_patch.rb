@@ -14,7 +14,7 @@ class DeployUserPatch < BasePatch
       # sudo user
       Cmd.ssh("useradd #{user} -m", user: "root")
       Cmd.ssh("chsh -s /bin/bash #{user}", user: "root")
-      Cmd.ssh("yes #{pass} | passwd #{user}", user: "root")
+      Cmd.ssh("chpasswd", user: "root", stdin: "#{user}:#{pass}\n")
       Cmd.ssh("echo '#{user} ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers", user: "root")
 
       # keyfile

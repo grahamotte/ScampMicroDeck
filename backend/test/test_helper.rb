@@ -13,6 +13,7 @@ module ActiveSupport
     parallelize(workers: 4, threshold: 0)
 
     def setup
+      Rails.cache.clear
       WebMock.reset!
       WebMock::StubRegistry.instance.instance_variable_get(:@request_stubs).clear
       WebMock.disable_net_connect!

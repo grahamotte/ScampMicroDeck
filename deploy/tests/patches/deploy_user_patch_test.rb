@@ -13,7 +13,7 @@ class DeployUserPatchTest < Minitest::Test
     Cmd.stubs(:ssh)
     Cmd.stubs(:ssh_write)
     Cmd.expects(:ssh).with("useradd deploy -m", user: "root")
-    Cmd.expects(:ssh).with("yes password | passwd deploy", user: "root")
+    Cmd.expects(:ssh).with("chpasswd", user: "root", stdin: "deploy:password\n")
     Cmd.expects(:ssh_write).with("/home/deploy/.ssh/id_rsa", "private-key", user: "root")
     Cmd.expects(:ssh_write).with("/home/deploy/.ssh/id_rsa.pub", "public-key", user: "root")
     Cmd.expects(:ssh_write).with("/etc/ssh/sshd_config", includes("PermitRootLogin no"), user: "root")

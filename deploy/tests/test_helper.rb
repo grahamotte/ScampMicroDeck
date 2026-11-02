@@ -14,6 +14,7 @@ require_relative "../lib/require"
 module DeployTestMethods
   CMD_LOCAL = Cmd.method(:local)
   CMD_SSH = Cmd.method(:ssh)
+  CMD_SSH_WRITE = Cmd.method(:ssh_write)
   REQ_CALL = Req.method(:call)
 end
 

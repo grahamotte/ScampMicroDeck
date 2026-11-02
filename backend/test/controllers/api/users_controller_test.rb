@@ -34,5 +34,35 @@ module Api
 
       assert_response :unauthorized
     end
+
+    def test_jwt_limits_attempts_per_ip
+      10.times { |i| post :jwt, params: { email: "user#{i}@example.com", password: "wrongpassword" } }
+      post :jwt, params: { email: @user.email, password: "password123" }
+
+      assert_response :too_many_requests
+      assert_equal({ "error" => "too many attempts" }, response.parsed_body)
+    end
+
+    def test_jwt_limits_attempts_per_email
+      10.times do |i|
+        request.remote_addr = "10.0.0.#{i}"
+        post :jwt, params: { email: " USER@example.com", password: "wrongpassword" }
+      end
+      request.remote_addr = "10.0.1.1"
+      post :jwt, params: { email: @user.email, password: "password123" }
+
+      assert_response :too_many_requests
+    end
+
+    def test_jwt_allows_other_emails_from_other_ips_after_an_email_is_limited
+      10.times do |i|
+        request.remote_addr = "10.0.0.#{i}"
+        post :jwt, params: { email: "nope@example.com", password: "wrongpassword" }
+      end
+      request.remote_addr = "10.0.1.1"
+      post :jwt, params: { email: @user.email, password: "password123" }
+
+      assert_response :success
+    end
   end
 end

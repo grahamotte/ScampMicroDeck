@@ -60,4 +60,30 @@ class UserTest < ActiveSupport::TestCase
     assert_equal user, user.authenticate("password123")
     assert_not user.authenticate("wrongpassword")
   end
+
+  test "starts with token version zero" do
+    assert_equal 0, User.create!(email: "user@example.com", password: "password123").token_version
+  end
+
+  test "increments token version when the password changes" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    user.update!(password: "newpassword123")
+
+    assert_equal 1, user.reload.token_version
+  end
+
+  test "keeps token version when other attributes change" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    user.update!(email: "new@example.com")
+
+    assert_equal 0, user.reload.token_version
+  end
+
+  test "revoke_tokens! increments token version" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    user.revoke_tokens!
+    user.revoke_tokens!
+
+    assert_equal 2, user.reload.token_version
+  end
 end
