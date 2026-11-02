@@ -1,7 +1,9 @@
-dashboard_username = ENV["DASHBOARD_USERNAME"].presence || "admin"
-dashboard_password = ENV["DASHBOARD_PASSWORD"].presence || "coolbeans"
+dashboard_username = ENV["DASHBOARD_USERNAME"].to_s
+dashboard_password = ENV["DASHBOARD_PASSWORD"].to_s
 
 GoodJob::Engine.middleware.use(Rack::Auth::Basic) do |username, password|
+  next false if dashboard_username.blank? || dashboard_password.blank?
+
   ActiveSupport::SecurityUtils.secure_compare(dashboard_username, username) & ActiveSupport::SecurityUtils.secure_compare(dashboard_password, password)
 end
 

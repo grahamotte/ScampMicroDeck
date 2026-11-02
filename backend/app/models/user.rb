@@ -7,6 +7,7 @@
 #  password_digest :string           not null
 #  created_at      :datetime         not null
 #  updated_at      :datetime         not null
+#  token_version   :integer          default(0), not null
 #
 # Indexes
 #
@@ -19,4 +20,16 @@ class User < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validates :password, length: { minimum: 8 }, allow_nil: true
+
+  before_update :increment_token_version, if: :will_save_change_to_password_digest?
+
+  def revoke_tokens!
+    increment!(:token_version)
+  end
+
+  private
+
+  def increment_token_version
+    self.token_version += 1
+  end
 end

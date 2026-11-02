@@ -1,24 +1,22 @@
 class Token
-  LIFETIME = 99.days
+  LIFETIME = 7.days
 
   class << self
     def make(email, password)
-      user = User.find_by(email:)
-      return if user.blank? || password.blank? || !user.authenticate(password)
-
-      generate_for_user(user)
+      generate_for_user(User.authenticate_by(email:, password:))
     end
 
     def generate_for_user(user)
       return if user.blank?
 
-      JWT.encode({ user_id: user.id, email: user.email, exp: LIFETIME.from_now.to_i }, secret)
+      JWT.encode({ user_id: user.id, email: user.email, token_version: user.token_version, exp: LIFETIME.from_now.to_i }, secret)
     end
 
     def verify(token)
       return if token.blank?
 
-      User.find_by(id: JWT.decode(token, secret).first["user_id"])
+      payload = JWT.decode(token, secret).first
+      User.find_by(id: payload["user_id"], token_version: payload["token_version"])
     rescue JWT::DecodeError
       nil
     end

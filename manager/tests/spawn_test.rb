@@ -38,6 +38,8 @@ class SpawnTestCredentials
       "JWT_SECRET" => "jwt-#{@calls}",
       "SECRET_KEY_BASE" => "secret-#{@calls}",
       "CRYPT_KEY" => "crypt-#{@calls}",
+      "DASHBOARD_USERNAME" => "admin",
+      "DASHBOARD_PASSWORD" => "dashboard-#{@calls}",
     }
   end
 end
@@ -77,6 +79,8 @@ class SpawnCredentialsTest < Minitest::Test
     assert_equal "2" * 128, credentials.fetch("JWT_SECRET")
     assert_equal "3" * 128, credentials.fetch("SECRET_KEY_BASE")
     assert_equal "4" * 128, credentials.fetch("CRYPT_KEY")
+    assert_equal "admin", credentials.fetch("DASHBOARD_USERNAME")
+    assert_equal "5" * 32, credentials.fetch("DASHBOARD_PASSWORD")
     assert_equal "ssh-rsa #{[ "public-key" ].pack("m0")} deploy@test", credentials.fetch("DEPLOY_SSH_KEY_PUB")
     assert_equal Digest::MD5.hexdigest("public-key").scan(/../).join(":"), credentials.fetch("DEPLOY_SSH_KEY_FINGERPRINT")
     assert_equal "private-key\n", credentials.fetch("DEPLOY_SSH_KEY_BASE64").unpack1("m0")
@@ -134,6 +138,9 @@ class SpawnerTest < Minitest::Test
     refute_includes File.read(File.join(target_dir, ".env.production")), "required"
     assert_equal "password-1", development.fetch("DEPLOY_PASSWORD")
     assert_equal "password-2", production.fetch("DEPLOY_PASSWORD")
+    assert_equal "admin", production.fetch("DASHBOARD_USERNAME")
+    assert_equal "dashboard-1", development.fetch("DASHBOARD_PASSWORD")
+    assert_equal "dashboard-2", production.fetch("DASHBOARD_PASSWORD")
     assert_equal "private-key-1\nsecond-line\n", development.fetch("DEPLOY_SSH_KEY_BASE64").unpack1("m0")
     refute_equal development.fetch("JWT_SECRET"), production.fetch("JWT_SECRET")
     assert_equal "public-key-2", production.fetch("DEPLOY_SSH_KEY_PUB")

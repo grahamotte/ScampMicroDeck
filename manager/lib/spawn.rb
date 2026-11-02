@@ -60,6 +60,8 @@ class SpawnCredentials
         "JWT_SECRET" => @random.hex(64),
         "SECRET_KEY_BASE" => @random.hex(64),
         "CRYPT_KEY" => @random.hex(64),
+        "DASHBOARD_USERNAME" => "admin",
+        "DASHBOARD_PASSWORD" => @random.hex(16),
       }
     end
   end
@@ -79,6 +81,8 @@ class Spawner
     ENVIRONMENT_KEYS +
     %w[
       CRYPT_KEY
+      DASHBOARD_PASSWORD
+      DASHBOARD_USERNAME
       DEPLOY_PASSWORD
       DEPLOY_SSH_KEY_BASE64
       DEPLOY_SSH_KEY_FINGERPRINT

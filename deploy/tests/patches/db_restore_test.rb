@@ -11,6 +11,7 @@ class DbRestorePatchTest < Minitest::Test
     assert_includes commands, "sudo systemctl start postgresql.service"
     assert_includes commands, "rm -f /home/deploy/app_production_2.sql"
     assert_service_order(commands)
+    refute commands.any? { |command| command.include?("access") || command.include?("secret") }
   end
 
   def test_always_restarts_services_if_restore_fails
@@ -44,7 +45,7 @@ class DbRestorePatchTest < Minitest::Test
       command != "which aws" && !command.include?("s3 ls") && !command.start_with?("systemctl show")
     end.returns("")
     Cmd.expects(:ssh).with("which aws").returns("/usr/bin/aws")
-    Cmd.expects(:ssh).with(includes("s3 ls")).returns("2026-01-01 1 other_1.sql\n2026-01-02 1 app_production_2.sql\n2026-01-03 1 app_production_1.sql")
+    Cmd.expects(:ssh).with(includes("s3 ls"), stdin: "access\nsecret\n").returns("2026-01-01 1 other_1.sql\n2026-01-02 1 app_production_2.sql\n2026-01-03 1 app_production_1.sql")
     Cmd.expects(:ssh).with(regexp_matches(/\Asystemctl show/)).at_least_once
       .returns("LoadState=loaded\nActiveState=active\nFreezerState=running\n")
     commands

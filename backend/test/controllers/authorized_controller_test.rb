@@ -50,6 +50,16 @@ class AuthorizedControllerTest < ActionController::TestCase
     assert_nil response.headers["refresh-token"]
   end
 
+  def test_rejects_revoked_token
+    @user.revoke_tokens!
+    @request.headers["Authorization"] = "Bearer #{@token}"
+
+    get :index
+
+    assert_response :unauthorized
+    assert_nil response.headers["refresh-token"]
+  end
+
   def test_rejects_missing_token
     get :index
 

@@ -27,13 +27,14 @@ class DbRestorePatch < BasePatch
     def aws_cmd(cmd)
       Cmd.ssh(
         [
-          "export AWS_ACCESS_KEY_ID=#{Constants.backup_access_key_id};",
-          "export AWS_SECRET_ACCESS_KEY=#{Constants.backup_secret_access_key};",
+          "read -r AWS_ACCESS_KEY_ID; read -r AWS_SECRET_ACCESS_KEY;",
+          "export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY;",
           "export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED;",
           "export AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED;",
           "aws --endpoint-url #{Constants.backup_endpoint}",
           cmd,
-        ].join(" ")
+        ].join(" "),
+        stdin: "#{Constants.backup_access_key_id}\n#{Constants.backup_secret_access_key}\n",
       )
     end
 

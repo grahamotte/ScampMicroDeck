@@ -58,6 +58,22 @@ module Api
       assert Time.iso8601(response.parsed_body.fetch("database_time"))
     end
 
+    def test_hc_limits_requests_per_ip
+      120.times { get :hc }
+      get :hc
+
+      assert_response :too_many_requests
+      assert_equal({ "error" => "too many requests" }, response.parsed_body)
+    end
+
+    def test_hc_allows_other_ips_after_an_ip_is_limited
+      121.times { get :hc }
+      request.remote_addr = "10.0.0.1"
+      get :hc
+
+      assert_response :success
+    end
+
     def test_error
       error = assert_raises(RuntimeError) { post :error }
 

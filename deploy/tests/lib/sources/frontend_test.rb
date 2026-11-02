@@ -25,6 +25,8 @@ class Sources::FrontendTest < Minitest::Test
     assert_includes locations, 'add_header Cache-Control "no-cache, no-store, must-revalidate"'
     assert_includes locations, "try_files $uri =404;"
     refute_includes locations, "proxy_pass"
+    assert_equal 3, locations.scan("add_header Strict-Transport-Security").size
+    assert_equal 3, locations.scan("add_header Content-Security-Policy").size
   end
 
   def test_locations_with_backend_paths
@@ -33,6 +35,33 @@ class Sources::FrontendTest < Minitest::Test
     assert_includes locations, "location /.well-known/ {"
     assert_includes locations, 'location ~ ^/(llms\\.txt$|mcp|oauth/) {'
     assert_equal [ "http://127.0.0.1:3000" ] * 2, locations.scan(/proxy_pass ([^;]+);/).flatten
+    locations.scan(/location \S+ \{[^}]*proxy_pass[^}]*\}/).each do |location|
+      refute_includes location, "add_header"
+    end
+  end
+
+  def test_headers
+    headers = Sources::Frontend.headers(name: "app")
+
+    assert_includes headers, 'add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;'
+    assert_includes headers, 'add_header X-Content-Type-Options "nosniff" always;'
+    assert_includes headers, 'add_header Referrer-Policy "strict-origin-when-cross-origin" always;'
+    assert_includes headers, %(add_header Content-Security-Policy "#{Sources::Frontend.content_security_policy(name: "app")}" always;)
+  end
+
+  def test_content_security_policy
+    policy = Sources::Frontend.content_security_policy(name: "app")
+
+    assert_includes policy, "default-src 'self'"
+    assert_includes policy, "script-src 'self';"
+    assert_includes policy, "connect-src 'self' https://example.com https://*.example.com"
+    assert_includes policy, "object-src 'none'"
+    assert_includes policy, "frame-ancestors 'none'"
+    refute_includes policy, '"'
+  end
+
+  def test_content_security_policy_from_config
+    assert_equal "default-src 'self'", Sources::Frontend.content_security_policy(name: "app", contentSecurityPolicy: "default-src 'self'")
   end
 
   def test_backend_locations

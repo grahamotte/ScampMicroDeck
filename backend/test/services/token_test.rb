@@ -27,7 +27,8 @@ class TokenTest < ActiveSupport::TestCase
 
     assert_equal @user.id, payload["user_id"]
     assert_equal @user.email, payload["email"]
-    assert_in_delta 99.days.from_now.to_i, payload["exp"], 5
+    assert_equal 0, payload["token_version"]
+    assert_in_delta 7.days.from_now.to_i, payload["exp"], 5
   end
 
   test "generate_for_user returns nil without a user" do
@@ -48,11 +49,38 @@ class TokenTest < ActiveSupport::TestCase
   end
 
   test "verify returns nil for a token signed with another secret" do
-    assert_nil Token.verify(JWT.encode({ user_id: @user.id, exp: 1.day.from_now.to_i }, "other"))
+    assert_nil Token.verify(JWT.encode({ user_id: @user.id, token_version: 0, exp: 1.day.from_now.to_i }, "other"))
   end
 
   test "verify returns nil for an expired token" do
-    assert_nil Token.verify(JWT.encode({ user_id: @user.id, exp: 1.second.ago.to_i }, ENV.fetch("JWT_SECRET")))
+    assert_nil Token.verify(JWT.encode({ user_id: @user.id, token_version: 0, exp: 1.second.ago.to_i }, ENV.fetch("JWT_SECRET")))
+  end
+
+  test "verify returns nil for a token without a token version" do
+    assert_nil Token.verify(JWT.encode({ user_id: @user.id, exp: 1.day.from_now.to_i }, ENV.fetch("JWT_SECRET")))
+  end
+
+  test "verify returns nil after the user's tokens are revoked" do
+    token = Token.generate_for_user(@user)
+    @user.revoke_tokens!
+
+    assert_nil Token.verify(token)
+    assert_equal @user, Token.verify(Token.generate_for_user(@user))
+  end
+
+  test "verify returns nil after a password change" do
+    token = Token.generate_for_user(@user)
+    @user.update!(password: "newpassword123")
+
+    assert_nil Token.verify(token)
+    assert_equal @user, Token.verify(Token.generate_for_user(@user))
+  end
+
+  test "verify keeps tokens valid across other user updates" do
+    token = Token.generate_for_user(@user)
+    @user.update!(email: "new@example.com")
+
+    assert_equal @user, Token.verify(token)
   end
 
   test "verify returns nil for a deleted user" do
