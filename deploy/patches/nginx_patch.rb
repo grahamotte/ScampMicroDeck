@@ -43,6 +43,15 @@ class NginxPatch < BasePatch
           }
 
           server {
+            listen 80 default_server;
+            listen [::]:80 default_server;
+            listen 443 ssl default_server;
+            http2 on;
+            ssl_reject_handshake on;
+            return 444;
+          }
+
+          server {
             listen 80;
             listen [::]:80;
             server_name #{Subdomains.domains.join(" ")};
@@ -59,7 +68,8 @@ class NginxPatch < BasePatch
         <<~TEXT
           server {
             server_name #{Subdomains.domains(subdomain).join(" ")};
-            listen 443 ssl http2;
+            listen 443 ssl;
+            http2 on;
             include /etc/letsencrypt/options-ssl-nginx.conf;
             ssl_certificate /etc/letsencrypt/live/#{Constants.domain}/fullchain.pem;
             ssl_certificate_key /etc/letsencrypt/live/#{Constants.domain}/privkey.pem;
