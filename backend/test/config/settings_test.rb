@@ -26,6 +26,16 @@ class SettingsTest < ActiveSupport::TestCase
     assert_equal 8, Settings.rails_max_threads
   end
 
+  def test_api_token_prefix_defaults_to_the_database
+    Settings.instance_variable_set(:@all, { database: "sundial" })
+
+    assert_equal "sundial", Settings.api_token_prefix
+
+    Settings.instance_variable_set(:@all, { database: "sundial", apiTokenPrefix: "sd" })
+
+    assert_equal "sd", Settings.api_token_prefix
+  end
+
   def test_root
     assert_equal File.expand_path("../../..", __dir__), Settings.root
   end

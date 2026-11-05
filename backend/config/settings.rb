@@ -6,6 +6,7 @@ class Settings
     def all = @all ||= JSON.parse(File.read(path), symbolize_names: true)
     def root = File.expand_path("../..", __dir__)
     def rails_max_threads = all[:railsMaxThreads]
+    def api_token_prefix = all[:apiTokenPrefix].presence || all.fetch(:database)
 
     def test_database(checkout = root)
       name = "#{all.fetch(:database)}_test"

@@ -1,4 +1,4 @@
-import { req } from "@/utils/req";
+import { gql } from "@/utils/req";
 import ReactDOM from "react-dom/client";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -14,18 +14,24 @@ const Hc = () => {
 
   useEffect(() => {
     const fetchData = () => {
-      req({
-        url: "/noop/hc",
-        params: { frontendTime: new Date().toISOString() },
+      gql({
+        query: `query($frontendTime: String) {
+          healthCheck(frontendTime: $frontendTime) {
+            frontendTime backendTime databaseTime hcJobFinishedAt
+          }
+        }`,
+        variables: { frontendTime: new Date().toISOString() },
         schema: z.object({
-          frontendTime: z.string(),
-          backendTime: z.string(),
-          databaseTime: z.string(),
-          hcJobFinishedAt: z.string().nullish(),
+          healthCheck: z.object({
+            frontendTime: z.string(),
+            backendTime: z.string(),
+            databaseTime: z.string(),
+            hcJobFinishedAt: z.string().nullish(),
+          }),
         }),
       })
         .then((response) => {
-          setData(response);
+          setData(response.healthCheck);
           setError(null);
         })
         .catch((responseError) => {
@@ -43,11 +49,9 @@ const Hc = () => {
   }, []);
 
   const triggerBackendError = () => {
-    void req({
-      method: "post",
-      url: "/noop/error",
-      schema: z.any(),
-    }).catch(() => undefined);
+    void gql({ query: "mutation { triggerError }", schema: z.any() }).catch(
+      () => undefined,
+    );
   };
 
   if (!data && !error) return <main>Loading...</main>;

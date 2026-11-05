@@ -24,6 +24,15 @@ The "Repo Specific" section blow contains rules specific to this repo only.
 12. On macOS, run root `mise` tasks from the worktree root in a non-login shell. For Codex `exec_command`, set `login: false` explicitly on each call that runs `mise`, including through wrappers. If Bundler reports system Ruby or a missing Bundler version, check tool resolution and retry the same root task this way before changing dependencies. Confirm the pinned tools with `mise which ruby` and `mise which bundle`; do not install gems into system Ruby, change lockfiles, or downgrade pinned versions to fix a shell-resolution failure. Agent shells on macOS run zsh, not bash: quote globs and URLs containing `?`, do not rely on unquoted variables splitting into words, remember that zsh arrays start at 1, and run bash scripts with `bash -c` or as a file with a bash shebang.
 13. `AGENTS.md` is the only agent-instruction file. Do not add `.agents/`, `.claude/`, `.codex/`, or `CLAUDE.md`; put repeatable operations in `runbooks/`.
 
+## API
+
+- The backend API is one GraphQL endpoint, `POST /graphql` on the `api` subdomain, built with graphql-ruby in `backend/app/graphql` around `AppSchema` and open to introspection.
+- Every root field in `Types::QueryType` and `Types::MutationType` declares `access:`, either `:public` or `:user`. `:user` takes `Authorization: Bearer` with either the 7-day JWT from the `createToken` mutation, refreshed in the `refresh-token` response header, or the user's non-expiring API token from `createApiToken`, formatted `<prefix>_<user id>_<secret>` and stored as a bcrypt digest. The prefix is `apiTokenPrefix` in `config.json`, or `database` when that is unset.
+- Raise `GraphQL::ExecutionError` with an `extensions.code` such as `NOT_FOUND`, `INVALID`, `UNAUTHENTICATED`, or `RATE_LIMITED` for expected failures, and limit public fields with `RateLimit`.
+- Batch associations and counts with `GraphQL::Dataloader` instead of loading them per object.
+- Frontends call the API through `gql` in `frontend/utils/req.ts` with Zod-validated responses.
+- Add plain routes only for responses that are not JSON or callers that cannot send GraphQL, such as `GET /noop/ping` for deploy status.
+
 ## Ruby
 
 - Use `.blank?` and `.present?` for presence checks instead of `.empty?`, `.nil?`, or truthiness checks.

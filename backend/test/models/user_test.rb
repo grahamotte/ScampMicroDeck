@@ -1,5 +1,21 @@
 require "test_helper"
 
+# == Schema Information
+#
+# Table name: users
+#
+#  id               :uuid             not null, primary key
+#  api_token_digest :string
+#  email            :string           not null
+#  password_digest  :string           not null
+#  token_version    :integer          default(0), not null
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#
+# Indexes
+#
+#  index_users_on_email  (email) UNIQUE
+#
 class UserTest < ActiveSupport::TestCase
   test "valid with email and password" do
     assert_predicate User.new(email: "user@example.com", password: "password123"), :valid?
@@ -85,5 +101,70 @@ class UserTest < ActiveSupport::TestCase
     user.revoke_tokens!
 
     assert_equal 2, user.reload.token_version
+  end
+
+  test "generate_api_token! stores only a digest" do
+    user = User.create!(email: "user@example.com", password: "password123")
+
+    token = user.generate_api_token!
+
+    assert_match(/\A#{Settings.api_token_prefix}_#{user.id}_[1-9A-HJ-NP-Za-km-z]{40}\z/, token)
+    assert user.reload.api_token?
+    assert_not_includes user.api_token_digest, token.split("_").last
+    assert_equal user, User.find_by_api_token(token)
+  end
+
+  test "generating a new API token replaces the old one" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    old = user.generate_api_token!
+    new = user.generate_api_token!
+
+    assert_nil User.find_by_api_token(old)
+    assert_equal user, User.find_by_api_token(new)
+  end
+
+  test "generating an API token keeps token version" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    user.generate_api_token!
+
+    assert_equal 0, user.reload.token_version
+  end
+
+  test "revoke_api_token! removes the API token" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    token = user.generate_api_token!
+
+    user.revoke_api_token!
+
+    assert_not user.reload.api_token?
+    assert_nil User.find_by_api_token(token)
+  end
+
+  test "find_by_api_token rejects bad tokens" do
+    prefix = Settings.api_token_prefix
+    user = User.create!(email: "user@example.com", password: "password123")
+    secret = user.generate_api_token!.split("_").last
+    other = User.create!(email: "other@example.com", password: "password123")
+
+    [ nil, "", "#{prefix}_", "#{prefix}_#{user.id}_", "#{prefix}_#{user.id}_wrong", "xx_#{user.id}_#{secret}", "#{prefix}_#{other.id}_#{secret}", "#{prefix}_not-a-uuid_#{secret}" ].each do |token|
+      assert_nil User.find_by_api_token(token), token.inspect
+    end
+  end
+
+  test "find_by_api_token accepts a prefix with underscores" do
+    Settings.instance_variable_set(:@all, Settings.all.merge(apiTokenPrefix: "my_app"))
+    user = User.create!(email: "user@example.com", password: "password123")
+    token = user.generate_api_token!
+
+    assert token.start_with?("my_app_#{user.id}_")
+    assert_equal user, User.find_by_api_token(token)
+  ensure
+    Settings.instance_variable_set(:@all, nil)
+  end
+
+  test "api_token? checks the prefix" do
+    assert User.api_token?("#{Settings.api_token_prefix}_x_y")
+    assert_not User.api_token?("eyJhbGciOi")
+    assert_not User.api_token?(nil)
   end
 end
