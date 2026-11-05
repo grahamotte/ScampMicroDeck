@@ -27,6 +27,21 @@ module Types
       end
     end
 
+    def test_create_token_logs_bad_credentials
+      User.create!(email: "user@example.com", password: "password123")
+      output = StringIO.new
+      logger = ActiveSupport::Logger.new(output)
+      logger.formatter = ->(severity, _time, _progname, msg) { "#{severity} #{msg}\n" }
+      Rails.logger.broadcast_to(logger)
+
+      create_token(" User@example.com", "wrong", request: graphql_request(remote_addr: "10.0.0.7"))
+
+      assert_includes output.string, "WARN #{AuthLog.body("bad_credentials", operation: "createToken", ip: "10.0.0.7", email: "user@example.com")}\n"
+      refute_includes output.string, "wrong"
+    ensure
+      Rails.logger.stop_broadcasting_to(logger)
+    end
+
     def test_create_token_limits_attempts_per_ip
       User.create!(email: "user@example.com", password: "password123")
       10.times { |i| create_token("user#{i}@example.com", "wrong") }
