@@ -85,6 +85,52 @@ export const req = async <T extends z.ZodSchema<any>>({
   }
 };
 
+const zGraphqlErrors = z
+  .array(
+    z.object({
+      message: z.string(),
+      extensions: z.object({ code: z.string().nullish() }).nullish(),
+    }),
+  )
+  .nullish();
+
+export const gql = async <T extends z.ZodTypeAny>({
+  query,
+  variables,
+  schema,
+}: {
+  query: string;
+  variables?: Record<string, unknown>;
+  schema: T;
+}): Promise<z.infer<T>> => {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  const jwt = token();
+  if (jwt) headers.set("Authorization", `Bearer ${jwt}`);
+
+  const response = await fetch(
+    new URL("/graphql", import.meta.env.VITE_API_URL || window.location.origin),
+    { method: "post", headers, body: JSON.stringify({ query, variables }) },
+  );
+  const responseText = await response.text();
+  const body = responseText ? JSON.parse(responseText) : null;
+
+  const refreshToken = response.headers.get("refresh-token");
+  if (refreshToken) localStorage.setItem("jwt", refreshToken);
+
+  const errors = zGraphqlErrors.parse(body?.errors) || [];
+  if (errors.some((error) => error.extensions?.code === "UNAUTHENTICATED")) {
+    void logout();
+  }
+  if (!response.ok) {
+    throw new Error(`Request failed with status code ${response.status}`);
+  }
+  if (errors.length > 0) {
+    throw new Error(errors.map((error) => error.message).join(", "));
+  }
+
+  return schema.parse(body?.data);
+};
+
 export const login = ({
   email,
   password,
@@ -92,13 +138,14 @@ export const login = ({
   email: string;
   password: string;
 }) => {
-  return req({
-    method: "post",
-    url: "/users/jwt",
-    data: { email, password },
-    schema: z.object({ token: z.string() }),
+  return gql({
+    query: `mutation($email: String!, $password: String!) {
+      createToken(email: $email, password: $password)
+    }`,
+    variables: { email, password },
+    schema: z.object({ createToken: z.string() }),
   }).then((data) => {
-    localStorage.setItem("jwt", data.token);
+    localStorage.setItem("jwt", data.createToken);
   });
 };
 

@@ -1,20 +1,9 @@
 Rails.application.routes.draw do
   constraints(host: /\Ajobs\./) { mount GoodJob::Engine => "/" }
 
-  namespace :api, path: "" do
-    resources :noop, only: [] do
-      collection do
-        get :ping
-        get :lock
-        get :hc
-        post :error
-      end
-    end
+  post "graphql", to: "graphql#execute"
 
-    resources :users, only: [] do
-      collection do
-        post :jwt
-      end
-    end
+  namespace :api, path: "" do
+    get "noop/ping", to: "noop#ping"
   end
 end

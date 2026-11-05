@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_072426) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_194453) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -112,6 +112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_072426) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "token_version", default: 0, null: false
+    t.string "api_token_digest"
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 end
