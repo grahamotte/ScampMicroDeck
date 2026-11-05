@@ -1,6 +1,19 @@
 require "test_helper"
 
 class RateLimitTest < ActiveSupport::TestCase
+  def setup
+    super
+    @output = StringIO.new
+    @logger = ActiveSupport::Logger.new(@output)
+    @logger.formatter = ->(severity, _time, _progname, msg) { "#{severity} #{msg}\n" }
+    Rails.logger.broadcast_to(@logger)
+  end
+
+  def teardown
+    Rails.logger.stop_broadcasting_to(@logger)
+    super
+  end
+
   def test_allows_calls_up_to_the_limit
     3.times { refute RateLimit.exceeded?("test", by: "a", to: 3, within: 1.minute) }
 
@@ -20,5 +33,18 @@ class RateLimitTest < ActiveSupport::TestCase
     travel 2.minutes do
       refute RateLimit.exceeded?("test", by: "a", to: 3, within: 1.minute)
     end
+  end
+
+  def test_logs_each_call_over_the_limit
+    3.times { RateLimit.exceeded?("test", by: "a", to: 3, within: 1.minute) }
+
+    assert_equal "", @output.string
+
+    2.times { RateLimit.exceeded?("test", by: "a", to: 3, within: 1.minute) }
+
+    assert_equal(
+      [ 4, 5 ].map { |count| "WARN #{AuthLog.body("rate_limited", limit: "test", key: "a", count:, to: 3)}\n" }.join,
+      @output.string,
+    )
   end
 end

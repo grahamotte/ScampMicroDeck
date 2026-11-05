@@ -19,8 +19,10 @@ module Types
         raise GraphQL::ExecutionError.new("too many attempts", extensions: { code: "RATE_LIMITED" })
       end
 
-      Token.make(email, password).presence ||
-        raise(GraphQL::ExecutionError.new("bad email/password", extensions: { code: "UNAUTHENTICATED" }))
+      Token.make(email, password).presence || begin
+        AuthLog.warn("bad_credentials", operation: "createToken", ip: request.remote_ip, email: User.normalize_value_for(:email, email))
+        raise GraphQL::ExecutionError.new("bad email/password", extensions: { code: "UNAUTHENTICATED" })
+      end
     end
 
     def create_api_token = context[:current_user].generate_api_token!
