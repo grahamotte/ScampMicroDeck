@@ -1,21 +1,22 @@
 require_relative "../test_helper"
 
 class SecretsPatchTest < Minitest::Test
-  def test_always_writes_each_environment_file_once
+  def test_always_writes_only_server_keys_privately_and_removes_operator_copies
+    File.write(Constants.local_env_path, "CLOUDFLARE_TOKEN=cloudflare\nDEPLOY_SSH_KEY_BASE64=private\nRAILS_ENV=production\n")
+    commands = []
     writes = []
+    Cmd.stubs(:ssh).with { |*args, **| commands << args; true }
     Cmd.stubs(:ssh_write).with { |path, content, **| writes << [ path, content ]; true }
 
     SecretsPatch.always
-    SecretsPatch.always
 
-    content = File.read(Constants.local_env_path)
+    assert_equal [ [ Constants.remote_env_path, "RAILS_ENV=production\n" ] ], writes
     assert_equal(
       [
-        [ Constants.remote_env_path, content ],
-        [ Constants.remote_env_prod_path, content ],
-        [ File.join(Constants.remote_home_dir, ".env"), content ],
+        [ "umask 077 && touch ? && chmod 600 ?", Constants.remote_env_path, Constants.remote_env_path ],
+        [ "rm -f ? ? ?", Constants.remote_env_prod_path, "/home/deploy/.env", "/home/deploy/.ssh/id_rsa" ],
       ],
-      writes,
+      commands,
     )
   end
 end

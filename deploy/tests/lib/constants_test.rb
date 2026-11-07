@@ -11,6 +11,49 @@ class ConstantsTest < Minitest::Test
     assert_equal "git@github.com:example/app.git", Constants.github_repo
   end
 
+  def test_server_env_drops_operator_only_keys
+    File.write(
+      Constants.local_env_path,
+      [
+        "# Production",
+        "APPLE_KEY_ID='key'",
+        "BACKUP_BUCKET='backups'",
+        "CLOUDFLARE_TOKEN='cloudflare'",
+        "DEPLOY_PASSWORD='password'",
+        "DEPLOY_SSH_KEY_BASE64='private'",
+        "DEPLOY_SSH_KEY_PUB='public'",
+        "DEPLOY_USER='deploy'",
+        "DIGITAL_OCEAN_TOKEN='digital-ocean'",
+        "export JWT_SECRET='jwt'",
+        "RAILS_ENV='production'",
+        "",
+      ].join("\n"),
+    )
+
+    assert_equal(
+      "# Production\nBACKUP_BUCKET='backups'\nDEPLOY_USER='deploy'\nexport JWT_SECRET='jwt'\nRAILS_ENV='production'\n",
+      Constants.server_env,
+    )
+  end
+
+  def test_server_env_uses_the_config_list_of_operator_only_keys
+    config = JSON.parse(File.read(Constants.config_path)).merge("operatorOnlyEnvKeys" => [ "PUBLISH_*", "RAILS_ENV" ])
+    File.write(Constants.config_path, JSON.generate(config))
+    Constants.instance_variable_set(:@config, nil)
+    File.write(Constants.local_env_path, "APPLE_TEAM_ID=team\nNODE_ENV=production\nPUBLISH_TOKEN=token\nRAILS_ENV=production\n")
+
+    assert_equal [ "PUBLISH_*", "RAILS_ENV" ], Constants.operator_only_env_keys
+    assert_equal "APPLE_TEAM_ID=team\nNODE_ENV=production\n", Constants.server_env
+  end
+
+  def test_server_env_requires_the_config_list_of_operator_only_keys
+    config = JSON.parse(File.read(Constants.config_path)).except("operatorOnlyEnvKeys")
+    File.write(Constants.config_path, JSON.generate(config))
+    Constants.instance_variable_set(:@config, nil)
+
+    assert_raises(KeyError) { Constants.server_env }
+  end
+
   def test_ssh_key_decodes_its_base64_value
     previous = ENV["DEPLOY_SSH_KEY_BASE64"]
     ENV["DEPLOY_SSH_KEY_BASE64"] = [ "-----BEGIN KEY-----\nbody\n-----END KEY-----\n" ].pack("m0")

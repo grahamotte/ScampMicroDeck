@@ -79,6 +79,7 @@ module DeployTestIsolation
         domain: "example.com",
         githubRepo: "git@github.com:example/app.git",
         database: "app",
+        operatorOnlyEnvKeys: %w[APPLE_* CLOUDFLARE_TOKEN DEPLOY_PASSWORD DEPLOY_SSH_KEY_* DIGITAL_OCEAN_TOKEN],
         instance: { region: "test-region", size: "test-size" },
         subdomains: [
           { name: "website", subdomains: [ "", "www" ], source: "website" },

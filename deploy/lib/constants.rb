@@ -28,6 +28,13 @@ class Constants
     def remote_env_path = File.join(remote_root, ".env")
     def remote_env_prod_path = File.join(remote_root, ".env.production")
     def local_env_path = @local_env_path || File.join(local_root, ".env.production")
+    def operator_only_env_keys = config.fetch(:operatorOnlyEnvKeys)
+    def server_env
+      File.read(local_env_path).lines.reject do |line|
+        key = line[/\A\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=/, 1]
+        key.present? && operator_only_env_keys.any? { |pattern| File.fnmatch?(pattern, key) }
+      end.join
+    end
     def db_name = "#{config.fetch(:database)}_production"
     def backup_access_key_id = ENV.fetch("BACKUP_ACCESS_KEY_ID")
     def backup_secret_access_key = ENV.fetch("BACKUP_SECRET_ACCESS_KEY")
