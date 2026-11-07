@@ -5,6 +5,13 @@ class ConstantsTest < Minitest::Test
     assert_equal "/var/www/example.com", Constants.remote_root
     assert_equal "/home/deploy", Constants.remote_home_dir
     assert_equal "/home/deploy/example.com.git", Constants.remote_git_dir
+    assert_equal "app", Constants.app_user
+    assert_equal "/home/app", Constants.app_home_dir
+    assert_equal "/home/deploy/.local/share/mise", Constants.remote_mise_data_dir
+    assert_equal(
+      %w[/var/www/example.com/backend/tmp /var/www/example.com/backend/storage /var/www/example.com/backend/log],
+      Constants.app_writable_dirs,
+    )
     assert_equal "/var/www/example.com/.env", Constants.remote_env_path
     assert_equal "/var/www/example.com/.env.production", Constants.remote_env_prod_path
     assert_equal File.join(@deploy_test_dir, ".env.production"), Constants.local_env_path
@@ -84,6 +91,15 @@ class ConstantsTest < Minitest::Test
 
     assert_equal [ "example.net" ], Constants.redirect_domains
     assert_equal [ "example.com", "example.net" ], Constants.mail_domains
+  end
+
+  def test_resend_domains
+    assert_equal [], Constants.resend_domains
+
+    File.write(Constants.config_path, JSON.generate(domain: "example.com", resendDomains: [ { domain: "example.com", region: "us-east-1", dkimPublicKey: "p=KEY" } ]))
+    Constants.instance_variable_set(:@config, nil)
+
+    assert_equal [ { domain: "example.com", region: "us-east-1", dkimPublicKey: "p=KEY" } ], Constants.resend_domains
   end
 
   def test_deploy_ref

@@ -15,7 +15,16 @@ class DeployUserPatch < BasePatch
       Cmd.ssh("useradd #{user} -m", user: "root")
       Cmd.ssh("chsh -s /bin/bash #{user}", user: "root")
       Cmd.ssh("chpasswd", user: "root", stdin: "#{user}:#{pass}\n")
-      Cmd.ssh("echo '#{user} ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers", user: "root")
+      Cmd.ssh(
+        "cat > ? && chmod 0440 ? && visudo -cf ? && mv ? ?",
+        "/etc/sudoers.d/#{user}.tmp",
+        "/etc/sudoers.d/#{user}.tmp",
+        "/etc/sudoers.d/#{user}.tmp",
+        "/etc/sudoers.d/#{user}.tmp",
+        "/etc/sudoers.d/#{user}",
+        user: "root",
+        stdin: "#{user} ALL=(ALL) NOPASSWD: ALL\n",
+      )
 
       # keyfile
       Cmd.ssh("cp -r ~/.ssh /home/#{user}/", user: "root")

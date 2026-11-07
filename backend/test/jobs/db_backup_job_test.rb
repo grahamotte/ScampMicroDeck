@@ -11,7 +11,6 @@ class DbBackupJobTest < ActiveSupport::TestCase
     ENV["BACKUP_ACCESS_KEY_ID"] = "test_access_key"
     ENV["BACKUP_SECRET_ACCESS_KEY"] = "test_secret_key"
     ENV["BACKUP_LOCAL_DIR"] = @backup_directory
-    ENV["DEPLOY_USER"] = "deploy"
     ENV["BACKUP_ENDPOINT"] = "https://s3.example.com"
     ENV["BACKUP_BUCKET"] = "test-bucket"
   end
@@ -22,10 +21,15 @@ class DbBackupJobTest < ActiveSupport::TestCase
       BACKUP_ACCESS_KEY_ID
       BACKUP_SECRET_ACCESS_KEY
       BACKUP_LOCAL_DIR
-      DEPLOY_USER
       BACKUP_ENDPOINT
       BACKUP_BUCKET
     ].each { |key| ENV.delete(key) }
+  end
+
+  def test_backup_directory_defaults_to_the_home_directory
+    ENV.delete("BACKUP_LOCAL_DIR")
+
+    assert_equal File.join(Dir.home, "backups"), DbBackupJob.new.send(:backup_directory)
   end
 
   def test_perform_uploads_verifies_and_prunes_backups
@@ -48,7 +52,7 @@ class DbBackupJobTest < ActiveSupport::TestCase
     dump = commands.find { |_, command| command.first == "/usr/bin/pg_dump" }.last
     upload = commands.find { |_, command| command.each_cons(2).any? { |items| items == [ "s3", "cp" ] } }.last
     key = File.basename(upload.fetch(-2))
-    assert_equal [ "-U", "deploy", "--clean" ], dump.slice(1, 3)
+    assert_equal [ "--clean", "--file" ], dump.slice(1, 2)
     assert_equal [ "#{@backup_directory}/#{key}", "s3://test-bucket/#{key}" ], upload.last(2)
     assert commands.any? { |_, command| command.last(4) == [ "--bucket", "test-bucket", "--key", key ] }
     assert commands.any? { |_, command| command.last == "s3://test-bucket/#{outdated}" }

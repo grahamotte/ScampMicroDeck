@@ -1,7 +1,13 @@
 class SecretsPatch < BasePatch
   class << self
     def always
-      Cmd.ssh("umask 077 && touch ? && chmod 600 ?", Constants.remote_env_path, Constants.remote_env_path)
+      Cmd.ssh(
+        "umask 077 && touch ? && sudo chgrp ? ? && chmod 640 ?",
+        Constants.remote_env_path,
+        Constants.app_user,
+        Constants.remote_env_path,
+        Constants.remote_env_path,
+      )
       Cmd.ssh_write(Constants.remote_env_path, Constants.server_env)
       Cmd.ssh(
         "rm -f ? ? ?",

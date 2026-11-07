@@ -11,5 +11,3 @@ test:
 production:
   <<: *default
   database: <%= Settings.all.fetch(:database) %>_production
-  username: deploy
-  password:

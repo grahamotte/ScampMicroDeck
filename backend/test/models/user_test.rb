@@ -114,6 +114,36 @@ class UserTest < ActiveSupport::TestCase
     assert_equal user, User.find_by_api_token(token)
   end
 
+  test "changing the password removes the API token" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    token = user.generate_api_token!
+
+    user.update!(password: "newpassword123")
+
+    assert_not user.reload.api_token?
+    assert_nil User.find_by_api_token(token)
+  end
+
+  test "changing other attributes keeps the API token" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    token = user.generate_api_token!
+
+    user.update!(email: "new@example.com")
+
+    assert_equal user, User.find_by_api_token(token)
+  end
+
+  test "revoke_tokens! removes the API token" do
+    user = User.create!(email: "user@example.com", password: "password123")
+    token = user.generate_api_token!
+
+    user.revoke_tokens!
+
+    assert_not user.reload.api_token?
+    assert_nil User.find_by_api_token(token)
+    assert_equal user, User.find_by_api_token(user.generate_api_token!)
+  end
+
   test "generating a new API token replaces the old one" do
     user = User.create!(email: "user@example.com", password: "password123")
     old = user.generate_api_token!

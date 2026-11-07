@@ -8,7 +8,7 @@ module Types
       argument :password, String
     end
 
-    field :create_api_token, String, null: false, access: :user, description: "Create or replace the signed-in user's API token. It does not expire and works like a JWT in \"Authorization: Bearer <token>\". It is returned only once; only a hash is stored."
+    field :create_api_token, String, null: false, access: :user, description: "Create or replace the signed-in user's API token. It does not expire, is deleted when the password changes or the user's tokens are revoked, and works like a JWT in \"Authorization: Bearer <token>\". It is returned only once; only a hash is stored."
     field :revoke_api_token, Boolean, null: false, access: :user, description: "Delete the signed-in user's API token."
     field :trigger_error, Boolean, null: false, access: :public, description: "Raise a test backend error."
 

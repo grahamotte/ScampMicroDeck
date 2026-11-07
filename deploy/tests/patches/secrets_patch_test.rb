@@ -13,7 +13,13 @@ class SecretsPatchTest < Minitest::Test
     assert_equal [ [ Constants.remote_env_path, "RAILS_ENV=production\n" ] ], writes
     assert_equal(
       [
-        [ "umask 077 && touch ? && chmod 600 ?", Constants.remote_env_path, Constants.remote_env_path ],
+        [
+          "umask 077 && touch ? && sudo chgrp ? ? && chmod 640 ?",
+          Constants.remote_env_path,
+          "app",
+          Constants.remote_env_path,
+          Constants.remote_env_path,
+        ],
         [ "rm -f ? ? ?", Constants.remote_env_prod_path, "/home/deploy/.env", "/home/deploy/.ssh/id_rsa" ],
       ],
       commands,

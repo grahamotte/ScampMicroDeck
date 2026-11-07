@@ -13,6 +13,7 @@ class DbRestorePatch < BasePatch
 
       begin
         Cmd.ssh("psql -v ON_ERROR_STOP=1 #{Constants.db_name} < #{path}")
+        Cmd.ssh("sudo -u postgres psql -d #{Constants.db_name} -c \"REASSIGN OWNED BY #{Constants.deploy_user} TO #{Constants.app_user}\"")
         Instance.start_service(:postgresql)
 
         Cmd.ssh("rm -f #{path}")

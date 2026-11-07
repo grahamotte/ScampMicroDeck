@@ -10,6 +10,10 @@ class Constants
     def local_git_dir = File.join(local_root, "deploy", "tmp", "#{domain}.git")
     def remote_git_dir = "/home/#{deploy_user}/#{domain}.git"
     def deploy_user = ENV.fetch("DEPLOY_USER")
+    def app_user = "app"
+    def app_home_dir = "/home/#{app_user}"
+    def remote_mise_data_dir = File.join(remote_home_dir, ".local", "share", "mise")
+    def app_writable_dirs = %w[tmp storage log].map { |dir| File.join(remote_root, "backend", dir) }
     def deploy_password = ENV.fetch("DEPLOY_PASSWORD")
     def ssh_key_fingerprint = ENV.fetch("DEPLOY_SSH_KEY_FINGERPRINT")
     def digital_ocean_token = ENV.fetch("DIGITAL_OCEAN_TOKEN")
@@ -22,6 +26,7 @@ class Constants
     end
     def redirect_domains = config.fetch(:redirectDomains, [])
     def mail_domains = [ domain, *redirect_domains ]
+    def resend_domains = config.fetch(:resendDomains, [])
     def deploy_ref = ENV["DEPLOY_REF"].blank? ? "origin/master" : ENV["DEPLOY_REF"]
     def instance_region = config.dig(:instance, :region)
     def instance_size = config.dig(:instance, :size)

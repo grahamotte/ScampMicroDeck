@@ -2,23 +2,31 @@ require "open3"
 require "path"
 
 class Agent
+  PERMISSION = {
+    "bash" => "deny",
+    "task" => "deny",
+    "skill" => "deny",
+    "external_directory" => "deny",
+  }.freeze
+
   class << self
-    def call(model: "deepseek/deepseek-v4-flash", effort: "high", before_run: nil, after_run: nil, prompt:, env: {})
+    def call(model: "deepseek/deepseek-v4-flash", effort: "high", before_run: nil, after_run: nil, prompt:, env: {}, permission: {})
       Path.with_tmp_dir do |dir|
         before_run&.call(dir)
-        result = new(model:, effort:, prompt:, dir:, env:).call
+        result = new(model:, effort:, prompt:, dir:, env:, permission:).call
         after_run&.call(dir)
         result
       end
     end
   end
 
-  def initialize(model:, effort:, prompt:, dir:, env: {})
+  def initialize(model:, effort:, prompt:, dir:, env: {}, permission: {})
     @model = model.start_with?("openrouter/") ? model : "openrouter/#{model}"
     @effort = effort
     @prompt = prompt
     @dir = dir
     @env = env
+    @permission = permission
   end
 
   def call
@@ -46,9 +54,18 @@ class Agent
     Open3.capture3(environment, *command, **options)
   end
 
-  def environment = { "OPENROUTER_API_KEY" => ENV.fetch("OPENROUTER_TOKEN"), "TMPDIR" => @dir, "PWD" => @dir }.merge(@env)
+  def environment
+    {
+      "PATH" => ENV.fetch("PATH"),
+      "HOME" => ENV.fetch("HOME"),
+      "OPENROUTER_API_KEY" => ENV.fetch("OPENROUTER_TOKEN"),
+      "OPENCODE_CONFIG_CONTENT" => JSON.generate(permission: PERMISSION.merge(@permission.stringify_keys)),
+      "TMPDIR" => @dir,
+      "PWD" => @dir,
+    }.merge(@env)
+  end
 
-  def options = { stdin_data: @prompt, chdir: @dir }
+  def options = { stdin_data: @prompt, chdir: @dir, unsetenv_others: true }
 
   def command
     [

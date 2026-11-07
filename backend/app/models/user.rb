@@ -23,7 +23,7 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: true
   validates :password, length: { minimum: 8 }, allow_nil: true
 
-  before_update :increment_token_version, if: :will_save_change_to_password_digest?
+  before_update :revoke_sign_ins, if: :will_save_change_to_password_digest?
 
   def self.find_by_api_token(token)
     return if api_token?(token).blank?
@@ -40,6 +40,7 @@ class User < ApplicationRecord
 
   def revoke_tokens!
     increment!(:token_version)
+    revoke_api_token!
   end
 
   def generate_api_token!
@@ -56,7 +57,8 @@ class User < ApplicationRecord
 
   private
 
-  def increment_token_version
+  def revoke_sign_ins
     self.token_version += 1
+    self.api_token_digest = nil
   end
 end

@@ -1,6 +1,6 @@
 # Deploy
 
-`mise deploy` fetches `origin` and deploys `origin/master`, whatever is checked out locally. It provisions and updates the droplet when `config.json` has `frontend` or `backend` subdomains, builds the Astro website and deploys it to Cloudflare Workers when it has `website` subdomains, and sets up Cloudflare redirects for any `redirectDomains`. It adds Fastmail mail records to the domain and each redirect domain on every deploy. Only merged changes are deployed.
+`mise deploy` fetches `origin` and deploys `origin/master`, whatever is checked out locally. It provisions and updates the droplet when `config.json` has `frontend` or `backend` subdomains, builds the Astro website and deploys it to Cloudflare Workers when it has `website` subdomains, and sets up Cloudflare redirects for any `redirectDomains`. It adds Fastmail mail records and a DMARC record to the domain and each redirect domain on every deploy, plus Resend records for any `resendDomains`. Only merged changes are deployed.
 
 Before it starts, `mise deploy` runs `mise deploy:secrets`, as does `mise deploy:patch`: it rewrites the main checkout's `.env.*` files from 1Password with Mr. Moto's `mr secrets` and copies `.env.production` into the checkout running the deploy, so production always gets the current secrets. `mr` must be on PATH. If that step fails, treat it as a credentials failure: fix the 1Password item or the `mr secrets` access and rerun; do not edit or copy `.env.production` by hand to get past it.
 

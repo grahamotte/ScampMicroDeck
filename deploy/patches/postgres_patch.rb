@@ -2,8 +2,11 @@ class PostgresPatch < BasePatch
   class << self
     def needed?
       return true if Instance.not_installed?("psql")
-      return true if !user_exists?
+      return true if !user_exists?(Constants.deploy_user)
+      return true if !user_exists?(Constants.app_user)
       return true if !db_exists?
+      return true if !db_owned_by_app?
+      return true if !pg_hba_conf_current?
       return true if !journal_conf_current?
 
       false
@@ -28,9 +31,15 @@ class PostgresPatch < BasePatch
       Cmd.ssh_write(pg_hba_conf_path, pg_hba_conf, sudo: true)
       Cmd.ssh_write(journal_conf_path, journal_conf, sudo: true)
 
-      Cmd.ssh("sudo -u postgres createuser -s #{Constants.deploy_user}") unless user_exists?
+      Cmd.ssh("sudo -u postgres createuser -s #{Constants.deploy_user}") unless user_exists?(Constants.deploy_user)
+      Cmd.ssh("sudo -u postgres createuser --no-superuser --no-createdb --no-createrole #{Constants.app_user}") unless user_exists?(Constants.app_user)
 
-      Cmd.ssh("sudo -u postgres createdb #{Constants.db_name}") unless db_exists?
+      Cmd.ssh("sudo -u postgres createdb -O #{Constants.app_user} #{Constants.db_name}") unless db_exists?
+
+      unless db_owned_by_app?
+        Cmd.ssh("sudo -u postgres psql -d #{Constants.db_name} -c \"ALTER DATABASE #{Constants.db_name} OWNER TO #{Constants.app_user}\"")
+        Cmd.ssh("sudo -u postgres psql -d #{Constants.db_name} -c \"REASSIGN OWNED BY #{Constants.deploy_user} TO #{Constants.app_user}\"")
+      end
 
       Instance.restart_service("postgresql")
     end
@@ -42,11 +51,11 @@ class PostgresPatch < BasePatch
     def pg_hba_conf = <<~TEXT
       local   all             postgres                                peer
       local   all             all                                     peer
-      host    all             all             127.0.0.1/32            trust
-      host    all             all             ::1/128                 trust
-      local   replication     all                                     trust
-      host    replication     all             127.0.0.1/32            trust
-      host    replication     all             ::1/128                 trust
+      host    all             all             127.0.0.1/32            scram-sha-256
+      host    all             all             ::1/128                 scram-sha-256
+      local   replication     all                                     peer
+      host    replication     all             127.0.0.1/32            scram-sha-256
+      host    replication     all             ::1/128                 scram-sha-256
     TEXT
 
     def journal_conf_path = "/etc/postgresql/18/main/conf.d/journal.conf"
@@ -56,17 +65,45 @@ class PostgresPatch < BasePatch
       syslog_ident = 'postgres'
     TEXT
 
+    def pg_hba_conf_current?
+      Cmd.ssh("sudo cat #{pg_hba_conf_path} 2>/dev/null || true") == pg_hba_conf
+    end
+
     def journal_conf_current?
       Cmd.ssh("sudo cat #{journal_conf_path} 2>/dev/null || true") == journal_conf
     end
 
-    def user_exists?
+    def user_exists?(name)
       Cmd
-        .ssh("sudo -u postgres psql -c \"SELECT 'asstits' FROM pg_roles WHERE rolname = '#{Constants.deploy_user}'\"")
+        .ssh("sudo -u postgres psql -c \"SELECT 'asstits' FROM pg_roles WHERE rolname = '#{name}'\"")
         .include?("asstits")
     rescue StandardError => e
       puts e.message
       false
+    end
+
+    def db_owned_by_app?
+      Cmd.ssh("sudo -u postgres psql -d #{Constants.db_name} -Atc \"#{db_owned_by_app_query}\"").strip == "t"
+    rescue StandardError => e
+      puts e.message
+      false
+    end
+
+    def db_owned_by_app_query
+      [
+        "SELECT pg_get_userbyid(datdba) = '#{Constants.app_user}'",
+        "AND NOT EXISTS (SELECT 1 FROM (#{owners_query}) AS objects WHERE pg_get_userbyid(owner) = '#{Constants.deploy_user}')",
+        "FROM pg_database WHERE datname = current_database()",
+      ].join(" ")
+    end
+
+    def owners_query
+      [
+        "SELECT relowner AS owner FROM pg_class",
+        "SELECT proowner FROM pg_proc",
+        "SELECT typowner FROM pg_type",
+        "SELECT nspowner FROM pg_namespace",
+      ].join(" UNION ALL ")
     end
 
     def db_exists?

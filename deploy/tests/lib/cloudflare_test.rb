@@ -111,11 +111,14 @@ class CloudflareTest < Minitest::Test
         { name: "www.example.com", type: "A", content: "1.2.3.4" },
         { name: "example.com", type: "MX", content: "in1-smtp.messagingengine.com" },
         { name: "example.com", type: "TXT", content: "v=spf1" },
+        { name: "_dmarc.example.com", type: "TXT", content: "v=DMARC1; p=none" },
+        { name: "example.com", type: "TXT", content: "google-site-verification=abc" },
+        { name: "send.example.com", type: "TXT", content: "v=spf1 include:amazonses.com ~all" },
         { name: "app.example.com", type: "A", content: "1.2.3.4" },
       ])
 
     assert_equal(
-      [ "example.com TXT", "app.example.com A" ],
+      [ "example.com TXT", "send.example.com TXT", "app.example.com A" ],
       Cloudflare.droplet_dns_records.map { |x| "#{x[:name]} #{x[:type]}" },
     )
   end
@@ -164,16 +167,79 @@ class CloudflareTest < Minitest::Test
   def test_mail_dns_records
     records = Cloudflare.mail_dns_records
 
-    assert_equal [ "MX", "MX", "CNAME", "CNAME", "CNAME", "TXT" ], records.map { |x| x[:type] }
+    assert_equal [ "MX", "MX", "CNAME", "CNAME", "CNAME", "TXT", "TXT" ], records.map { |x| x[:type] }
     assert_equal "fm1._domainkey.example.com :: CNAME :: fm1.example.com.dkim.fmhosted.com", Cloudflare.fingerprint(records[2])
+    assert_equal "example.com :: TXT :: v=spf1 include:spf.messagingengine.com ~all", Cloudflare.fingerprint(records[5])
+    assert_equal "_dmarc.example.com :: TXT :: v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com", Cloudflare.fingerprint(records[6])
     assert(records.all? { |x| x[:proxied] == false })
+    assert_equal [], Cloudflare.resend_dns_records
+  end
+
+  def test_mail_dns_records_with_resend
+    configure_resend
+
+    records = Cloudflare.mail_dns_records
+
+    assert_equal 10, records.length
+    assert_equal(
+      [
+        { type: "MX", name: "send.example.com", priority: 10, content: "feedback-smtp.us-east-1.amazonses.com", proxied: false, ttl: 1 },
+        { type: "TXT", name: "send.example.com", content: "v=spf1 include:amazonses.com ~all", proxied: false, ttl: 1 },
+        { type: "TXT", name: "resend._domainkey.example.com", content: "p=KEY", proxied: false, ttl: 1 },
+      ],
+      records.last(3),
+    )
+    assert_equal [], Cloudflare.mail_dns_records("example.net").select { |x| x[:name].start_with?("send.", "resend.") }
   end
 
   def test_mail_record
     assert Cloudflare.mail_record?({ name: "example.com", type: "MX", content: "in2-smtp.messagingengine.com" })
     assert Cloudflare.mail_record?({ name: "fm3._domainkey", type: "CNAME", content: "fm3.example.com.dkim.fmhosted.com" })
+    assert Cloudflare.mail_record?({ name: "example.com", type: "TXT", content: "v=spf1 -all" })
+    assert Cloudflare.mail_record?({ name: "example.com", type: "TXT", content: "\"v=spf1 -all\"" })
+    assert Cloudflare.mail_record?({ name: "_dmarc.example.com", type: "TXT", content: "v=DMARC1; p=none" })
     refute Cloudflare.mail_record?({ name: "example.com", type: "MX", content: "mx.example.net" })
-    refute Cloudflare.mail_record?({ name: "example.com", type: "TXT", content: "v=spf1 -all" })
+    refute Cloudflare.mail_record?({ name: "example.com", type: "TXT", content: "google-site-verification=abc" })
+    refute Cloudflare.mail_record?({ name: "send.example.com", type: "MX", content: "feedback-smtp.us-east-1.amazonses.com" })
+    refute Cloudflare.mail_record?({ name: "resend._domainkey.example.com", type: "TXT", content: "p=KEY" })
+  end
+
+  def test_mail_record_with_resend
+    configure_resend
+
+    assert Cloudflare.mail_record?({ name: "send.example.com", type: "MX", content: "feedback-smtp.eu-west-1.amazonses.com" })
+    assert Cloudflare.mail_record?({ name: "send.example.com", type: "TXT", content: "v=spf1 include:amazonses.com ~all" })
+    assert Cloudflare.mail_record?({ name: "resend._domainkey.example.com", type: "TXT", content: "p=OLD" })
+    refute Cloudflare.mail_record?({ name: "send.example.com", type: "TXT", content: "other" })
+  end
+
+  def test_stale_mail_dns_records
+    stub_zone("example.com")
+    Req.expects(:call).with(has_entry(:url, "https://api.cloudflare.com/client/v4/zones/zone/dns_records"))
+      .returns(result: [
+        { id: "old-spf", name: "example.com", type: "TXT", content: "v=spf1 include:spf.messagingengine.com ?all" },
+        { id: "spf", name: "example.com", type: "TXT", content: "v=spf1 include:spf.messagingengine.com ~all" },
+        { id: "old-dmarc", name: "_dmarc.example.com", type: "TXT", content: "v=DMARC1; p=none" },
+        { id: "verify", name: "example.com", type: "TXT", content: "google-site-verification=abc" },
+        { id: "mx", name: "example.com", type: "MX", content: "in1-smtp.messagingengine.com" },
+        { id: "resend", name: "resend._domainkey.example.com", type: "TXT", content: "p=OLD" },
+      ])
+
+    assert_equal [ "old-spf", "old-dmarc" ], Cloudflare.stale_mail_dns_records.map { |x| x[:id] }
+  end
+
+  def test_stale_mail_dns_records_with_resend
+    configure_resend
+    stub_zone("example.com")
+    Req.expects(:call).with(has_entry(:url, "https://api.cloudflare.com/client/v4/zones/zone/dns_records"))
+      .returns(result: [
+        { id: "old-mx", name: "send.example.com", type: "MX", content: "feedback-smtp.eu-west-1.amazonses.com" },
+        { id: "spf", name: "send.example.com", type: "TXT", content: "v=spf1 include:amazonses.com ~all" },
+        { id: "old-dkim", name: "resend._domainkey.example.com", type: "TXT", content: "p=OLD" },
+        { id: "dkim", name: "resend._domainkey.example.com", type: "TXT", content: "p=KEY" },
+      ])
+
+    assert_equal [ "old-mx", "old-dkim" ], Cloudflare.stale_mail_dns_records.map { |x| x[:id] }
   end
 
   def test_missing_mail_dns_records
@@ -191,6 +257,8 @@ class CloudflareTest < Minitest::Test
         "example.com :: MX :: in2-smtp.messagingengine.com",
         "fm2._domainkey.example.com :: CNAME :: fm2.example.com.dkim.fmhosted.com",
         "fm3._domainkey.example.com :: CNAME :: fm3.example.com.dkim.fmhosted.com",
+        "example.com :: TXT :: v=spf1 include:spf.messagingengine.com ~all",
+        "_dmarc.example.com :: TXT :: v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com",
       ],
       Cloudflare.missing_mail_dns_records.map { |x| Cloudflare.fingerprint(x) },
     )
@@ -201,6 +269,7 @@ class CloudflareTest < Minitest::Test
 
     assert_equal [ "example.net", "example.net" ], records.first(2).map { |x| x[:name] }
     assert_equal "fm2.example.net.dkim.fmhosted.com", records[3][:content]
+    assert_equal "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.net", records.last[:content]
   end
 
   def test_redirect_dns_records
@@ -298,6 +367,13 @@ class CloudflareTest < Minitest::Test
   end
 
   private
+
+  def configure_resend
+    config = JSON.parse(File.read(Constants.config_path))
+      .merge("resendDomains" => [ { "domain" => "example.com", "region" => "us-east-1", "dkimPublicKey" => "p=KEY" } ])
+    File.write(Constants.config_path, JSON.generate(config))
+    Constants.instance_variable_set(:@config, nil)
+  end
 
   def stub_zone(domain)
     Req.expects(:call).with(has_entry(:params, { name: domain }))

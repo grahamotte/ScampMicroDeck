@@ -16,7 +16,7 @@ class GitDeploymentPatchTest < Minitest::Test
     assert local.any? { |command| command.end_with?("git push --force deployment abc123:refs/heads/master") }
     refute local.any? { |command| command.include?("git push deployment master") }
     assert_includes remote, "sudo mkdir -p /var/www/example.com"
-    assert_includes remote, "sudo chown -R deploy:deploy /var/www/example.com"
+    assert_includes remote, "sudo chown deploy:deploy /var/www/example.com"
     assert_includes remote, "cd /var/www/example.com && git fetch"
     assert_includes remote, "cd /var/www/example.com && git checkout -- ."
     assert_includes remote, "cd /var/www/example.com && git reset --hard origin/master"
