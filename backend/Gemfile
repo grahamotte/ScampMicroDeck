@@ -1,20 +1,20 @@
 source "https://rubygems.org"
 
-gem "rails", "8.1.4"
+gem "rails", "8.1.4.1"
 gem "bcrypt", "3.1.22"
 gem "pg", "1.7.0"
 gem "puma", "8.0.2"
 gem "rack-cors", "3.0.0"
-gem "good_job", "4.22.1"
+gem "good_job", "4.24.1"
 gem "jwt", "3.3.0"
-gem "bootsnap", "1.26.0"
+gem "bootsnap", "1.26.1"
 gem "ostruct", "0.6.3"
 gem "timeout", "0.6.1"
 gem "path", "0.0.0", path: "../gems/path"
-gem "graphql", "2.6.12"
+gem "graphql", "2.6.14"
 
 group :development, :test do
-  gem "annotaterb", "4.25.0"
+  gem "annotaterb", "4.26.0"
   gem "mocha", "3.1.0"
   gem "test_safety", "0.0.0", path: "../gems/test_safety", require: false
   gem "webmock", "3.34.0"

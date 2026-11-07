@@ -10,5 +10,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "base64", "0.3.0"
 
-  spec.add_development_dependency "minitest", "6.0.6"
+  spec.add_development_dependency "minitest", "6.1.0"
 end

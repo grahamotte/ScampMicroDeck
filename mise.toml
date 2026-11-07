@@ -2,12 +2,12 @@
 ruby.compile = false
 
 [tools]
-node = "26.12.1"
-pnpm = "12.14.0"
-ruby = "4.0.7"
-python = "3.15.1"
+node = "26.13.0"
+pnpm = "12.18.0"
+ruby = "4.0.9"
+python = "3.15.2"
 deno = "2.9.8"
-opencode = "1.19.3"
+opencode = "1.19.5"
 
 [env]
 _.file = '.env.development'

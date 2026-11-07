@@ -1,17 +1,17 @@
 source "https://rubygems.org"
-ruby "4.0.7"
+ruby "4.0.9"
 
-gem "faraday", "2.15.0"
+gem "faraday", "2.15.1"
 gem "shellwords", "0.2.2"
-gem "net-ssh", "8.0.2"
+gem "net-ssh", "8.1.1"
 gem "pry", "0.16.1"
 gem "ed25519", "1.4.0"
 gem "bcrypt_pbkdf", "1.1.2"
 gem "cache", "0.0.0", path: "../gems/cache"
-gem "csv", "3.3.6"
+gem "csv", "3.3.7"
 
 group :test do
-  gem "minitest", "6.0.6"
+  gem "minitest", "6.1.0"
   gem "minitest-parallel_fork", "2.1.1"
   gem "mocha", "3.1.0"
   gem "test_safety", "0.0.0", path: "../gems/test_safety", require: false
