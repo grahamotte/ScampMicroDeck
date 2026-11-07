@@ -6,5 +6,5 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb"]
   spec.require_paths = [ "lib" ]
 
-  spec.add_development_dependency "minitest", "6.0.6"
+  spec.add_development_dependency "minitest", "6.1.0"
 end
