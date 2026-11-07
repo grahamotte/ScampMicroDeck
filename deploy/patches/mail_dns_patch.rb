@@ -2,7 +2,8 @@ class MailDnsPatch < BasePatch
   class << self
     def needed?
       Constants.mail_domains.any? do |domain|
-        Cloudflare.zone_id(domain).blank? || Cloudflare.missing_mail_dns_records(domain).present?
+        Cloudflare.zone_id(domain).blank? || Cloudflare.missing_mail_dns_records(domain).present? ||
+          Cloudflare.stale_mail_dns_records(domain).present?
       end
     end
 
@@ -10,6 +11,10 @@ class MailDnsPatch < BasePatch
       Constants.mail_domains.each do |domain|
         if Cloudflare.zone_id(domain).blank?
           Cloudflare.create_zone(domain)
+        end
+
+        Cloudflare.stale_mail_dns_records(domain).each do |record|
+          Cloudflare.delete_dns_record(record[:id], domain)
         end
 
         Cloudflare.missing_mail_dns_records(domain).each do |record|

@@ -58,12 +58,43 @@ class Cloudflare
       current_dns_records.reject { |x| website_record?(x) || mail_record?(x) }
     end
 
-    def mail_record?(record)
-      mail_dns_records.map { |x| fingerprint(x) }.include?(fingerprint(record))
+    def mail_record?(record, domain = Constants.domain)
+      mail_dns_records(domain).map { |x| fingerprint(x, domain) }.include?(fingerprint(record, domain)) ||
+        mail_slot?(record, domain)
     end
 
     def missing_mail_dns_records(domain = Constants.domain)
       missing_dns_records(mail_dns_records(domain), domain)
+    end
+
+    def stale_mail_dns_records(domain = Constants.domain)
+      desired = mail_dns_records(domain).map { |x| fingerprint(x, domain) }
+      current_dns_records(domain).select do |record|
+        mail_slot?(record, domain) && !desired.include?(fingerprint(record, domain))
+      end
+    end
+
+    def mail_slot?(record, domain = Constants.domain)
+      name = fingerprint(record, domain).split(" :: ").first
+      content = record[:content].to_s.delete_prefix("\"")
+      slots = [
+        [ domain, "TXT", "v=spf1" ],
+        [ "_dmarc.#{domain}", "TXT", "v=DMARC1" ],
+      ]
+      if resend_config(domain).present?
+        slots += [
+          [ "send.#{domain}", "MX", "" ],
+          [ "send.#{domain}", "TXT", "v=spf1" ],
+          [ "resend._domainkey.#{domain}", "TXT", "" ],
+        ]
+      end
+      slots.any? do |slot_name, slot_type, prefix|
+        name == slot_name && record[:type] == slot_type && content.downcase.start_with?(prefix.downcase)
+      end
+    end
+
+    def resend_config(domain = Constants.domain)
+      Constants.resend_domains.find { |x| x[:domain] == domain }
     end
 
     def missing_redirect_dns_records(domain)
@@ -291,7 +322,45 @@ class Cloudflare
         {
           type: "TXT",
           name: domain,
-          content: "v=spf1 include:spf.messagingengine.com ?all",
+          content: "v=spf1 include:spf.messagingengine.com ~all",
+          proxied: false,
+          ttl: 1,
+        },
+        {
+          type: "TXT",
+          name: "_dmarc.#{domain}",
+          content: "v=DMARC1; p=quarantine; rua=mailto:dmarc@#{domain}",
+          proxied: false,
+          ttl: 1,
+        },
+        *resend_dns_records(domain),
+      ]
+    end
+
+    def resend_dns_records(domain = Constants.domain)
+      config = resend_config(domain)
+      return [] if config.blank?
+
+      [
+        {
+          type: "MX",
+          name: "send.#{domain}",
+          priority: 10,
+          content: "feedback-smtp.#{config.fetch(:region)}.amazonses.com",
+          proxied: false,
+          ttl: 1,
+        },
+        {
+          type: "TXT",
+          name: "send.#{domain}",
+          content: "v=spf1 include:amazonses.com ~all",
+          proxied: false,
+          ttl: 1,
+        },
+        {
+          type: "TXT",
+          name: "resend._domainkey.#{domain}",
+          content: config.fetch(:dkimPublicKey),
           proxied: false,
           ttl: 1,
         },

@@ -122,6 +122,17 @@ class InstanceTest < Minitest::Test
     Instance.restart_service("api")
   end
 
+  def test_app_command
+    assert_equal(
+      { "MISE_DATA_DIR" => "/home/deploy/.local/share/mise", "MISE_TRUSTED_CONFIG_PATHS" => "/var/www/example.com" },
+      Instance.app_environment,
+    )
+    assert_equal(
+      "sudo -u app -H env MISE_DATA_DIR=/home/deploy/.local/share/mise MISE_TRUSTED_CONFIG_PATHS=/var/www/example.com bash -c cd\\ /tmp\\ \\&\\&\\ echo\\ \\'hi\\'",
+      Instance.app_command("cd /tmp && echo 'hi'"),
+    )
+  end
+
   def test_packages
     Cmd.expects(:ssh).with("which ffmpeg").returns("/usr/bin/ffmpeg")
     assert Instance.installed?("ffmpeg")

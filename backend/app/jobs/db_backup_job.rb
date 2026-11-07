@@ -35,8 +35,6 @@ class DbBackupJob < ApplicationJob
 
     run_command([
       "/usr/bin/pg_dump",
-      "-U",
-      deploy_user,
       "--clean",
       "--file",
       partial_path,
@@ -176,11 +174,10 @@ class DbBackupJob < ApplicationJob
   end
 
   def db_name = ActiveRecord::Base.connection_db_config.database
-  def deploy_user = ENV.fetch("DEPLOY_USER")
   def endpoint = ENV.fetch("BACKUP_ENDPOINT")
   def bucket = ENV.fetch("BACKUP_BUCKET")
 
   def backup_directory
-    ENV.fetch("BACKUP_LOCAL_DIR", File.join("/home", deploy_user, "backups"))
+    ENV.fetch("BACKUP_LOCAL_DIR", File.join(Dir.home, "backups"))
   end
 end

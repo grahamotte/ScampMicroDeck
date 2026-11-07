@@ -8,6 +8,7 @@ if Subdomains.droplet?
   UpdatePatch.call
   GitDeploymentPatch.call
   DependenciesPatch.call
+  AppUserPatch.call
   DnsPatch.call
   CertPatch.call
   SecretsPatch.call

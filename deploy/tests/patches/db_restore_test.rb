@@ -8,6 +8,7 @@ class DbRestorePatchTest < Minitest::Test
 
     assert commands.any? { |command| command.include?("s3 cp s3://backups/app_production_2.sql /home/deploy/app_production_2.sql") }
     assert_includes commands, "psql -v ON_ERROR_STOP=1 app_production < /home/deploy/app_production_2.sql"
+    assert_includes commands, "sudo -u postgres psql -d app_production -c \"REASSIGN OWNED BY deploy TO app\""
     assert_includes commands, "sudo systemctl start postgresql.service"
     assert_includes commands, "rm -f /home/deploy/app_production_2.sql"
     assert_service_order(commands)

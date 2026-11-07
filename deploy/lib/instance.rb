@@ -128,6 +128,21 @@ class Instance
       Cache.set(path, definition)
     end
 
+    def app_environment
+      {
+        "MISE_DATA_DIR" => Constants.remote_mise_data_dir,
+        "MISE_TRUSTED_CONFIG_PATHS" => Constants.remote_root,
+      }
+    end
+
+    def app_command(command)
+      [
+        "sudo -u #{Constants.app_user} -H env",
+        *app_environment.map { |key, value| "#{key}=#{Shellwords.escape(value)}" },
+        "bash -c #{Shellwords.escape(command)}",
+      ].join(" ")
+    end
+
     def restart_service(service)
       stop_service(service)
       start_service(service)

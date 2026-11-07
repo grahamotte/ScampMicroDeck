@@ -64,8 +64,21 @@ class AgentTest < ActiveSupport::TestCase
       "--dir",
       dir,
     ], FakeAgent.captured_command
-    assert_equal({ "OPENROUTER_API_KEY" => "test-token", "TMPDIR" => dir, "PWD" => dir }, FakeAgent.captured_environment)
+    assert_equal(
+      {
+        "PATH" => ENV.fetch("PATH"),
+        "HOME" => ENV.fetch("HOME"),
+        "OPENROUTER_API_KEY" => "test-token",
+        "OPENCODE_CONFIG_CONTENT" => JSON.generate(
+          permission: { bash: "deny", task: "deny", skill: "deny", external_directory: "deny" },
+        ),
+        "TMPDIR" => dir,
+        "PWD" => dir,
+      },
+      FakeAgent.captured_environment,
+    )
     assert_equal "Answer this prompt", FakeAgent.captured_options.fetch(:stdin_data)
+    assert FakeAgent.captured_options.fetch(:unsetenv_others)
     refute_equal Rails.root.to_s, dir
     refute File.exist?(dir)
   end
@@ -109,6 +122,25 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal dir, FakeAgent.captured_command[FakeAgent.captured_command.index("--dir") + 1]
     refute_includes FakeAgent.captured_environment, "DB_NAME"
     refute_includes FakeAgent.captured_environment, "RAILS_ENV"
+  end
+
+  def test_call_merges_permission
+    FakeAgent.result = [ "", "", status(success: true) ]
+
+    FakeAgent.call(prompt: "Prompt", permission: { bash: { "*" => "deny", "curl *" => "allow" }, "webfetch" => "deny" })
+
+    assert_equal(
+      {
+        "permission" => {
+          "bash" => { "*" => "deny", "curl *" => "allow" },
+          "task" => "deny",
+          "skill" => "deny",
+          "external_directory" => "deny",
+          "webfetch" => "deny",
+        },
+      },
+      JSON.parse(FakeAgent.captured_environment.fetch("OPENCODE_CONFIG_CONTENT")),
+    )
   end
 
   def test_call_prefixes_openrouter

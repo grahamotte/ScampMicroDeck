@@ -13,10 +13,11 @@ class AppPatch < BasePatch
       Instance.stop_service("job")
 
       Cache.if_files_changed(Dir.glob(File.expand_path("../backend/db/migrate/*"))) do
-        Cmd.ssh("cd #{Constants.remote_root}/backend; set -a; source ../.env; mise exec -- bin/rails db:migrate")
+        Cmd.ssh(Instance.app_command("cd #{Constants.remote_root}/backend; set -a; source ../.env; mise exec -- bin/rails db:migrate"))
       end
 
       Cmd.ssh("rm -rf ~/tmp")
+      Cmd.ssh("sudo rm -rf #{Constants.app_home_dir}/tmp")
 
       Instance.write_service("api", api_service)
       Instance.write_service("job", job_service)
@@ -46,7 +47,11 @@ class AppPatch < BasePatch
       After=network-online-target
 
       [Service]
-      User=#{Constants.deploy_user}
+      User=#{Constants.app_user}
+      Group=#{Constants.app_user}
+      Environment=MISE_DATA_DIR=#{Constants.remote_mise_data_dir}
+      Environment=MISE_TRUSTED_CONFIG_PATHS=#{Constants.remote_root}
+      NoNewPrivileges=true
       Type=simple
       ExecStart=/usr/bin/bash -c 'cd #{Constants.remote_root}/backend && set -a && source ../.env && mise exec -- bin/rails server --binding 127.0.0.1 --port 3000'
       Restart=always
@@ -65,7 +70,11 @@ class AppPatch < BasePatch
       After=network-online-target
 
       [Service]
-      User=#{Constants.deploy_user}
+      User=#{Constants.app_user}
+      Group=#{Constants.app_user}
+      Environment=MISE_DATA_DIR=#{Constants.remote_mise_data_dir}
+      Environment=MISE_TRUSTED_CONFIG_PATHS=#{Constants.remote_root}
+      NoNewPrivileges=true
       Type=simple
       Environment=GOOD_JOB_ENABLE_CRON=true
       ExecStart=/usr/bin/bash -c 'cd #{Constants.remote_root}/backend && set -a && source ../.env && mise exec -- bundle exec good_job start'
