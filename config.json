@@ -2,6 +2,13 @@
   "domain": "scampmicrodeck.com",
   "githubRepo": "git@github.com:grahamotte/ScampMicroDeck.git",
   "database": "scampmicrodeck",
+  "operatorOnlyEnvKeys": [
+    "APPLE_*",
+    "CLOUDFLARE_TOKEN",
+    "DEPLOY_PASSWORD",
+    "DEPLOY_SSH_KEY_*",
+    "DIGITAL_OCEAN_TOKEN"
+  ],
   "site": {
     "title": "Scamp Micro Deck",
     "description": "A native macOS music player with the tedious charm of a real vinyl record player",

@@ -258,15 +258,19 @@ depends = ["test:*"]
 #
 
 [tasks."deploy"]
-description = "Deploy origin/master to the droplet and the Cloudflare website configured in config.json; follow runbooks/deploy.md"
-depends = ["dependencies:deploy", "dependencies:website"]
+description = "Refresh .env.production from 1Password, then deploy origin/master to the droplet and the Cloudflare website configured in config.json; follow runbooks/deploy.md"
+depends = ["dependencies:deploy", "dependencies:website", "deploy:secrets"]
 run = "set -a && source .env.production && cd deploy && ruby deploy.rb 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_deploy.log"
 
 [tasks."deploy:patch"]
-description = "Apply a named deployment patch to production"
-depends = ["dependencies:deploy"]
+description = "Refresh .env.production from 1Password, then apply a named deployment patch to production"
+depends = ["dependencies:deploy", "deploy:secrets"]
 usage = 'arg "<name>" help="Patch to apply (e.g., nginx)"'
 run = 'set -a && source .env.production && cd deploy && ruby patch.rb "$usage_name" 2>&1 | tee log/$(date +%Y-%m-%d-%H-%M-%S)_patch.log'
+
+[tasks."deploy:secrets"]
+description = "Refresh the main checkout's .env files from 1Password with mr secrets and copy .env.production into this checkout"
+run = "scripts/mise/deploy_secrets.sh"
 
 [tasks."deploy:destroy"]
 description = "Destroy the production server instance"
