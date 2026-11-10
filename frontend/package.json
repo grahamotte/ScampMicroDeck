@@ -11,24 +11,24 @@
     "defaults"
   ],
   "dependencies": {
-    "@tailwindcss/vite": "4.3.4",
+    "@tailwindcss/vite": "4.3.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.2.1",
+    "@vitejs/plugin-react": "6.3.0",
     "change-case": "5.4.4",
     "clsx": "2.1.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "3.7.0",
-    "tailwindcss": "4.3.4",
+    "tailwindcss": "4.3.5",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@testing-library/react": "16.3.3",
     "jsdom": "31.0.0",
-    "portless": "0.16.0",
+    "portless": "0.17.0",
     "typescript": "7.0.2",
-    "vite": "8.3.6",
+    "vite": "8.3.7",
     "vitest": "5.1.0"
   }
 }
