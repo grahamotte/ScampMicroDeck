@@ -64,7 +64,7 @@ The droplet keeps its own logs and resource history; nothing is shipped elsewher
 ## Apple Workflow
 
 - `mise test` runs the Apple app package tests in `apps/apple/Tests`, which compile the non-UI files listed in `Tests/Package.swift` into the `<Name>Core` target (`AppCore` in Code Moto), tested by `<Name>CoreTests` in Swift 5 language mode. Add new business-logic files to its `sources` and app-only files to its `exclude`.
-- Use `mise simulate macos` to build and launch the Debug app and `mise xcode` to open the project macOS Debug builds use the configured bundle ID with a `.debug` suffix and a "Debug" display name so they run beside the installed app, and `mise simulate macos` quits only the Debug build it launched.
+- Use `mise simulate macos` to build and launch the Debug app and `mise xcode` to open the project macOS Debug builds use the configured bundle ID with a `.debug` suffix and a "Debug" display name so they run beside the installed app, and `mise simulate macos` quits only the Debug build it launched. In a linked worktree, such as a card worktree, the suffix and display name also carry the worktree's name, such as `.debug.moto-12` and "Debug moto-12", so each worktree's Debug build has its own defaults and `mise app:debug` reaches only the build from its own worktree. Derive any support directory a Debug build writes from `Bundle.main.bundleIdentifier`, not a fixed name, so parallel worktrees do not share files.
 - Screen capture is not available to agents. To check UI, run the macOS Debug build and use `mise app:debug` with the `DebugHooks` commands, for example `mise app:debug "snap|/tmp/app.png"`, then read the PNG. `mise app:debug` waits for the app to finish each command and exits nonzero with the app's error when the command fails or the app is not running, so chain commands with `&&` and do not hide their output. Debug builds compile with `APP_DEV` and may write under `/tmp`. Commands do not activate the app or order windows front. Pass `DebugHooks.install` a closure to handle app-specific commands; throw `DebugHooks.Failure` from it to report an error. `DebugHooks` is macOS only; for iOS and tvOS simulators, use `xcrun simctl io booted screenshot /tmp/app.png`.
 
 ## Session instructions
@@ -98,7 +98,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 Read the relevant runbook when asked to perform an operation:
 
 - [Deploy](runbooks/deploy.md) - Deploy `origin/master` to production and the website.
-- [Publish](runbooks/publish.md) - Version and publish configured Apple apps.
+- [Publish](runbooks/publish.md) - Version and publish configured Apple apps, only when a release is requested.
 
 Run `mise tasks` to discover available tasks and their descriptions, including development and production debugging tools.
 

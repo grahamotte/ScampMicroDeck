@@ -53,6 +53,22 @@ module Apps
       File.dirname(File.expand_path(gitdir, root).sub(%r{/worktrees/[^/]+/?\z}, ""))
     end
 
+    def worktree_name(root = File.dirname(self.root))
+      main = main_root(root)
+      return if main == root
+
+      name = File.basename(root).delete_prefix("#{File.basename(main)}-").downcase.gsub(/[^a-z0-9-]+/, "-").gsub(/\A-+|-+\z/, "")
+      name.blank? ? Digest::SHA256.hexdigest(root)[0, 8] : name
+    end
+
+    def debug_bundle_identifier(target, root = File.dirname(self.root))
+      [ target.fetch(:bundleIdentifier), "debug", worktree_name(root) ].compact.join(".")
+    end
+
+    def debug_display_name(root = File.dirname(self.root))
+      [ config.fetch(:name), "Debug", worktree_name(root) ].compact.join(" ")
+    end
+
     def github_repository
       repository = Constants.config[:githubRepo].to_s[%r{\A(?:git@github\.com:|https://github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?\z}, 1]
       raise "Set githubRepo in config.json to a github.com repository" if repository.blank?

@@ -1,5 +1,11 @@
 require "socket"
 
+begin
+  require "minitest"
+rescue LoadError
+  nil
+end
+
 class UnsafeTestOperation < StandardError; end
 
 module TestSafety
@@ -42,6 +48,9 @@ module TestSafety
     def udp(*) = raise UnsafeTestOperation, "Network calls must be stubbed in tests"
   end
 end
+
+Minitest::Assertions.diff = false if defined?(Minitest::Assertions)
+ENV["EDITOR"] ||= "vi"
 
 Kernel.prepend(TestSafety::SleepStub)
 Kernel.singleton_class.prepend(TestSafety::SleepStub)

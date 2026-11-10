@@ -7,7 +7,6 @@ require "test_safety"
 require "tmpdir"
 WebMock.disable_net_connect!
 def Minitest.parallel_fork_number = 4
-ENV["EDITOR"] ||= "vi"
 
 require_relative "../lib/require"
 

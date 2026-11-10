@@ -131,6 +131,38 @@ class AppsSimulatorTest < Minitest::Test
     refute commands.any? { |command| command.include?("simctl") }
   end
 
+  def test_names_the_macos_debug_build_after_its_worktree
+    config_path = Constants.config_path
+    config = JSON.parse(File.read(config_path))
+    config.dig("apps", "targets", "apple")["macos"] = {
+      archiveDestination: "generic/platform=macOS",
+      bundleIdentifier: "org.example.app",
+      platform: "MAC_OS",
+      project: File.join(Apps.root, "apple", "App.xcodeproj"),
+      scheme: "App-macOS",
+      simulatorDestination: "platform=macOS",
+      simulatorProduct: "Debug/App-macOS.app",
+      simulators: { macos: "Mac" },
+    }
+    File.write(config_path, JSON.generate(config))
+    Apps.reset
+    main = File.join(@publish_test_dir, "code", "app.com")
+    worktree = File.join(@publish_test_dir, "code", "app.com-moto-7")
+    FileUtils.mkdir_p(File.join(main, ".git", "worktrees", "app.com-moto-7"))
+    FileUtils.mkdir_p(worktree)
+    File.write(File.join(worktree, ".git"), "gitdir: #{File.join(main, ".git", "worktrees", "app.com-moto-7")}\n")
+    Apps.root = File.join(worktree, "apps")
+    Apps.tmp_root = File.join(@publish_test_dir, "artifacts")
+    commands = []
+    Cmd.stubs(:local).with { |command| commands << command }.returns("")
+
+    Apps::Simulator.call("macos")
+
+    build_command = Shellwords.split(commands.find { |command| command.include?("xcodebuild") })
+    assert_includes build_command, "PRODUCT_BUNDLE_IDENTIFIER=org.example.app.debug.moto-7"
+    assert_includes build_command, "INFOPLIST_KEY_CFBundleDisplayName=#{Apps.config.fetch(:name)} Debug moto-7"
+  end
+
   def test_accepts_tv_aliases
     config_path = Constants.config_path
     config = JSON.parse(File.read(config_path))

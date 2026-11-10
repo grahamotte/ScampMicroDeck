@@ -57,6 +57,19 @@ class CmdTest < Minitest::Test
     assert_equal "out\nerr\n", result
   end
 
+  def test_ssh_prints_output_and_errors_to_the_given_streams
+    stub_ssh([ :data, "out\n" ], [ :extended_data, "err\n" ], code: 0)
+    out = StringIO.new
+    err = StringIO.new
+
+    logged, = capture_io { DeployTestMethods::CMD_SSH.call("ls", out:, err:) }
+
+    assert_equal "out\n", out.string
+    assert_equal "err\n", err.string
+    assert_includes logged, "SSH ls"
+    refute_includes logged, "out\n"
+  end
+
   def test_ssh_sends_stdin_without_printing_it
     channel = stub_ssh([ :data, "ok" ], code: 0)
 

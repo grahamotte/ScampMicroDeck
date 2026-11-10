@@ -22,7 +22,7 @@ class Cmd
       res
     end
 
-    def ssh(command, *opts, user: Constants.deploy_user, quiet: false, stdin: nil)
+    def ssh(command, *opts, user: Constants.deploy_user, quiet: false, stdin: nil, out: $stdout, err: $stdout)
       command = command.split("?").zip(opts.map { |x| Shellwords.escape(x) }).flatten.join if opts.present?
       command = command.gsub("\\*", "*")
 
@@ -38,8 +38,8 @@ class Cmd
               channel.send_data(stdin)
               channel.eof!
             end
-            channel.on_data { |_, x| print(x) unless quiet; text += x }
-            channel.on_extended_data { |_, _, x| print(x) unless quiet; text += x }
+            channel.on_data { |_, x| out.print(x) unless quiet; text += x }
+            channel.on_extended_data { |_, _, x| err.print(x) unless quiet; text += x }
             channel.on_request("exit-status") { |_, x| code = x.read_long }
           end
         end

@@ -5,7 +5,6 @@ require_relative "lib/require"
 STALE_AFTER = 120
 LOCKED_AFTER = 10 * 60
 RUNNING_AFTER = 2 * 60 * 60
-RECENT = "15 min ago"
 
 def row(label, value)
   puts "  #{label.ljust(20)} #{value}"
@@ -52,31 +51,6 @@ end
 
 def health(ok, text)
   ok ? text.green : text.red
-end
-
-def journal(service)
-  count = Cmd
-    .ssh("journalctl -u #{service} -p warning..alert --since '#{RECENT}' --no-pager --output cat | wc -l", quiet: true)
-    .strip
-    .to_i
-  lines = Cmd
-    .ssh("journalctl -u #{service} -p warning..alert --since '#{RECENT}' --no-pager --output short-iso -n 3", quiet: true)
-    .lines
-    .map(&:strip)
-    .reject(&:blank?)
-    .map { |line| summarize(line) }
-
-  [ count, lines ]
-end
-
-def summarize(line)
-  prefix, payload = line.split("RAILS_ERROR ", 2)
-  return line if payload.blank?
-
-  error = JSON.parse(payload)
-  "#{prefix}#{error["type"]}: #{error["message"].to_s.gsub(/\s+/, " ").truncate(200)} (#{error["fingerprint"]})"
-rescue JSON::ParserError
-  line
 end
 
 puts ""
@@ -222,8 +196,8 @@ if Instance.running?
   puts ""
   puts "Logs".magenta
   %w[api job].each do |service|
-    count, lines = journal(service)
-    row("#{service} warnings:", health(count.zero?, "#{count} since #{RECENT}"))
+    count, lines = Journal.recent(service)
+    row("#{service} warnings:", health(count.zero?, "#{count} since #{Journal::RECENT}"))
     lines.each { |line| row("", line) } if count.positive?
   end
 

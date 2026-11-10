@@ -60,8 +60,8 @@ module Apps
         return [ "#{setting}=#{target.fetch(:bundleIdentifier)}" ] unless target.fetch(:platform) == "MAC_OS"
 
         [
-          "#{setting}=#{target.fetch(:bundleIdentifier)}.debug",
-          "INFOPLIST_KEY_CFBundleDisplayName=#{Apps.config.fetch(:name)} Debug",
+          "#{setting}=#{Apps.debug_bundle_identifier(target)}",
+          "INFOPLIST_KEY_CFBundleDisplayName=#{Apps.debug_display_name}",
         ]
       end
 

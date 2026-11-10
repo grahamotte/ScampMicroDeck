@@ -1,5 +1,7 @@
 # Publish
 
+Publish only when the user or the card asks for a release. Merging a change does not call for one: do not version or publish on your own, and do not add a version bump or publish step to an "After merge:" list unless a release was requested. The user decides when to release.
+
 The version branch is the card branch when running for a card, otherwise `publish-<version>`.
 
 ## Mode

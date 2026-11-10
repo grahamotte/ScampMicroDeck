@@ -1,5 +1,8 @@
 require_relative "lib/require"
 
+output = $stdout
+$stdout = $stderr
+
 command = ARGV.join(" ").strip
 
 if command.blank?
@@ -7,4 +10,4 @@ if command.blank?
   exit 1
 end
 
-Cmd.ssh(command)
+Cmd.ssh(command, out: output, err: $stderr)

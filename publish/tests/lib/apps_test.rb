@@ -34,6 +34,43 @@ class AppsTest < Minitest::Test
     assert_includes error.message, "Cannot locate the main checkout"
   end
 
+  def test_debug_identity_keeps_the_main_checkout_suffix
+    main = File.join(@publish_test_dir, "code", "app.com")
+    FileUtils.mkdir_p(File.join(main, ".git"))
+    target = { bundleIdentifier: "org.example.app" }
+    Apps.config[:name] = "Example App"
+
+    assert_nil Apps.worktree_name(main)
+    assert_equal "org.example.app.debug", Apps.debug_bundle_identifier(target, main)
+    assert_equal "Example App Debug", Apps.debug_display_name(main)
+  end
+
+  def test_debug_identity_names_each_linked_worktree
+    main = File.join(@publish_test_dir, "code", "app.com")
+    target = { bundleIdentifier: "org.example.app" }
+    Apps.config[:name] = "Example App"
+    [ [ "app.com-moto-1", "moto-1" ], [ "app.com-MOTO_2 fix", "moto-2-fix" ], [ "other-tree", "other-tree" ] ].each do |directory, name|
+      worktree = File.join(@publish_test_dir, "code", directory)
+      FileUtils.mkdir_p(File.join(main, ".git", "worktrees", directory))
+      FileUtils.mkdir_p(worktree)
+      File.write(File.join(worktree, ".git"), "gitdir: #{File.join(main, ".git", "worktrees", directory)}\n")
+
+      assert_equal name, Apps.worktree_name(worktree)
+      assert_equal "org.example.app.debug.#{name}", Apps.debug_bundle_identifier(target, worktree)
+      assert_equal "Example App Debug #{name}", Apps.debug_display_name(worktree)
+    end
+  end
+
+  def test_debug_identity_hashes_a_worktree_name_with_no_usable_characters
+    main = File.join(@publish_test_dir, "code", "app.com")
+    worktree = File.join(@publish_test_dir, "code", "app.com-___")
+    FileUtils.mkdir_p(File.join(main, ".git", "worktrees", "x"))
+    FileUtils.mkdir_p(worktree)
+    File.write(File.join(worktree, ".git"), "gitdir: #{File.join(main, ".git", "worktrees", "x")}\n")
+
+    assert_equal Digest::SHA256.hexdigest(worktree)[0, 8], Apps.worktree_name(worktree)
+  end
+
   def test_github_repository_reads_ssh_and_https_urls
     assert_equal "example/app", Apps.github_repository
 
