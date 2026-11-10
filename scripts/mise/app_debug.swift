@@ -1,9 +1,6 @@
 import AppKit
 
-let config = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(filePath: "config.json"))) as! [String: Any]
-let targets = (config["apps"] as! [String: Any])["targets"] as! [String: Any]
-let macos = (targets["apple"] as! [String: Any])["macos"] as! [String: Any]
-let bundleIdentifier = "\(macos["bundleIdentifier"] as! String).debug"
+let bundleIdentifier = CommandLine.arguments[1]
 
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data("app:debug: \(message)\n".utf8))
@@ -24,7 +21,7 @@ let observer = center.addObserver(forName: Notification.Name("\(bundleIdentifier
     reply = message
 }
 
-let request = try JSONSerialization.data(withJSONObject: ["id": id, "command": CommandLine.arguments[1]])
+let request = try JSONSerialization.data(withJSONObject: ["id": id, "command": CommandLine.arguments[2]])
 center.postNotificationName(Notification.Name("\(bundleIdentifier).debug"), object: String(decoding: request, as: UTF8.self), userInfo: nil, deliverImmediately: true)
 
 let deadline = Date(timeIntervalSinceNow: 10)

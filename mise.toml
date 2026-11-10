@@ -289,7 +289,7 @@ depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby ssh.rb"
 
 [tasks."deploy:cmd"]
-description = "Run a command on the production host, including journalctl and sar queries; can modify live state"
+description = "Run a command on the production host, including journalctl and sar queries, printing only its output on stdout and its errors and connection lines on stderr; can modify live state"
 depends = ["dependencies:deploy"]
 run = "set -a && source .env.production && cd deploy && ruby cmd.rb"
 
@@ -369,7 +369,7 @@ run = 'cd publish && ruby simulate.rb "$usage_target"'
 [tasks."app:debug"]
 description = "Send a DebugHooks command to the running Debug macOS app, such as snap|/tmp/app.png (snap|PATH|TITLE for another window), frame|W|H, action|selector:, key|CODE|MODS|CHARS (modifiers c/s/o/t), type|TEXT, or an app-specific command, and wait for it to finish, exiting nonzero with the app's error on failure"
 usage = 'arg "<command>" help="Debug command for DebugHooks"'
-run = 'swift scripts/mise/app_debug.swift "$usage_command"'
+run = 'bundle_id="$(cd publish && ruby debug_bundle_identifier.rb)" && swift scripts/mise/app_debug.swift "$bundle_id" "$usage_command"'
 
 [tasks."publish:xcode"]
 description = "Open the Apple app project in Xcode"
