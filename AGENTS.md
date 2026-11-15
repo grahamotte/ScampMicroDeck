@@ -71,7 +71,7 @@ The droplet keeps its own logs and resource history; nothing is shipped elsewher
 
 Use `origin` as the sole workflow repository remote, preserving its hosting provider and actual default branch. A Code Moto basis remote named `codemoto` and an optional `deployment` remote may also be present. Do not add mirrors or alternate origin names. Fetch before updating default branches, use fast-forward-only pulls, and never force-push a default branch.
 
-For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow its output, and see `mr --help` for the rest. This repository provides implementation instructions, checks, and operation tooling.
+Every change to this repository needs a Mr. Moto card and a PR. Before editing, run Mr. Moto's `mr card claim <CARD>`, or `mr card claim --title T --body-file F` to create and claim a card when there is none, and follow its output; see `mr --help` for the rest. This repository provides implementation instructions, checks, and operation tooling.
 
 ## File Structure
 
