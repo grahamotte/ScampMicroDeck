@@ -2,8 +2,8 @@
 ruby.compile = false
 
 [tools]
-node = "26.13.0"
-pnpm = "12.18.0"
+node = "26.13.1"
+pnpm = "12.21.0"
 ruby = "4.0.9"
 python = "3.15.2"
 deno = "2.9.8"
