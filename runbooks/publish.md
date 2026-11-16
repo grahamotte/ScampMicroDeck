@@ -18,7 +18,7 @@ The request or card chooses the mode. Default to a full publish.
 2. Review the commits since the most recent commit named `Version` and choose the smallest appropriate semantic version bump from the current configured version: major for breaking changes, minor for new user-facing capabilities, and patch for everything else. Ask before a major bump. A publish request permits a patch release when there are no notable changes.
 3. Run `mise publish:approved_version` to find the latest version actually approved by App Store Connect, or, when `skip_app_stores` is set, the latest version released to the project's repository. Find the `Version` commit that set that approved version and review every subsequent change when writing `whatsNew`, including changes already included in newer unapproved versions. If it prints `none`, review changes from the beginning of the repository. Write a concise, user-facing summary based on that full range, using `Bug fixes.` when nothing user-facing is notable.
 4. Run `mise publish:set_version <version>` and `mise test`, then commit only the version files with the message `Version`.
-5. Deliver the version commit through the supplied repository review instructions and hand off Review with the selected publish mode and release commands as remaining work. The Approved session releases only after the version PR has been merged and verified.
+5. Deliver the version commit through the supplied repository review instructions, but do not hand off Review. Wait until `mr pr inspect NUMBER` shows the PR mergeable with checks `success` or `none`, merge it with `mr pr merge NUMBER --sha SHA` using that head SHA, and continue to Release in the same session. If checks fail or the PR cannot merge, stop and report it.
 
 ## Release
 
@@ -39,4 +39,4 @@ Report the version PR and release result. When blocked, report the failure, its 
 
 Every card that runs this runbook finishes with the comment, push, and move steps from the start of the session's prompt. This section overrides where the status prompt says to move the card.
 
-Record results on the invoking card when present. In a work session, move successful work to Review even when no tracked changes or PR are needed; explicitly record "No PR needed" and "Remaining work: none" when applicable. The Approved session finishes any remaining steps, then completes the card. When blocked, report what is needed and move the card to Planned.
+Record results on the invoking card when present. A publish request is its own approval: the work session versions, merges, and releases without a Review handoff, then completes the card when publishing succeeds. When blocked, report what is needed and move the card to Planned.

@@ -43,8 +43,8 @@ class AppPatch < BasePatch
     def api_service = <<~TEXT
       [Unit]
       Description=Api
-      Wants=network-online-target
-      After=network-online-target
+      Wants=network-online.target
+      After=network-online.target
 
       [Service]
       User=#{Constants.app_user}
@@ -66,8 +66,8 @@ class AppPatch < BasePatch
     def job_service = <<~TEXT
       [Unit]
       Description=Job Worker
-      Wants=network-online-target
-      After=network-online-target
+      Wants=network-online.target
+      After=network-online.target
 
       [Service]
       User=#{Constants.app_user}

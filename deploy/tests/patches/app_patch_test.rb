@@ -31,6 +31,7 @@ class AppPatchTest < Minitest::Test
       assert_includes service, "User=app\nGroup=app\n"
       assert_includes service, "Environment=MISE_DATA_DIR=/home/deploy/.local/share/mise\n"
       assert_includes service, "Environment=MISE_TRUSTED_CONFIG_PATHS=/var/www/example.com\n"
+      assert_includes service, "Wants=network-online.target\nAfter=network-online.target\n"
       assert_includes service, "NoNewPrivileges=true\n"
       refute_includes service, "User=deploy"
     end
