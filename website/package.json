@@ -15,6 +15,6 @@
     "@emnapi/runtime": "1.11.3",
     "portless": "0.17.0",
     "typescript": "6.0.3",
-    "wrangler": "4.162.0"
+    "wrangler": "4.163.0"
   }
 }
