@@ -55,14 +55,11 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal [
       "opencode",
       "run",
+      "--standalone",
       "--format",
       "json",
       "--model",
-      "openrouter/anthropic/claude-sonnet-4",
-      "--variant",
-      "high",
-      "--dir",
-      dir,
+      "openrouter/anthropic/claude-sonnet-4#high",
     ], FakeAgent.captured_command
     assert_equal(
       {
@@ -105,7 +102,7 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal 1, dirs.uniq.size
     assert_equal dirs.first, FakeAgent.captured_options.fetch(:chdir)
     assert_equal dirs.first, FakeAgent.captured_environment.fetch("PWD")
-    assert_equal dirs.first, FakeAgent.captured_command[FakeAgent.captured_command.index("--dir") + 1]
+    refute_includes FakeAgent.captured_command, "--dir"
     refute File.exist?(dirs.first)
   end
 
@@ -119,7 +116,7 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal "test-token", FakeAgent.captured_environment.fetch("OPENROUTER_API_KEY")
     assert_equal dir, FakeAgent.captured_environment.fetch("TMPDIR")
     assert_equal dir, FakeAgent.captured_environment.fetch("PWD")
-    assert_equal dir, FakeAgent.captured_command[FakeAgent.captured_command.index("--dir") + 1]
+    refute_includes FakeAgent.captured_command, dir
     refute_includes FakeAgent.captured_environment, "DB_NAME"
     refute_includes FakeAgent.captured_environment, "RAILS_ENV"
   end
@@ -148,13 +145,21 @@ class AgentTest < ActiveSupport::TestCase
 
     FakeAgent.call(model: "deepseek/deepseek-v4-flash", effort: "high", prompt: "Prompt")
 
-    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash"
+    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash#high"
   end
 
   def test_call_keeps_openrouter_prefix
     FakeAgent.result = [ "", "", status(success: true) ]
 
     FakeAgent.call(model: "openrouter/deepseek/deepseek-v4-flash", effort: "high", prompt: "Prompt")
+
+    assert_equal "openrouter/deepseek/deepseek-v4-flash#high", FakeAgent.captured_command[FakeAgent.captured_command.index("--model") + 1]
+  end
+
+  def test_call_without_effort
+    FakeAgent.result = [ "", "", status(success: true) ]
+
+    FakeAgent.call(model: "deepseek/deepseek-v4-flash", effort: nil, prompt: "Prompt")
 
     assert_equal "openrouter/deepseek/deepseek-v4-flash", FakeAgent.captured_command[FakeAgent.captured_command.index("--model") + 1]
   end
@@ -164,8 +169,7 @@ class AgentTest < ActiveSupport::TestCase
 
     FakeAgent.call(prompt: "Prompt")
 
-    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash"
-    assert_includes FakeAgent.captured_command, "high"
+    assert_includes FakeAgent.captured_command, "openrouter/deepseek/deepseek-v4-flash#high"
   end
 
   def test_call_with_no_responses
@@ -188,8 +192,8 @@ class AgentTest < ActiveSupport::TestCase
     FakeAgent.result = [
       [
         JSON.generate(type: "text", part: { type: "text", text: "Partial" }),
-        JSON.generate(type: "error", sessionID: "ses_1", error: { name: "UnknownError", data: { message: "Model not found" } }),
-        JSON.generate(type: "error", sessionID: "ses_1", error: { name: "MessageAbortedError", data: { message: "Session interrupted: error" } }),
+        JSON.generate(type: "error", error: { type: "provider.no-route", message: "Model unavailable: provider/model" }),
+        JSON.generate(type: "error", error: { type: "session.aborted", message: "Session interrupted: error" }),
       ].join("\n"),
       "Ignored stderr\n",
       status(success: false),
@@ -199,7 +203,7 @@ class AgentTest < ActiveSupport::TestCase
       FakeAgent.call(model: "provider/model", effort: "low", prompt: "Prompt")
     end
 
-    assert_equal "Agent failed: Model not found\nSession interrupted: error", error.message
+    assert_equal "Agent failed: Model unavailable: provider/model\nSession interrupted: error", error.message
   end
 
   def test_call_with_named_error

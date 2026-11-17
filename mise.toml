@@ -7,7 +7,7 @@ pnpm = "12.21.0"
 ruby = "4.0.9"
 python = "3.15.2"
 deno = "2.9.8"
-opencode = "1.19.5"
+opencode = "2.3.0"
 
 [env]
 _.file = '.env.development'
