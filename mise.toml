@@ -3,11 +3,11 @@ ruby.compile = false
 
 [tools]
 node = "26.13.1"
-pnpm = "12.21.0"
-ruby = "4.0.9"
+pnpm = "12.23.0"
+ruby = "4.0.10"
 python = "3.15.2"
 deno = "2.9.8"
-opencode = "2.3.0"
+opencode = "2.4.1"
 
 [env]
 _.file = '.env.development'

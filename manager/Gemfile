@@ -1,10 +1,10 @@
 source "https://rubygems.org"
-ruby "4.0.9"
+ruby "4.0.10"
 
 group :test do
   gem "minitest", "6.1.0"
   gem "minitest-parallel_fork", "2.1.1"
   gem "mocha", "3.1.0"
   gem "test_safety", "0.0.0", path: "../gems/test_safety", require: false
-  gem "webmock", "3.34.0"
+  gem "webmock", "3.40.0"
 end

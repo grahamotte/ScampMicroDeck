@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb"]
   spec.require_paths = [ "lib" ]
 
-  spec.add_dependency "addressable", "2.9.2"
+  spec.add_dependency "addressable", "2.10.0"
   spec.add_dependency "path", "0.0.0"
   spec.add_dependency "uri", "1.1.2"
 
