@@ -7,7 +7,7 @@ class GraphqlController < ApplicationController
       operation_name: params[:operationName],
       context:,
     )
-    response.headers["refresh-token"] = Token.generate_for_user(context[:current_user]) if context[:current_user].present?
+    response.headers["refresh-token"] = Token.generate_for_user(context[:current_user]) if context[:auth_method] == :jwt
 
     render json: result
   end

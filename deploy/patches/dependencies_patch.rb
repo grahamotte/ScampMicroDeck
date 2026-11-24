@@ -18,6 +18,7 @@ class DependenciesPatch < BasePatch
       Cmd.ssh("mise settings add idiomatic_version_file_enable_tools \"[]\"")
       Cmd.ssh("mise settings set ruby.compile=false")
       Cmd.ssh("sudo rm -f /usr/local/bin/opencode && rm -rf ~/.opencode")
+      Cmd.ssh("cd #{Constants.remote_root} && mise prune --yes && mise cache clear")
     end
 
     def needed?

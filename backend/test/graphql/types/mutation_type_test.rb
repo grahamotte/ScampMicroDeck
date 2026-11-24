@@ -92,5 +92,15 @@ module Types
 
       assert_equal "Test backend error", error.message
     end
+
+    def test_trigger_error_limits_requests_per_ip
+      5.times { assert_raises(RuntimeError) { execute_graphql("mutation { triggerError }", scopes: []) } }
+
+      error = graphql_error("mutation { triggerError }", scopes: [])
+
+      assert_equal "too many requests", error["message"]
+      assert_equal "RATE_LIMITED", error.dig("extensions", "code")
+      assert_raises(RuntimeError) { execute_graphql("mutation { triggerError }", scopes: [], request: graphql_request(remote_addr: "10.0.0.1")) }
+    end
   end
 end

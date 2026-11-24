@@ -22,14 +22,27 @@ class GraphqlControllerTest < ActionController::TestCase
     post :execute, params: { query: "{ viewer { email } }" }, session: { jwt: Token.generate_for_user(@user) }, as: :json
 
     assert_equal({ "data" => { "viewer" => { "email" => @user.email } } }, response.parsed_body)
+    assert_equal @user, Token.verify(response.headers["refresh-token"])
   end
 
-  def test_executes_query_with_api_token
+  def test_executes_query_with_api_token_without_refresh_token
     @request.headers["Authorization"] = "Bearer #{@user.generate_api_token!}"
 
     post :execute, params: { query: "{ viewer { email } }" }, as: :json
 
     assert_equal({ "data" => { "viewer" => { "email" => @user.email } } }, response.parsed_body)
+    assert_nil response.headers["refresh-token"]
+  end
+
+  def test_revoked_api_token_mints_no_lasting_jwt
+    @request.headers["Authorization"] = "Bearer #{@user.generate_api_token!}"
+    post :execute, params: { query: "{ viewer { email } }" }, as: :json
+    @user.revoke_api_token!
+
+    post :execute, params: { query: "{ viewer { email } }" }, as: :json
+
+    assert_nil response.headers["refresh-token"]
+    assert_equal "UNAUTHENTICATED", response.parsed_body.dig("errors", 0, "extensions", "code")
   end
 
   def test_rejects_revoked_jwt

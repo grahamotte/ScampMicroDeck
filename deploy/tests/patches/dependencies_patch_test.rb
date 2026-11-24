@@ -13,6 +13,7 @@ class DependenciesPatchTest < Minitest::Test
     assert_includes commands, 'mise settings add idiomatic_version_file_enable_tools "[]"'
     assert_includes commands, "mise settings set ruby.compile=false"
     assert_includes commands, "sudo rm -f /usr/local/bin/opencode && rm -rf ~/.opencode"
+    assert_includes commands, "cd /var/www/example.com && mise prune --yes && mise cache clear"
     refute commands.any? { |command| command.include?("https://opencode.ai/install") }
     refute commands.any? { |command| command.include?("apt install -y mise") }
   end
