@@ -16,6 +16,7 @@ class GraphqlContextTest < ActiveSupport::TestCase
     context = build(headers: { "Authorization" => "Bearer #{Token.generate_for_user(@user)}" })
 
     assert_equal @user, context[:current_user]
+    assert_equal :jwt, context[:auth_method]
     assert_equal [ :user ], context[:scopes]
     assert_kind_of ActionDispatch::Request, context[:request]
   end
@@ -26,6 +27,7 @@ class GraphqlContextTest < ActiveSupport::TestCase
     context = build(headers: { "Authorization" => "Bearer #{token}" })
 
     assert_equal @user, context[:current_user]
+    assert_equal :api_token, context[:auth_method]
     assert_equal [ :user ], context[:scopes]
   end
 
@@ -35,16 +37,21 @@ class GraphqlContextTest < ActiveSupport::TestCase
     context = build(headers: { "Authorization" => "Bearer #{Settings.api_token_prefix}_#{@user.id}_wrong" })
 
     assert_nil context[:current_user]
+    assert_nil context[:auth_method]
     assert_empty context[:scopes]
   end
 
   def test_session_jwt_signs_in_user
-    assert_equal @user, build(session: { jwt: Token.generate_for_user(@user) })[:current_user]
+    context = build(session: { jwt: Token.generate_for_user(@user) })
+
+    assert_equal @user, context[:current_user]
+    assert_equal :jwt, context[:auth_method]
   end
 
   def test_invalid_or_missing_jwt_has_no_scopes
     [ build(headers: { "Authorization" => "Bearer nope" }), build ].each do |context|
       assert_nil context[:current_user]
+      assert_nil context[:auth_method]
       assert_empty context[:scopes]
     end
   end
